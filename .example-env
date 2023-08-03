@@ -1,0 +1,5 @@
+# aws
+AWS_ACCESS_KEY_ID='access-key-id-string'
+AWS_SECRET_ACCESS_KEY='secret-acces-key-string'
+AWS_REGION='us-east-1'
+S3_BUCKET='bucket'
