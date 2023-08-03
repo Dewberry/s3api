@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  s3api:
+    container_name: s3api
+    build:
+      context: .
+      target: dev
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./.env
+    volumes:
+      - ./:/app
