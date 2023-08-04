@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"path/filepath"
 	"strconv"
@@ -105,7 +106,7 @@ type ListResult struct {
 	ModifiedBy string    `json:"modified_by"`
 }
 
-func listDir(bucket, key string, svc *s3.S3, delimiter bool) (*[]ListResult, error) {
+func listDir(bucket, key string, svc *s3.S3, delimiter bool, startIndex, endIndex int) (*[]ListResult, error) {
 	var s3Path string
 	if key != "" {
 		s3Path = strings.Trim(key, "/") + "/"
@@ -119,18 +120,24 @@ func listDir(bucket, key string, svc *s3.S3, delimiter bool) (*[]ListResult, err
 	if delimiter {
 		query.SetDelimiter("/")
 	}
+	if endIndex == 0 {
+		endIndex = math.MaxInt64
+	}
 
 	result := []ListResult{}
 	truncatedListing := true
 	var count int
-	for truncatedListing {
 
+	for truncatedListing {
 		resp, err := svc.ListObjectsV2(query)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, cp := range resp.CommonPrefixes {
+		for i, cp := range resp.CommonPrefixes {
+			if i < startIndex || i >= endIndex {
+				continue
+			}
 			w := ListResult{
 				ID:         count,
 				Name:       filepath.Base(*cp.Prefix),
@@ -144,7 +151,13 @@ func listDir(bucket, key string, svc *s3.S3, delimiter bool) (*[]ListResult, err
 			result = append(result, w)
 		}
 
-		for _, object := range resp.Contents {
+		for i, object := range resp.Contents {
+			if count >= endIndex {
+				break
+			}
+			if i < startIndex {
+				continue
+			}
 			parts := strings.Split(filepath.Dir(*object.Key), "/")
 			isSelf := filepath.Base(*object.Key) == parts[len(parts)-1]
 

@@ -100,10 +100,30 @@ func (bh *BlobHandler) HandleBucketViewList(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, err.Error())
 
 	}
+	startIndexParam := c.QueryParam("start_index")
+	endIndexParam := c.QueryParam("end_index")
 
-	var result *[]ListResult
+	var startIndex, endIndex int
 	var err error
-	result, err = listDir(bucket, prefix, bh.S3Svc, delimiter)
+
+	// Convert start_index and end_index parameters to integers if provided
+	if startIndexParam != "" {
+		startIndex, err = strconv.Atoi(startIndexParam)
+		if err != nil {
+			// Handle the error when the "start_index" parameter is invalid
+			return c.JSON(http.StatusBadRequest, "Invalid start_index parameter")
+		}
+	}
+
+	if endIndexParam != "" {
+		endIndex, err = strconv.Atoi(endIndexParam)
+		if err != nil {
+			// Handle the error when the "end_index" parameter is invalid
+			return c.JSON(http.StatusBadRequest, "Invalid end_index parameter")
+		}
+	}
+	var result *[]ListResult
+	result, err = listDir(bucket, prefix, bh.S3Svc, delimiter, startIndex, endIndex)
 	if err != nil {
 		log.Info("HandleBucketViewList: Error listing bucket:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
