@@ -312,10 +312,6 @@ func (bh *BlobHandler) tarS3Files(r *s3.ListObjectsV2Output, bucket string, outp
 
 func RecursivelyDeleteObjects(client *s3.S3, bucket, folderPath string) error {
 	s3Path := strings.Trim(folderPath, "/") + "/"
-	if strings.Count(s3Path, "/") < 3 {
-		return fmt.Errorf("prefix %q too shallow, must be at least 2 levels deep, e.g. 'abc/def/'", folderPath)
-	}
-
 	query := &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(s3Path),
