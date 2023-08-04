@@ -2,6 +2,7 @@ package blobstore
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -111,7 +112,7 @@ func (bh *BlobHandler) HandleBucketViewList(c echo.Context) error {
 		startIndex, err = strconv.Atoi(startIndexParam)
 		if err != nil {
 			// Handle the error when the "start_index" parameter is invalid
-			return c.JSON(http.StatusBadRequest, "Invalid start_index parameter")
+			return c.JSON(http.StatusBadRequest, fmt.Sprintf("Invalid `start_index` parameter: %d", startIndex))
 		}
 	}
 
@@ -119,7 +120,7 @@ func (bh *BlobHandler) HandleBucketViewList(c echo.Context) error {
 		endIndex, err = strconv.Atoi(endIndexParam)
 		if err != nil {
 			// Handle the error when the "end_index" parameter is invalid
-			return c.JSON(http.StatusBadRequest, "Invalid end_index parameter")
+			return c.JSON(http.StatusBadRequest, fmt.Sprintf("Invalid `end_index` parameter: %d", endIndex))
 		}
 	}
 	var result *[]ListResult
