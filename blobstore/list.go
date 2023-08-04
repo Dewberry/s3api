@@ -82,13 +82,28 @@ func (bh *BlobHandler) HandleBucketViewList(c echo.Context) error {
 		}
 		bucket = os.Getenv("S3_BUCKET")
 	}
+	delimiterParam := c.QueryParam("delimiter")
+
+	var delimiter bool
+
+	if delimiterParam == "true" || delimiterParam == "false" {
+		var err error
+		delimiter, err = strconv.ParseBool(c.QueryParam("delimiter"))
+		if err != nil {
+			log.Info("HandleListByPrefix: Error parsing `delimiter` param:", err.Error())
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+
+	} else {
+		err := errors.New("request must include a `delimiter`, options are `true` or `false`")
+		log.Info("HandleListByPrefix: " + err.Error())
+		return c.JSON(http.StatusBadRequest, err.Error())
+
+	}
+
 	var result *[]ListResult
 	var err error
-	if prefix == "" || prefix == "/" {
-		result, err = listRoot(bucket, bh.S3Svc)
-	} else {
-		result, err = listDir(bucket, prefix, bh.S3Svc)
-	}
+	result, err = listDir(bucket, prefix, bh.S3Svc, delimiter)
 	if err != nil {
 		log.Info("HandleBucketViewList: Error listing bucket:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
