@@ -490,3 +490,21 @@ func (bh *BlobHandler) UploadS3Obj(bucket string, key string, body io.ReadCloser
 
 	return nil
 }
+
+func deleteKeys(svc *s3.S3, bucket string, key ...string) error {
+	objects := make([]*s3.ObjectIdentifier, 0, len(key))
+	for _, p := range key {
+		s3Path := strings.TrimPrefix(p, "/")
+		object := &s3.ObjectIdentifier{
+			Key: aws.String(s3Path),
+		}
+		objects = append(objects, object)
+	}
+
+	input := &s3.DeleteObjectsInput{
+		Bucket: aws.String(bucket),
+		Delete: &s3.Delete{
+			Objects: objects,
+			Quiet:   aws.Bool(false),
+		},
+	}
