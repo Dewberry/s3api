@@ -36,7 +36,7 @@ func main() {
 	e.GET("/s3/download_folder", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	e.POST("/s3/stream_upload", auth.Authorize(bh.HandleMultipartUpload, writer...))
 	e.DELETE("/s3/delete", auth.Authorize(bh.HandleDeleteObjects, admin...))
-	e.DELETE("/s3/delete/list", auth.Authorize(bh.HandleDeleteObjects, admin...))
+	e.DELETE("/s3/delete/list", auth.Authorize(bh.HandleDeleteObjectsByList, admin...))
 	e.GET("/s3/file_contents", auth.Authorize(bh.HandleObjectContents, allUsers...))
 	e.GET("/s3/bucket_view_list", auth.Authorize(bh.HandleBucketViewList, allUsers...))
 	e.Logger.Fatal(e.Start(":" + apiConfig.Port))
