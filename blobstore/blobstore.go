@@ -508,3 +508,7 @@ func deleteKeys(svc *s3.S3, bucket string, key ...string) error {
 			Quiet:   aws.Bool(false),
 		},
 	}
+
+	_, err := svc.DeleteObjects(input)
+	return err
+}
