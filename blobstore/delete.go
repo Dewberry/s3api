@@ -33,15 +33,6 @@ func (bh *BlobHandler) HandleDeleteObjects(c echo.Context) error {
 		}
 		bucket = os.Getenv("S3_BUCKET")
 	}
-	// Split the key into segments
-	segments := strings.Split(key, "/")
-
-	// Check if the key is two levels deep
-	if len(segments) < 3 {
-		errMsg := fmt.Errorf("invalid key: %s. Only objects three levels deep can be deleted", key)
-		log.Info("HandleDeleteObjects: " + errMsg.Error())
-		return c.JSON(http.StatusBadRequest, errMsg.Error())
-	}
 
 	// Check if the key represents a prefix
 	if strings.HasSuffix(key, "/") {
