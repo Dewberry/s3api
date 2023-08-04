@@ -105,14 +105,19 @@ type ListResult struct {
 	ModifiedBy string    `json:"modified_by"`
 }
 
-func listDir(bucket, key string, svc *s3.S3) (*[]ListResult, error) {
-	s3Path := strings.Trim(key, "/") + "/"
-
+func listDir(bucket, key string, svc *s3.S3, delimiter bool) (*[]ListResult, error) {
+	var s3Path string
+	if key != "" {
+		s3Path = strings.Trim(key, "/") + "/"
+	}
 	query := &s3.ListObjectsV2Input{
-		Bucket:    aws.String(bucket),
-		Prefix:    aws.String(s3Path),
-		Delimiter: aws.String("/"),
-		MaxKeys:   aws.Int64(1000),
+		Bucket:  aws.String(bucket),
+		Prefix:  aws.String(s3Path),
+		MaxKeys: aws.Int64(1000),
+	}
+
+	if delimiter {
+		query.SetDelimiter("/")
 	}
 
 	result := []ListResult{}
@@ -161,66 +166,6 @@ func listDir(bucket, key string, svc *s3.S3) (*[]ListResult, error) {
 		}
 
 		query.ContinuationToken = resp.NextContinuationToken
-		truncatedListing = *resp.IsTruncated
-	}
-
-	return &result, nil
-}
-
-func listRoot(bucket string, svc *s3.S3) (*[]ListResult, error) {
-	params := &s3.ListObjectsV2Input{
-		Bucket:    aws.String(bucket),
-		Prefix:    aws.String(""),
-		Delimiter: aws.String("/"),
-		MaxKeys:   aws.Int64(1000),
-	}
-
-	result := []ListResult{}
-	truncatedListing := true
-	var count int
-	for truncatedListing {
-
-		resp, err := svc.ListObjectsV2(params)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, cp := range resp.CommonPrefixes {
-			w := ListResult{
-				ID:         count,
-				Name:       filepath.Base(*cp.Prefix),
-				Size:       "",
-				Path:       *cp.Prefix,
-				Type:       "",
-				IsDir:      true,
-				ModifiedBy: "",
-			}
-			count++
-			result = append(result, w)
-		}
-
-		for _, object := range resp.Contents {
-			parts := strings.Split(filepath.Dir(*object.Key), "/")
-			isSelf := filepath.Base(*object.Key) == parts[len(parts)-1]
-
-			if !isSelf {
-				w := ListResult{
-					ID:         count,
-					Name:       filepath.Base(*object.Key),
-					Size:       strconv.FormatInt(*object.Size, 10),
-					Path:       filepath.Dir(*object.Key),
-					Type:       filepath.Ext(*object.Key),
-					IsDir:      false,
-					Modified:   *object.LastModified,
-					ModifiedBy: "",
-				}
-
-				count++
-				result = append(result, w)
-			}
-		}
-
-		params.ContinuationToken = resp.NextContinuationToken
 		truncatedListing = *resp.IsTruncated
 	}
 
@@ -511,4 +456,102 @@ func deleteKeys(svc *s3.S3, bucket string, key ...string) error {
 
 	_, err := svc.DeleteObjects(input)
 	return err
+}
+
+// listBuckets returns the list of all S3 buckets.
+func (bh *BlobHandler) listBuckets() (*s3.ListBucketsOutput, error) {
+	// Set up input parameters for the ListBuckets API
+	input := &s3.ListBucketsInput{}
+
+	// Retrieve the list of buckets
+	result, err := bh.S3Svc.ListBuckets(input)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (bh *BlobHandler) createBucket(bucketName string) error {
+	// Set up input parameters for the CreateBucket API
+	input := &s3.CreateBucketInput{
+		Bucket: aws.String(bucketName),
+	}
+
+	// Create the bucket
+	_, err := bh.S3Svc.CreateBucket(input)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// deleteBucket deletes the specified S3 bucket.
+func (bh *BlobHandler) deleteBucket(bucketName string) error {
+	// Set up input parameters for the DeleteBucket API
+	input := &s3.DeleteBucketInput{
+		Bucket: aws.String(bucketName),
+	}
+
+	// Delete the bucket
+	_, err := bh.S3Svc.DeleteBucket(input)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// getBucketACL retrieves the ACL (Access Control List) for the specified bucket.
+func (bh *BlobHandler) getBucketACL(bucketName string) (*s3.GetBucketAclOutput, error) {
+	// Set up input parameters for the GetBucketAcl API
+	input := &s3.GetBucketAclInput{
+		Bucket: aws.String(bucketName),
+	}
+
+	// Get the bucket ACL
+	result, err := bh.S3Svc.GetBucketAcl(input)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// renameObject renames an object within a bucket.
+func (bh *BlobHandler) renameObject(bucketName, oldObjectKey, newObjectKey string) error {
+	// Check if the new key already exists in the bucket
+	_, err := bh.S3Svc.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(newObjectKey),
+	})
+	if err == nil {
+		// The new key already exists, return an error to indicate conflict
+		return errors.New("object with the new key already exists in the bucket")
+	}
+
+	// Set up input parameters for the CopyObject API to rename the object
+	copyInput := &s3.CopyObjectInput{
+		Bucket:     aws.String(bucketName),
+		CopySource: aws.String(bucketName + "/" + oldObjectKey),
+		Key:        aws.String(newObjectKey),
+	}
+
+	// Copy the object to the new key (effectively renaming)
+	_, err = bh.S3Svc.CopyObject(copyInput)
+	if err != nil {
+		return err
+	}
+
+	// Delete the old object after successful copy (rename)
+	_, err = bh.S3Svc.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(oldObjectKey),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
