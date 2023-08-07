@@ -97,26 +97,3 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	log.Info("HandleGetMetaData: Successfully retrieved metadata for key:", key)
 	return c.JSON(http.StatusOK, result)
 }
-
-// HandleRenameObject renames an object within a bucket.
-func (bh *BlobHandler) HandleRenameObject(c echo.Context) error {
-	bucketName := c.QueryParam("bucket")
-	oldObjectKey := c.QueryParam("oldKey")
-	newObjectKey := c.QueryParam("newKey")
-
-	if bucketName == "" || oldObjectKey == "" || newObjectKey == "" {
-		err := errors.New("request must include `bucket`, `oldKey`, and `newKey` parameters")
-		log.Info("HandleRenameObject: " + err.Error())
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-
-	// Rename the object
-	err := bh.renameObject(bucketName, oldObjectKey, newObjectKey)
-	if err != nil {
-		log.Info("HandleRenameObject: Error renaming object:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
-
-	log.Info("HandleRenameObject: Successfully renamed object from:", oldObjectKey, "to:", newObjectKey)
-	return c.JSON(http.StatusOK, "Object renamed successfully")
-}

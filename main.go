@@ -20,7 +20,7 @@ func main() {
 	bh := apiConfig.BH
 
 	e := echo.New()
-
+	e.Logger.SetLevel(log.ERROR)
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -37,7 +37,6 @@ func main() {
 	e.GET("/s3/buckets/acl", auth.Authorize(bh.HandleGetBucketACL, admin...))
 	//object/s metadata
 	e.GET("/s3/get_metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
-	e.PUT("/s3/object/rename", auth.Authorize(bh.HandleRenameObject, writer...))
 	e.GET("/s3/get_size", auth.Authorize(bh.HandleGetSize, allUsers...))
 	//object content
 	e.GET("/s3/file_contents", auth.Authorize(bh.HandleObjectContents, allUsers...))
@@ -52,6 +51,10 @@ func main() {
 	//deleting objects
 	e.DELETE("/s3/delete", auth.Authorize(bh.HandleDeleteObjects, admin...))
 	e.DELETE("/s3/delete/list", auth.Authorize(bh.HandleDeleteObjectsByList, admin...))
+
+	// multi-bucket
+	e.PUT("/object/copy", auth.Authorize(bh.HandleCopyObject, writer...))
+	e.PUT("/prefix/copy", auth.Authorize(bh.HandleCopyObject, writer...))
 
 	e.Logger.Fatal(e.Start(":" + apiConfig.Port))
 	e.Logger.SetLevel(log.DEBUG)
