@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -31,10 +30,10 @@ func (bh *BlobHandler) keyExists(bucket string, key string) (bool, error) {
 			case "NotFound": // s3.ErrCodeNoSuchKey does not work, aws is missing this error code so we hardwire a string
 				return false, nil
 			default:
-				return false, err
+				return false, fmt.Errorf("keyExists: %s", err)
 			}
 		}
-		return false, err
+		return false, fmt.Errorf("keyExists: %s", err)
 	}
 	return true, nil
 }
@@ -61,44 +60,6 @@ func GenerateRandomString() string {
 	}
 
 	return string(b)
-}
-
-func RecursivelyDeleteObjects(client *s3.S3, bucket, folderPath string) error {
-	s3Path := strings.Trim(folderPath, "/") + "/"
-	query := &s3.ListObjectsV2Input{
-		Bucket: aws.String(bucket),
-		Prefix: aws.String(s3Path),
-	}
-	resp, err := client.ListObjectsV2(query)
-	if err != nil {
-		return err
-	}
-	if len(resp.Contents) > 0 {
-		var objectsToDelete []*s3.ObjectIdentifier
-
-		for _, obj := range resp.Contents {
-			objectsToDelete = append(objectsToDelete, &s3.ObjectIdentifier{
-				Key: obj.Key,
-			})
-		}
-
-		if len(objectsToDelete) > 0 {
-			_, err = client.DeleteObjects(&s3.DeleteObjectsInput{
-				Bucket: aws.String(bucket),
-				Delete: &s3.Delete{
-					Objects: objectsToDelete,
-				},
-			})
-
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		return errors.New("object not found and no objects were deleted")
-	}
-
-	return nil
 }
 
 func (bh *BlobHandler) UploadS3Obj(bucket string, key string, body io.ReadCloser) error {
@@ -196,28 +157,6 @@ func (bh *BlobHandler) UploadS3Obj(bucket string, key string, body io.ReadCloser
 	}
 
 	return nil
-}
-
-func deleteKeys(svc *s3.S3, bucket string, key ...string) error {
-	objects := make([]*s3.ObjectIdentifier, 0, len(key))
-	for _, p := range key {
-		s3Path := strings.TrimPrefix(p, "/")
-		object := &s3.ObjectIdentifier{
-			Key: aws.String(s3Path),
-		}
-		objects = append(objects, object)
-	}
-
-	input := &s3.DeleteObjectsInput{
-		Bucket: aws.String(bucket),
-		Delete: &s3.Delete{
-			Objects: objects,
-			Quiet:   aws.Bool(false),
-		},
-	}
-
-	_, err := svc.DeleteObjects(input)
-	return err
 }
 
 // listBuckets returns the list of all S3 buckets.
