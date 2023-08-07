@@ -124,14 +124,13 @@ type ListResult struct {
 }
 
 // listDir retrieves a detailed list of objects in the specified S3 bucket with the given prefix.
-func (bh *BlobHandler) listDir(bucket, key string, delimiter bool) (*[]ListResult, error) {
-	var s3Path string
-	if key != "" {
-		s3Path = strings.Trim(key, "/") + "/"
+func (bh *BlobHandler) listDir(bucket, prefix string, delimiter bool) (*[]ListResult, error) {
+	if prefix != "" {
+		prefix = strings.Trim(prefix, "/") + "/"
 	}
 	query := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucket),
-		Prefix:  aws.String(s3Path),
+		Prefix:  aws.String(prefix),
 		MaxKeys: aws.Int64(1000),
 	}
 	if delimiter {
