@@ -12,7 +12,7 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-func (bh *BlobHandler) RecursivelyDeleteObjects(bucket, prefix string) error {
+func (bh *BlobHandler) recursivelyDeleteObjects(bucket, prefix string) error {
 	prefixPath := strings.Trim(prefix, "/") + "/"
 	query := &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
@@ -20,7 +20,7 @@ func (bh *BlobHandler) RecursivelyDeleteObjects(bucket, prefix string) error {
 	}
 	resp, err := bh.S3Svc.ListObjectsV2(query)
 	if err != nil {
-		return fmt.Errorf("RecursivelyDeleteObjects: error listing objects: %s", err)
+		return fmt.Errorf("recursivelyDeleteObjects: error listing objects: %s", err)
 	}
 	if len(resp.Contents) > 0 {
 		var objectsToDelete []*s3.ObjectIdentifier
@@ -40,11 +40,11 @@ func (bh *BlobHandler) RecursivelyDeleteObjects(bucket, prefix string) error {
 			})
 
 			if err != nil {
-				return fmt.Errorf("RecursivelyDeleteObjects: error Deleting objects %v: %s", objectsToDelete, err)
+				return fmt.Errorf("recursivelyDeleteObjects: error Deleting objects %v: %s", objectsToDelete, err)
 			}
 		}
 	} else {
-		return fmt.Errorf("RecursivelyDeleteObjects: object %s not found and no objects were deleted", prefixPath)
+		return fmt.Errorf("recursivelyDeleteObjects: object %s not found and no objects were deleted", prefixPath)
 	}
 	return nil
 }
@@ -110,7 +110,7 @@ func (bh *BlobHandler) HandleDeleteObjects(c echo.Context) error {
 			return c.JSON(http.StatusBadRequest, errMsg.Error())
 		}
 		// This will recursively delete all objects with the specified prefix
-		err = bh.RecursivelyDeleteObjects(bucket, objectIdentifier)
+		err = bh.recursivelyDeleteObjects(bucket, objectIdentifier)
 		if err != nil {
 			msg := fmt.Sprintf("error deleting objects. %s", err.Error())
 			log.Errorf("HandleDeleteObjects: %s", msg)
