@@ -28,29 +28,22 @@ func main() {
 		AllowOrigins:     []string{"*"},
 	}))
 
-	//health check
-	e.GET("/ping", bh.Ping)
-	//bucket endpoints
-	e.GET("/s3/buckets", auth.Authorize(bh.HandleListBuckets, allUsers...))
-	e.POST("/s3/buckets", auth.Authorize(bh.HandleCreateBucket, admin...))
-	e.DELETE("/s3/buckets", auth.Authorize(bh.HandleDeleteBucket, admin...))
-	e.GET("/s3/buckets/acl", auth.Authorize(bh.HandleGetBucketACL, admin...))
-	//object/s metadata
-	e.GET("/s3/get_metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
-	e.GET("/s3/get_size", auth.Authorize(bh.HandleGetSize, allUsers...))
-	//object content
-	e.GET("/s3/file_contents", auth.Authorize(bh.HandleObjectContents, allUsers...))
-	//listing
+	// metadata for objects
+	e.GET("/object/metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
+	e.GET("/object/size", auth.Authorize(bh.HandleGetSize, allUsers...))
+
+	// object content
+	e.GET("/object/content", auth.Authorize(bh.HandleObjectContents, allUsers...))
+	e.PUT("/object/move", auth.Authorize(bh.HandleCopyObject, writer...))
+	e.GET("/object/download", auth.Authorize(bh.HandleGetPresignedURL, allUsers...))
+	e.POST("/object/upload", auth.Authorize(bh.HandleMultipartUpload, writer...))
+	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObjects, admin...))
+
+	// listing
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefix, allUsers...))
-	//downloading
-	e.GET("/s3/download", auth.Authorize(bh.HandleGetPresignedURL, allUsers...))
-	e.GET("/s3/download_folder", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
-	//uploading
-	e.POST("/s3/stream_upload", auth.Authorize(bh.HandleMultipartUpload, writer...))
-	//deleting objects
-	e.DELETE("/s3/delete", auth.Authorize(bh.HandleDeleteObjects, admin...))
-	e.DELETE("/s3/delete/list", auth.Authorize(bh.HandleDeleteObjectsByList, admin...))
+	e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
+	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeleteObjectsByList, admin...))
 
 	// multi-bucket
 	e.PUT("/object/copy", auth.Authorize(bh.HandleCopyObject, writer...))
