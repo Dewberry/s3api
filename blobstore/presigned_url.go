@@ -118,7 +118,7 @@ func (bh *BlobHandler) tarS3Files(r *s3.ListObjectsV2Output, bucket string, outp
 func (bh *BlobHandler) HandleGetPresignedURL(c echo.Context) error {
 	bucket, err := getBucketParam(c, bh.Bucket)
 	if err != nil {
-		log.Error("HandleListByPrefix: " + err.Error())
+		log.Error("HandleGetPresignedURL: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	key := c.QueryParam("key")
@@ -163,7 +163,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 
 	bucket, err := getBucketParam(c, bh.Bucket)
 	if err != nil {
-		log.Error("HandleListByPrefix: " + err.Error())
+		log.Error("HandleGetPresignedURLMultiObj: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
