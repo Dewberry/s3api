@@ -57,17 +57,6 @@ func getBucketParam(c echo.Context, defaultBucket string) (string, error) {
 	return bucket, nil
 }
 
-func (bh *BlobHandler) getSize(list *s3.ListObjectsV2Output) (uint64, uint32, error) {
-	var size uint64 = 0
-	fileCount := uint32(len(list.Contents))
-
-	for _, file := range list.Contents {
-		size += uint64(*file.Size)
-	}
-
-	return size, fileCount, nil
-}
-
 // getList returns the list of object keys in the specified S3 bucket with the given prefix.
 
 const (
