@@ -1,18 +1,21 @@
 package blobstore
 
 import (
-	"fmt"
 	"net/http"
+	"os"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 )
 
 // Store configuration for the handler
 type BlobHandler struct {
-	Sess  *session.Session
-	S3Svc *s3.S3
+	Sess   *session.Session
+	S3Svc  *s3.S3
+	Bucket string
 }
 
 // Initializes resources and return a new handler
@@ -27,15 +30,19 @@ func NewBlobHandler() *BlobHandler {
 	}))
 	config.S3Svc = s3.New(sess)
 	config.Sess = sess
+	config.Bucket = os.Getenv("S3_BUCKET")
 	return &config
 }
 
 func (bh *BlobHandler) Ping(c echo.Context) error {
-	// Try to list buckets to test the connection
-	_, err := bh.S3Svc.ListBuckets(nil)
+	// Perform a HeadBucket operation to check the health of the S3 connection
+	_, err := bh.S3Svc.HeadBucket(&s3.HeadBucketInput{
+		Bucket: aws.String(bh.Bucket),
+	})
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error connecting to S3, %s", err.Error()))
+		log.Error("Error connecting to S3 " + err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
-
+	log.Info("Ping operation preformed succesfully, connection is healthy")
 	return c.JSON(http.StatusOK, "connection is healthy")
 }
