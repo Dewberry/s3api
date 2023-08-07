@@ -1,30 +1,23 @@
 package blobstore
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
-	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
 )
 
 const (
-	TEMP_PREFIX  string = "downloads-temp" // temp prefix prepended to targzs created by HandleGetPresignedURLMultiObj
-	URL_EXP_DAYS int    = 7                // default validity period (expiration in days) for urls made in HandleGetPresignedURLMultiObj
+	chars       = "abcdefghijklmnopqrstuvwxyz"
+	randomChars = 6
 )
 
 func (bh *BlobHandler) keyExists(bucket string, key string) (bool, error) {
@@ -59,11 +52,6 @@ func getBucketParam(c echo.Context, defaultBucket string) (string, error) {
 
 // getList returns the list of object keys in the specified S3 bucket with the given prefix.
 
-const (
-	chars       = "abcdefghijklmnopqrstuvwxyz"
-	randomChars = 6
-)
-
 func GenerateRandomString() string {
 	rand.Seed(time.Now().UnixNano())
 
@@ -74,115 +62,6 @@ func GenerateRandomString() string {
 
 	return string(b)
 }
-
-func getPresignedURL(bucket, key string, expDays int) (string, error) {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-	svc := s3.New(sess)
-
-	duration := time.Duration(expDays) * 24 * time.Hour
-	req, _ := svc.GetObjectRequest(&s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
-	return req.Presign(duration)
-}
-
-func (bh *BlobHandler) tarS3Files(r *s3.ListObjectsV2Output, bucket string, outputFile string, prefix string) (err error) {
-	uploader := s3manager.NewUploader(bh.Sess)
-	pr, pw := io.Pipe()
-
-	gzipWriter := gzip.NewWriter(pw)
-	tarWriter := tar.NewWriter(gzipWriter)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-
-		log.Debug("start writing files to:", outputFile)
-		_, err := uploader.Upload(&s3manager.UploadInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(outputFile),
-			Body:   pr,
-		})
-		if err != nil {
-			log.Error("Failed to upload tar.gz file to S3:", err)
-			return
-		}
-		log.Debug("completed writing files to:", outputFile)
-	}()
-
-	for _, item := range r.Contents {
-		filePath := filepath.Join(strings.TrimPrefix(aws.StringValue(item.Key), prefix))
-		copyObj := aws.StringValue(item.Key)
-		log.Infof("Copying %s to %s", copyObj, outputFile)
-
-		getResp, err := bh.S3Svc.GetObject(&s3.GetObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(copyObj),
-		})
-		if err != nil {
-			log.Error("Failed to download file:", copyObj)
-			return err
-		}
-		defer getResp.Body.Close()
-
-		header := &tar.Header{
-			Name: filePath,
-			Size: *getResp.ContentLength,
-			Mode: int64(0644),
-		}
-
-		err = tarWriter.WriteHeader(header)
-		if err != nil {
-			log.Error("Failed to write tar header for file:", copyObj)
-			return err
-		}
-
-		_, err = io.Copy(tarWriter, getResp.Body)
-		if err != nil {
-			log.Error("Failed to write file content to tar:", copyObj)
-			return err
-		}
-		log.Debug("Complete copying...", copyObj)
-	}
-
-	err = tarWriter.Close()
-	if err != nil {
-		log.Error("tar close failure")
-		return err
-	}
-
-	gzipWriter.Close()
-	if err != nil {
-		log.Error("gzip close failure")
-		return err
-	}
-
-	pw.Close()
-	if err != nil {
-		log.Error("pw close failure")
-		return err
-	}
-
-	wg.Wait()
-
-	log.Info("Done!")
-	return nil
-}
-
-// func getFileModificationTime(filePath string) int64 {
-// 	fi2, err := os.Open(filePath)
-// 	fi, err := os.Stat(filePath)
-// 	fmt.Println(fi2)
-// 	if err != nil {
-// 		return 0
-// 	}
-// 	return fi.ModTime().Unix()
-// }
 
 func RecursivelyDeleteObjects(client *s3.S3, bucket, folderPath string) error {
 	s3Path := strings.Trim(folderPath, "/") + "/"
