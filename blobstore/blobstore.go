@@ -1,10 +1,8 @@
 package blobstore
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"math/rand"
 	"time"
 
@@ -60,103 +58,6 @@ func GenerateRandomString() string {
 	}
 
 	return string(b)
-}
-
-func (bh *BlobHandler) UploadS3Obj(bucket string, key string, body io.ReadCloser) error {
-	// Initialize the multipart upload to S3
-	params := &s3.CreateMultipartUploadInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	}
-
-	resp, err := bh.S3Svc.CreateMultipartUpload(params)
-	if err != nil {
-		return fmt.Errorf("error initializing multipart upload. %s", err.Error())
-	}
-
-	// Create the variables that will track upload progress
-	var totalBytes int64 = 0
-	var partNumber int64 = 1
-	completedParts := []*s3.CompletedPart{}
-	buffer := bytes.NewBuffer(nil)
-
-	for {
-		// Read from the request body into the buffer
-		chunkSize := 1024 * 1024 * 5
-		buf := make([]byte, chunkSize)
-		n, err := body.Read(buf)
-
-		// This would be a true error while reading
-		if err != nil && err != io.EOF {
-			return fmt.Errorf("error copying POST body to S3. %s", err.Error())
-		}
-
-		// Add the buffer data to the buffer
-		buffer.Write(buf[:n])
-
-		// Upload a part if the buffer contains more than 5mb of data to avoid AWS EntityTooSmall error
-		if buffer.Len() > chunkSize {
-			params := &s3.UploadPartInput{
-				Bucket:     aws.String(bucket),
-				Key:        aws.String(key),
-				UploadId:   resp.UploadId,
-				PartNumber: aws.Int64(partNumber),
-				Body:       bytes.NewReader(buffer.Bytes()),
-			}
-
-			result, err := bh.S3Svc.UploadPart(params)
-			if err != nil {
-				return fmt.Errorf("error streaming POST body to S3. %s, %+v", err.Error(), result)
-			}
-
-			totalBytes += int64(buffer.Len())
-			completedParts = append(completedParts, &s3.CompletedPart{
-				ETag:       result.ETag,
-				PartNumber: aws.Int64(partNumber),
-			})
-
-			buffer.Reset()
-			partNumber++
-		}
-
-		if err == io.EOF {
-			break
-		}
-	}
-
-	// Upload the remaining data as the last part
-	params2 := &s3.UploadPartInput{
-		Bucket:     aws.String(bucket),
-		Key:        aws.String(key),
-		UploadId:   resp.UploadId,
-		PartNumber: aws.Int64(partNumber),
-		Body:       bytes.NewReader(buffer.Bytes()),
-	}
-
-	result, err := bh.S3Svc.UploadPart(params2)
-	if err != nil {
-		return fmt.Errorf("error streaming POST body to S3. %s, %+v", err.Error(), result)
-	}
-
-	totalBytes += int64(buffer.Len())
-	completedParts = append(completedParts, &s3.CompletedPart{
-		ETag:       result.ETag,
-		PartNumber: aws.Int64(partNumber),
-	})
-
-	// Complete the multipart upload
-	completeParams := &s3.CompleteMultipartUploadInput{
-		Bucket:          aws.String(bucket),
-		Key:             aws.String(key),
-		UploadId:        resp.UploadId,
-		MultipartUpload: &s3.CompletedMultipartUpload{Parts: completedParts},
-	}
-	_, err = bh.S3Svc.CompleteMultipartUpload(completeParams)
-	if err != nil {
-		return fmt.Errorf("error completing multipart upload. %s", err.Error())
-	}
-
-	return nil
 }
 
 // listBuckets returns the list of all S3 buckets.
