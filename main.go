@@ -42,8 +42,8 @@ func main() {
 	//object content
 	e.GET("/s3/file_contents", auth.Authorize(bh.HandleObjectContents, allUsers...))
 	//listing
-	e.GET("/s3/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
-	e.GET("/s3/bucket_view_list", auth.Authorize(bh.HandleBucketViewList, allUsers...))
+	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
+	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	//downloading
 	e.GET("/s3/download", auth.Authorize(bh.HandleGetPresignedURL, allUsers...))
 	e.GET("/s3/download_folder", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))

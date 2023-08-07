@@ -2,134 +2,189 @@ package blobstore
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 )
 
-// ListByPrefix retrieves a list of object keys in the specified S3 bucket with a given prefix.
-// It takes the prefix, recursive flag, and bucket name from the query parameters and returns the object keys as a JSON response.
-//
-// The prefix parameter represents the prefix for the objects in the S3 bucket.
-// The delimiter flag, when set to "false", includes objects from subdirectories as well.
-// The bucket parameter represents the name of the S3 bucket. If not provided in the query parameters, it falls back to the S3_BUCKET environment variable.
-// getSize returns the total size and file count of objects in the specified S3 bucket with the given prefix.
+// HandleListByPrefix handles the API endpoint for listing objects by prefix in S3 bucket.
+//it will handle two endpoints one that returns a list without detail for /prefix/list and one
+//that returns a list with additional details for /prefix/list_with_detail
 func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
 		err := errors.New("request must include a `prefix` parameter")
-		log.Info("HandleListByPrefix: " + err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
+		log.Error("HandleListByPrefix: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
 	delimiterParam := c.QueryParam("delimiter")
-
 	var delimiter bool
-
 	if delimiterParam == "true" || delimiterParam == "false" {
 		var err error
-		delimiter, err = strconv.ParseBool(c.QueryParam("delimiter"))
+		delimiter, err = strconv.ParseBool(delimiterParam)
 		if err != nil {
-			log.Info("HandleListByPrefix: Error parsing `delimiter` param:", err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			log.Error("HandleListByPrefix: Error parsing `delimiter` param:", err.Error())
+			return c.JSON(http.StatusUnprocessableEntity, err.Error())
 		}
 
 	} else {
 		err := errors.New("request must include a `delimiter`, options are `true` or `false`")
-		log.Info("HandleListByPrefix: " + err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
+		log.Error("HandleListByPrefix: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 
 	}
-
-	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		if os.Getenv("S3_BUCKET") == "" {
-			err := errors.New("error: `bucket` parameter was not provided by the user and is not a global env variable")
-			log.Info("HandleListByPrefix: " + err.Error())
+	bucket, err := getBucketParam(c, bh.Bucket)
+	if err != nil {
+		log.Error("HandleListByPrefix: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+	var result interface{}
+	isDetail := strings.Contains(c.Request().URL.String(), "list_with_details")
+	log.Debug("list_with_detail parameter  bool value:", isDetail)
+	if !isDetail {
+		listOutput, err := bh.getList(bucket, prefix, delimiter)
+		if err != nil {
+			log.Error("HandleListByPrefix: Error getting list:", err.Error())
 			return c.JSON(http.StatusInternalServerError, err.Error())
 		}
-		bucket = os.Getenv("S3_BUCKET")
-	}
-	response, err := bh.getList(bucket, prefix, delimiter)
-	if err != nil {
-		log.Info("HandleListByPrefix: Error getting list:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err)
-	}
 
-	//return the list of objects as a slice of strings
-	var objectKeys []string
-	for _, object := range response.Contents {
-		objectKeys = append(objectKeys, aws.StringValue(object.Key))
+		// Convert the list of object keys to strings
+		var objectKeys []string
+		for _, object := range listOutput.Contents {
+			objectKeys = append(objectKeys, aws.StringValue(object.Key))
+		}
+		result = objectKeys
+	} else {
+		detailedList, err := bh.listDir(bucket, prefix, delimiter)
+		if err != nil {
+			log.Error("HandleListByPrefix: Error getting list_with_detail:", err.Error())
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		result = detailedList
 	}
 
 	log.Info("HandleListByPrefix: Successfully retrieved list by prefix:", prefix)
-	return c.JSON(http.StatusOK, objectKeys)
+	return c.JSON(http.StatusOK, result)
 }
 
-func (bh *BlobHandler) HandleBucketViewList(c echo.Context) error {
-	prefix := c.QueryParam("prefix")
-
-	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		if os.Getenv("S3_BUCKET") == "" {
-			err := errors.New("error: `bucket` parameter was not provided by the user and is not a global env variable")
-			log.Info("HandleBucketViewList: " + err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
-		}
-		bucket = os.Getenv("S3_BUCKET")
+// getList retrieves a list of objects in the specified S3 bucket with the given prefix.
+func (bh *BlobHandler) getList(bucket, prefix string, delimiter bool) (*s3.ListObjectsV2Output, error) {
+	// Set up input parameters for the ListObjectsV2 API
+	input := &s3.ListObjectsV2Input{
+		Bucket:  aws.String(bucket),
+		Prefix:  aws.String(prefix),
+		MaxKeys: aws.Int64(1000), // Set the desired maximum keys per request
 	}
-	delimiterParam := c.QueryParam("delimiter")
-
-	var delimiter bool
-
-	if delimiterParam == "true" || delimiterParam == "false" {
-		var err error
-		delimiter, err = strconv.ParseBool(c.QueryParam("delimiter"))
-		if err != nil {
-			log.Info("HandleListByPrefix: Error parsing `delimiter` param:", err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
+	if delimiter {
+		input.SetDelimiter("/")
+	}
+	// Retrieve the list of objects in the bucket with the specified prefix
+	var response *s3.ListObjectsV2Output
+	err := bh.S3Svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, lastPage bool) bool {
+		if response == nil {
+			response = page
+		} else {
+			response.Contents = append(response.Contents, page.Contents...)
 		}
 
-	} else {
-		err := errors.New("request must include a `delimiter`, options are `true` or `false`")
-		log.Info("HandleListByPrefix: " + err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
-
-	}
-	startIndexParam := c.QueryParam("start_index")
-	endIndexParam := c.QueryParam("end_index")
-
-	var startIndex, endIndex int
-	var err error
-
-	// Convert start_index and end_index parameters to integers if provided
-	if startIndexParam != "" {
-		startIndex, err = strconv.Atoi(startIndexParam)
-		if err != nil {
-			// Handle the error when the "start_index" parameter is invalid
-			return c.JSON(http.StatusBadRequest, fmt.Sprintf("Invalid `start_index` parameter: %d", startIndex))
+		// Check if there are more pages to retrieve
+		if *page.IsTruncated {
+			// Set the continuation token for the next request
+			input.ContinuationToken = page.NextContinuationToken
+			return true // Continue to the next page
 		}
-	}
 
-	if endIndexParam != "" {
-		endIndex, err = strconv.Atoi(endIndexParam)
-		if err != nil {
-			// Handle the error when the "end_index" parameter is invalid
-			return c.JSON(http.StatusBadRequest, fmt.Sprintf("Invalid `end_index` parameter: %d", endIndex))
-		}
-	}
-	var result *[]ListResult
-	result, err = listDir(bucket, prefix, bh.S3Svc, delimiter, startIndex, endIndex)
+		return false // Stop pagination
+	})
 	if err != nil {
-		log.Info("HandleBucketViewList: Error listing bucket:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return nil, err
 	}
 
-	log.Info("HandleBucketViewList: Successfully retrieved bucket view list with prefix:", prefix)
-	return c.JSON(http.StatusOK, result)
+	return response, nil
+}
+
+// ListResult is the result struct for listing objects with additional details.
+type ListResult struct {
+	ID         int       `json:"id"`
+	Name       string    `json:"filename"`
+	Size       string    `json:"size"`
+	Path       string    `json:"filepath"`
+	Type       string    `json:"type"`
+	IsDir      bool      `json:"isdir"`
+	Modified   time.Time `json:"modified"`
+	ModifiedBy string    `json:"modified_by"`
+}
+
+// listDir retrieves a detailed list of objects in the specified S3 bucket with the given prefix.
+func (bh *BlobHandler) listDir(bucket, key string, delimiter bool) (*[]ListResult, error) {
+	var s3Path string
+	if key != "" {
+		s3Path = strings.Trim(key, "/") + "/"
+	}
+	query := &s3.ListObjectsV2Input{
+		Bucket:  aws.String(bucket),
+		Prefix:  aws.String(s3Path),
+		MaxKeys: aws.Int64(1000),
+	}
+	if delimiter {
+		query.SetDelimiter("/")
+	}
+	result := []ListResult{}
+	truncatedListing := true
+	var count int
+	for truncatedListing {
+
+		resp, err := bh.S3Svc.ListObjectsV2(query)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, cp := range resp.CommonPrefixes {
+			w := ListResult{
+				ID:         count,
+				Name:       filepath.Base(*cp.Prefix),
+				Size:       "",
+				Path:       *cp.Prefix,
+				Type:       "",
+				IsDir:      true,
+				ModifiedBy: "",
+			}
+			count++
+			result = append(result, w)
+		}
+
+		for _, object := range resp.Contents {
+			parts := strings.Split(filepath.Dir(*object.Key), "/")
+			isSelf := filepath.Base(*object.Key) == parts[len(parts)-1]
+
+			if !isSelf {
+				w := ListResult{
+					ID:         count,
+					Name:       filepath.Base(*object.Key),
+					Size:       strconv.FormatInt(*object.Size, 10),
+					Path:       filepath.Dir(*object.Key),
+					Type:       filepath.Ext(*object.Key),
+					IsDir:      false,
+					Modified:   *object.LastModified,
+					ModifiedBy: "",
+				}
+
+				count++
+				result = append(result, w)
+			}
+		}
+
+		query.ContinuationToken = resp.NextContinuationToken
+		truncatedListing = *resp.IsTruncated
+	}
+
+	return &result, nil
 }

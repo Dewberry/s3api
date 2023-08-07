@@ -7,10 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"math/rand"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 )
 
@@ -47,6 +46,17 @@ func (bh *BlobHandler) keyExists(bucket string, key string) (bool, error) {
 	return true, nil
 }
 
+func getBucketParam(c echo.Context, defaultBucket string) (string, error) {
+	bucket := c.QueryParam("bucket")
+	if bucket == "" {
+		if defaultBucket == "" {
+			return "", errors.New("error: `bucket` parameter was not provided by the user and is not a default value")
+		}
+		bucket = defaultBucket
+	}
+	return bucket, nil
+}
+
 func (bh *BlobHandler) getSize(list *s3.ListObjectsV2Output) (uint64, uint32, error) {
 	var size uint64 = 0
 	fileCount := uint32(len(list.Contents))
@@ -59,131 +69,6 @@ func (bh *BlobHandler) getSize(list *s3.ListObjectsV2Output) (uint64, uint32, er
 }
 
 // getList returns the list of object keys in the specified S3 bucket with the given prefix.
-func (bh *BlobHandler) getList(bucket, prefix string, delimiter bool) (*s3.ListObjectsV2Output, error) {
-
-	// Set up input parameters for the ListObjectsV2 API
-	input := &s3.ListObjectsV2Input{
-		Bucket:  aws.String(bucket),
-		Prefix:  aws.String(prefix),
-		MaxKeys: aws.Int64(1000), // Set the desired maximum keys per request
-	}
-	if delimiter {
-		input.SetDelimiter("/")
-	}
-	// Retrieve the list of objects in the bucket with the specified prefix
-	var response *s3.ListObjectsV2Output
-	err := bh.S3Svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, lastPage bool) bool {
-		if response == nil {
-			response = page
-		} else {
-			response.Contents = append(response.Contents, page.Contents...)
-		}
-
-		// Check if there are more pages to retrieve
-		if *page.IsTruncated {
-			// Set the continuation token for the next request
-			input.ContinuationToken = page.NextContinuationToken
-			return true // Continue to the next page
-		}
-
-		return false // Stop pagination
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
-
-type ListResult struct {
-	ID         int       `json:"id"`
-	Name       string    `json:"filename"`
-	Size       string    `json:"size"`
-	Path       string    `json:"filepath"`
-	Type       string    `json:"type"`
-	IsDir      bool      `json:"isdir"`
-	Modified   time.Time `json:"modified"`
-	ModifiedBy string    `json:"modified_by"`
-}
-
-func listDir(bucket, key string, svc *s3.S3, delimiter bool, startIndex, endIndex int) (*[]ListResult, error) {
-	var s3Path string
-	if key != "" {
-		s3Path = strings.Trim(key, "/") + "/"
-	}
-	query := &s3.ListObjectsV2Input{
-		Bucket:  aws.String(bucket),
-		Prefix:  aws.String(s3Path),
-		MaxKeys: aws.Int64(1000),
-	}
-
-	if delimiter {
-		query.SetDelimiter("/")
-	}
-	if endIndex == 0 {
-		endIndex = math.MaxInt64
-	}
-
-	result := []ListResult{}
-	truncatedListing := true
-	var count int
-
-	for truncatedListing {
-		resp, err := svc.ListObjectsV2(query)
-		if err != nil {
-			return nil, err
-		}
-
-		for i, cp := range resp.CommonPrefixes {
-			if i < startIndex || i >= endIndex {
-				continue
-			}
-			w := ListResult{
-				ID:         count,
-				Name:       filepath.Base(*cp.Prefix),
-				Size:       "",
-				Path:       *cp.Prefix,
-				Type:       "",
-				IsDir:      true,
-				ModifiedBy: "",
-			}
-			count++
-			result = append(result, w)
-		}
-
-		for i, object := range resp.Contents {
-			if count >= endIndex {
-				break
-			}
-			if i < startIndex {
-				continue
-			}
-			parts := strings.Split(filepath.Dir(*object.Key), "/")
-			isSelf := filepath.Base(*object.Key) == parts[len(parts)-1]
-
-			if !isSelf {
-				w := ListResult{
-					ID:         count,
-					Name:       filepath.Base(*object.Key),
-					Size:       strconv.FormatInt(*object.Size, 10),
-					Path:       filepath.Dir(*object.Key),
-					Type:       filepath.Ext(*object.Key),
-					IsDir:      false,
-					Modified:   *object.LastModified,
-					ModifiedBy: "",
-				}
-
-				count++
-				result = append(result, w)
-			}
-		}
-
-		query.ContinuationToken = resp.NextContinuationToken
-		truncatedListing = *resp.IsTruncated
-	}
-
-	return &result, nil
-}
 
 const (
 	chars       = "abcdefghijklmnopqrstuvwxyz"
