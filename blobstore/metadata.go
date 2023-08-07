@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -15,7 +14,7 @@ import (
 
 func (bh *BlobHandler) getSize(list *s3.ListObjectsV2Output) (uint64, uint32, error) {
 	if list == nil {
-		return 0, 0, errors.New("input list is nil")
+		return 0, 0, errors.New("getSize: input list is nil")
 	}
 
 	var size uint64 = 0
@@ -23,7 +22,7 @@ func (bh *BlobHandler) getSize(list *s3.ListObjectsV2Output) (uint64, uint32, er
 
 	for _, file := range list.Contents {
 		if file.Size == nil {
-			return 0, 0, errors.New("file size is nil")
+			return 0, 0, errors.New("getSize: file size is nil")
 		}
 		size += uint64(*file.Size)
 	}
@@ -79,17 +78,13 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
 		err := errors.New("request must include a `key` parameter")
-		log.Info("HandleGetMetaData: " + err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
+		log.Error("HandleGetMetaData: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		if os.Getenv("S3_BUCKET") == "" {
-			err := errors.New("error: `bucket` parameter  was not provided by the user and is not defined in .env")
-			log.Info("HandleGetMetaData: " + err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
-		}
-		bucket = os.Getenv("S3_BUCKET")
+	bucket, err := getBucketParam(c, bh.Bucket)
+	if err != nil {
+		log.Error("HandleListByPrefix: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	// Set up the input parameters for the list objects operation
 	input := &s3.HeadObjectInput{
@@ -101,10 +96,10 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == "NotFound" {
 			err := fmt.Errorf("object %s not found", key)
-			log.Info("HandleGetMetaData: " + err.Error())
-			return c.JSON(http.StatusBadRequest, err.Error())
+			log.Error("HandleGetMetaData: " + err.Error())
+			return c.JSON(http.StatusNotFound, err.Error())
 		}
-		log.Info("HandleGetMetaData: Error getting metadata:", err.Error())
+		log.Error("HandleGetMetaData: Error getting metadata:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
