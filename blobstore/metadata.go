@@ -13,31 +13,45 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
+func (bh *BlobHandler) getSize(list *s3.ListObjectsV2Output) (uint64, uint32, error) {
+	if list == nil {
+		return 0, 0, errors.New("input list is nil")
+	}
+
+	var size uint64 = 0
+	fileCount := uint32(len(list.Contents))
+
+	for _, file := range list.Contents {
+		if file.Size == nil {
+			return 0, 0, errors.New("file size is nil")
+		}
+		size += uint64(*file.Size)
+	}
+
+	return size, fileCount, nil
+}
+
 // HandleGetSize retrieves the total size and the number of files in the specified S3 bucket with the given prefix.
 func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
 		err := errors.New("request must include a `prefix` parameter")
-		log.Info("HandleGetSize: " + err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
+		log.Error("HandleGetSize: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		if os.Getenv("S3_BUCKET") == "" {
-			err := errors.New("error: `bucket` parameter was not provided by the user and is not a global env variable")
-			log.Info("HandleGetSize: " + err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
-		}
-		bucket = os.Getenv("S3_BUCKET")
+	bucket, err := getBucketParam(c, bh.Bucket)
+	if err != nil {
+		log.Error("HandleListByPrefix: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	list, err := bh.getList(bucket, prefix, false)
 	if err != nil {
-		log.Info("HandleGetSize: Error getting list:", err.Error())
+		log.Error("HandleGetSize: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	size, fileCount, err := bh.getSize(list)
 	if err != nil {
-		log.Info("HandleGetSize: Error getting size:", err.Error())
+		log.Error("HandleGetSize: Error getting size:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
@@ -51,7 +65,7 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		Prefix:    prefix,
 	}
 
-	log.Debug("HandleGetSize: Successfully retrieved size for prefix:", prefix)
+	log.Info("HandleGetSize: Successfully retrieved size for prefix:", prefix)
 	return c.JSON(http.StatusOK, response)
 }
 
