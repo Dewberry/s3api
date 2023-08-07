@@ -12,569 +12,465 @@
 			"name": "S3",
 			"item": [
 				{
-					"name": "DeleteObjects",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/delete?key=temp/dev/020403040301_1/",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"delete"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "temp/dev/020403040301_1/"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "GetSize",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/get_size?prefix=dev/tmp",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"get_size"
-							],
-							"query": [
-								{
-									"key": "prefix",
-									"value": "dev/tmp"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "GetPresignedURLMultiObj",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/download_folder?prefix=dev/akopti/",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"download_folder"
-							],
-							"query": [
-								{
-									"key": "prefix",
-									"value": "dev/akopti/"
+					"name": "objects",
+					"item": [
+						{
+							"name": "object/copy",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
 								},
-								{
-									"key": "customfilepath",
-									"value": "020700110601_8autoras2dtar/020700110601_8/autoras2d",
-									"disabled": true
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/object/copy?src_bucket=va-pluvial&dest_bucket=va-pluvial&src_key=dev/output.tar.gz&dest_key=dev/jaxx_test.tar.gz",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"copy"
+									],
+									"query": [
+										{
+											"key": "src_bucket",
+											"value": "va-pluvial"
+										},
+										{
+											"key": "dest_bucket",
+											"value": "va-pluvial"
+										},
+										{
+											"key": "src_key",
+											"value": "dev/output.tar.gz"
+										},
+										{
+											"key": "dest_key",
+											"value": "dev/jaxx_test.tar.gz"
+										},
+										{
+											"key": null,
+											"value": "",
+											"disabled": true
+										}
+									]
 								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "ListByPrefix",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
+							},
+							"response": []
 						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/list?prefix=dev/anton&delimiter=false&bucket=va-pluvial",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"list"
-							],
-							"query": [
-								{
-									"key": "prefix",
-									"value": "dev/anton"
+						{
+							"name": "GetPresignedURL",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
 								},
-								{
-									"key": "delimiter",
-									"value": "false"
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/object/download?key=dev/020403040104/autoras2d-error/020403040104.g01",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"download"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "dev/020403040104/autoras2d-error/020403040104.g01"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "GetSize",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
 								},
-								{
-									"key": "bucket",
-									"value": "va-pluvial"
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/object/size?prefix=dev/tmp",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"size"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "dev/tmp"
+										}
+									]
 								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "GetMetadata",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
+							},
+							"response": []
 						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/get_metadata?key=dev/akopti/uploads/blah3.txt",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"get_metadata"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "dev/akopti/uploads/blah3.txt"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "GetPresignedURL",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/download?key=dev/020403040104/autoras2d-error/020403040104.g01",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"download"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "dev/020403040104/autoras2d-error/020403040104.g01"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "MultipartUpload",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "",
-									"type": "file",
-									"src": "/Users/slawler/Downloads/020403040104.g01"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{url}}/s3/stream_upload?key=dev/temp/&override=false",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"stream_upload"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "dev/temp/"
+						{
+							"name": "DeleteObjects",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
 								},
-								{
-									"key": "override",
-									"value": "false"
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/object/delete?object_identifier=dev/jaxx_test.tar.gz",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "object_identifier",
+											"value": "dev/jaxx_test.tar.gz"
+										}
+									]
 								}
-							]
+							},
+							"response": []
+						},
+						{
+							"name": "MultipartUpload",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "",
+											"type": "file",
+											"src": "/Users/slawler/Downloads/020403040104.g01"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{url}}/object/upload?key=dev/akopti&override=false",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "dev/akopti"
+										},
+										{
+											"key": "override",
+											"value": "false"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "DeleteListOfObjects",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"keys\":[\"temp/testing-anton/20801020202.zip\",\"temp/testing-anton/abcd.zip\",\"temp/testing-anton/akopti8-uSkdpi.tar.gz\"]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{url}}/objects/delete?bucket=va-pluvial",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"objects",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "va-pluvial"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "GetMetadata",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/object/metadata?key=dev/akopti/uploads/blah3.txt",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"metadata"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "dev/akopti/uploads/blah3.txt"
+										}
+									]
+								}
+							},
+							"response": []
 						}
-					},
-					"response": []
+					]
 				},
 				{
-					"name": "HandleListByPrefix",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/list?prefix=dev/020403040301&delimiter=false&bucket=va-pluvial",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"list"
-							],
-							"query": [
-								{
-									"key": "prefix",
-									"value": "dev/020403040301"
+					"name": "prefix",
+					"item": [
+						{
+							"name": "list",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
 								},
-								{
-									"key": "delimiter",
-									"value": "false"
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/prefix/list?prefix=dev/020403040301&delimiter=false&bucket=va-pluvial",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"prefix",
+										"list"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "dev/020403040301"
+										},
+										{
+											"key": "delimiter",
+											"value": "false"
+										},
+										{
+											"key": "bucket",
+											"value": "va-pluvial"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "list with detail",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
 								},
-								{
-									"key": "bucket",
-									"value": "va-pluvial"
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/prefix/list_with_details?prefix=dev&delimiter=false&start_index=&end_index=",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"prefix",
+										"list_with_details"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "dev"
+										},
+										{
+											"key": "delimiter",
+											"value": "false"
+										},
+										{
+											"key": "start_index",
+											"value": ""
+										},
+										{
+											"key": "end_index",
+											"value": ""
+										}
+									]
 								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "HandleBucketViewList",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
+							},
+							"response": []
 						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/bucket_view_list?prefix=dev&delimiter=false&start_index=&end_index=",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"bucket_view_list"
-							],
-							"query": [
-								{
-									"key": "prefix",
-									"value": "dev"
+						{
+							"name": "prefix/copy",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
 								},
-								{
-									"key": "delimiter",
-									"value": "false"
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/prefix/copy?src_bucket=va-pluvial&dest_bucket=va-pluvial&src_prefix=dev/akopti/uploads&dest_prefix=dev/akopti/uploads/uploads/",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"prefix",
+										"copy"
+									],
+									"query": [
+										{
+											"key": "src_bucket",
+											"value": "va-pluvial"
+										},
+										{
+											"key": "dest_bucket",
+											"value": "va-pluvial"
+										},
+										{
+											"key": "src_prefix",
+											"value": "dev/akopti/uploads"
+										},
+										{
+											"key": "dest_prefix",
+											"value": "dev/akopti/uploads/uploads/"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "GetPresignedURLMultiObj",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
 								},
-								{
-									"key": "start_index",
-									"value": ""
-								},
-								{
-									"key": "end_index",
-									"value": ""
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/prefix/download?prefix=dev/akopti/",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"prefix",
+										"download"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "dev/akopti/"
+										},
+										{
+											"key": "customfilepath",
+											"value": "020700110601_8autoras2dtar/020700110601_8/autoras2d",
+											"disabled": true
+										}
+									]
 								}
-							]
+							},
+							"response": []
 						}
-					},
-					"response": []
-				},
-				{
-					"name": "DeleteListOfObjects",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n    \"keys\":[\"temp/testing-anton/20801020202.zip\",\"temp/testing-anton/abcd.zip\",\"temp/testing-anton/akopti8-uSkdpi.tar.gz\"]\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/s3/delete/list?bucket=va-pluvial",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"delete",
-								"list"
-							],
-							"query": [
-								{
-									"key": "bucket",
-									"value": "va-pluvial"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "buckets",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/buckets",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"buckets"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "buckets",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{url}}s3/buckets?name=va-pluvial",
-							"host": [
-								"{{url}}s3"
-							],
-							"path": [
-								"buckets"
-							],
-							"query": [
-								{
-									"key": "name",
-									"value": "va-pluvial"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "buckets",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/buckets?name=testing-bucket-creation-endpoint",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"buckets"
-							],
-							"query": [
-								{
-									"key": "name",
-									"value": "testing-bucket-creation-endpoint"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "buckets/acl",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/buckets/acl?name=va-pluvial",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"buckets",
-								"acl"
-							],
-							"query": [
-								{
-									"key": "name",
-									"value": "va-pluvial"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "object/rename",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/s3/object/rename?bucket=va-pluvial&oldKey=dev/jaxx_test.tar.gz&newKey=dev/output.tar.gz",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"s3",
-								"object",
-								"rename"
-							],
-							"query": [
-								{
-									"key": "bucket",
-									"value": "va-pluvial"
-								},
-								{
-									"key": "oldKey",
-									"value": "dev/jaxx_test.tar.gz"
-								},
-								{
-									"key": "newKey",
-									"value": "dev/output.tar.gz"
-								},
-								{
-									"key": null,
-									"value": "",
-									"disabled": true
-								}
-							]
-						}
-					},
-					"response": []
+					]
 				}
 			]
 		},
