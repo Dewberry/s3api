@@ -2,6 +2,7 @@ package blobstore
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -15,8 +16,8 @@ import (
 )
 
 // HandleListByPrefix handles the API endpoint for listing objects by prefix in S3 bucket.
-//it will handle two endpoints one that returns a list without detail for /prefix/list and one
-//that returns a list with additional details for /prefix/list_with_detail
+// it will handle two endpoints one that returns a list without detail for /prefix/list and one
+// that returns a list with additional details for /prefix/list_with_detail
 func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
@@ -58,7 +59,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	if isObject {
-		err := errors.New("prefix provided leads to a singluar object")
+		err := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
 		log.Error("HandleListByPrefix: " + err.Error())
 		return c.JSON(http.StatusTeapot, err.Error())
 	}
