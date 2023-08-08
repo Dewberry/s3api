@@ -15,7 +15,7 @@
 					"name": "objects",
 					"item": [
 						{
-							"name": "object/copy",
+							"name": "object/move",
 							"request": {
 								"auth": {
 									"type": "bearer",
@@ -30,7 +30,7 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/object/copy?src_bucket=va-pluvial&dest_bucket=va-pluvial&src_key=dev/output.tar.gz&dest_key=dev/jaxx_test.tar.gz",
+									"raw": "{{url}}/object/copy?src_bucket=va-pluvial&dest_bucket=va-pluvial&src_key=dev/akopti/main&dest_key=dev/akopti/output.tar.gz",
 									"host": [
 										"{{url}}"
 									],
@@ -49,11 +49,11 @@
 										},
 										{
 											"key": "src_key",
-											"value": "dev/output.tar.gz"
+											"value": "dev/akopti/main"
 										},
 										{
 											"key": "dest_key",
-											"value": "dev/jaxx_test.tar.gz"
+											"value": "dev/akopti/output.tar.gz"
 										},
 										{
 											"key": null,
@@ -274,7 +274,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/object/metadata?key=dev/akopti/uploads/blah3.txt",
+									"raw": "{{url}}/object/metadata?key=dev/akopti/output.tar.gz",
 									"host": [
 										"{{url}}"
 									],
@@ -285,7 +285,7 @@
 									"query": [
 										{
 											"key": "key",
-											"value": "dev/akopti/uploads/blah3.txt"
+											"value": "dev/akopti/output.tar.gz"
 										}
 									]
 								}
@@ -313,7 +313,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/prefix/list?prefix=dev/020403040301&delimiter=false&bucket=va-pluvial",
+									"raw": "{{url}}/prefix/list?prefix=dev/020403040104/autoras2d-error/020403040104.g01&delimiter=false&bucket=va-pluvial",
 									"host": [
 										"{{url}}"
 									],
@@ -324,7 +324,7 @@
 									"query": [
 										{
 											"key": "prefix",
-											"value": "dev/020403040301"
+											"value": "dev/020403040104/autoras2d-error/020403040104.g01"
 										},
 										{
 											"key": "delimiter",
@@ -355,7 +355,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/prefix/list_with_details?prefix=dev&delimiter=false&start_index=&end_index=",
+									"raw": "{{url}}/prefix/list_with_details?prefix=models&delimiter=false&start_index=&end_index=",
 									"host": [
 										"{{url}}"
 									],
@@ -366,7 +366,7 @@
 									"query": [
 										{
 											"key": "prefix",
-											"value": "dev"
+											"value": "models"
 										},
 										{
 											"key": "delimiter",
@@ -386,7 +386,7 @@
 							"response": []
 						},
 						{
-							"name": "prefix/copy",
+							"name": "prefix/move",
 							"request": {
 								"auth": {
 									"type": "bearer",
@@ -401,13 +401,13 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/prefix/copy?src_bucket=va-pluvial&dest_bucket=va-pluvial&src_prefix=dev/akopti/uploads&dest_prefix=dev/akopti/uploads/uploads/",
+									"raw": "{{url}}/prefix/move?src_bucket=va-pluvial&dest_bucket=va-pluvial&src_prefix=dev/akopti/uploa&dest_prefix=dev/akopti/uploads/uploads/",
 									"host": [
 										"{{url}}"
 									],
 									"path": [
 										"prefix",
-										"copy"
+										"move"
 									],
 									"query": [
 										{
@@ -420,7 +420,7 @@
 										},
 										{
 											"key": "src_prefix",
-											"value": "dev/akopti/uploads"
+											"value": "dev/akopti/uploa"
 										},
 										{
 											"key": "dest_prefix",
@@ -549,6 +549,16 @@
 		{
 			"name": "ping",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{bearer_token}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"url": {
