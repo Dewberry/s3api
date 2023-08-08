@@ -41,6 +41,11 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 
 	}
+	if delimiter {
+		if !strings.HasSuffix(prefix, "/") {
+			prefix = prefix + "/"
+		}
+	}
 	bucket, err := getBucketParam(c, bh.Bucket)
 	if err != nil {
 		log.Error("HandleListByPrefix: " + err.Error())
