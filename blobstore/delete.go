@@ -75,13 +75,9 @@ func (bh *BlobHandler) deleteKeys(bucket string, key ...string) error {
 // It expects the 'key' query parameter to specify the object key and the 'bucket' query parameter to specify the bucket name (optional, falls back to environment variable 'S3_BUCKET').
 // It returns an appropriate JSON response indicating the success or failure of the deletion.
 func (bh *BlobHandler) HandleDeleteObjects(c echo.Context) error {
-	//called objec_identifier because it can be a prefix or a key
-	objectIdentifier := c.QueryParam("object_identifier")
-	if objectIdentifier == "" {
-		err := errors.New("parameter 'object_identifier' is required")
-		log.Errorf("HandleDeleteObjects: %s", err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
+	// Determine if the request is for deleting a prefix or an object based on the URL
+	isPrefixDelete := strings.Contains(c.Request().URL.Path, "/prefix/delete")
+	isObjectDelete := strings.Contains(c.Request().URL.Path, "/object/delete")
 
 	bucket, err := getBucketParam(c, bh.Bucket)
 	if err != nil {
@@ -89,70 +85,74 @@ func (bh *BlobHandler) HandleDeleteObjects(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	// Check if the key represents a prefix
-	if strings.HasSuffix(objectIdentifier, "/") {
-		//make sure that we are in the correct endpoint url
-		isCorrectPath := strings.Contains(c.Request().URL.String(), "/prefix/")
-
-		if !isCorrectPath {
-			err := errors.New("user provided prefix but is attempting to delete prefix through `object/delete` endpoint")
+	if isPrefixDelete {
+		prefix := c.QueryParam("prefix")
+		if prefix == "" {
+			err = errors.New("parameter 'prefix' is required")
 			log.Errorf("HandleDeleteObjects: %s", err.Error())
 			return c.JSON(http.StatusUnprocessableEntity, err.Error())
 		}
-		response, err := bh.getList(bucket, objectIdentifier, false)
+		if !strings.HasSuffix(prefix, "/") {
+			prefix = prefix + "/"
+		}
+		response, err := bh.getList(bucket, prefix, false)
 		if err != nil {
 			log.Errorf("HandleDeleteObjects:  Error getting list: %s", err.Error())
 			return c.JSON(http.StatusInternalServerError, err)
 		}
 		if *response.KeyCount == 0 {
-			errMsg := fmt.Errorf("the specified prefix %s does not exist in S3", objectIdentifier)
+			err := fmt.Errorf("the specified prefix %s does not exist in S3", prefix)
 			log.Errorf("HandleDeleteObjects: %s", err.Error())
-			return c.JSON(http.StatusBadRequest, errMsg.Error())
+			return c.JSON(http.StatusBadRequest, err.Error())
 		}
 		// This will recursively delete all objects with the specified prefix
-		err = bh.recursivelyDeleteObjects(bucket, objectIdentifier)
+		err = bh.recursivelyDeleteObjects(bucket, prefix)
 		if err != nil {
 			msg := fmt.Sprintf("error deleting objects. %s", err.Error())
 			log.Errorf("HandleDeleteObjects: %s", msg)
 			return c.JSON(http.StatusInternalServerError, msg)
 		}
 
-		log.Info("HandleDeleteObjects: Successfully deleted prefix and its contents for prefix:", objectIdentifier)
+		log.Info("HandleDeleteObjects: Successfully deleted prefix and its contents for prefix:", prefix)
 		return c.JSON(http.StatusOK, "Successfully deleted prefix and its contents")
-	}
-	isCorrectPath := strings.Contains(c.Request().URL.String(), "/object/")
+	} else if isObjectDelete {
+		key := c.QueryParam("key")
+		if key == "" {
+			err = errors.New("parameter 'key' is required")
+			log.Errorf("HandleDeleteObjects: %s", err.Error())
+			return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		}
 
-	if !isCorrectPath {
-		err := errors.New("user provided object key but is attempting to delete prefix through `prefix/delete` endpoint")
-		log.Errorf("HandleDeleteObjects: %s", err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
-	// If the key is not a folder, proceed with deleting a single object
-	keyExist, err := bh.keyExists(bucket, objectIdentifier)
-	if err != nil {
-		log.Errorf("HandleDeleteObjects: Error checking if key exists: %s", err.Error())
-		return c.JSON(http.StatusBadRequest, err)
-	}
-	if !keyExist {
-		err := fmt.Errorf("object %s not found", objectIdentifier)
-		log.Errorf("HandleDeleteObjects: %s", err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
-	}
+		// If the key is not a folder, proceed with deleting a single object
+		keyExist, err := bh.keyExists(bucket, key)
+		if err != nil {
+			log.Errorf("HandleDeleteObjects: Error checking if key exists: %s", err.Error())
+			return c.JSON(http.StatusBadRequest, err)
+		}
+		if !keyExist {
+			err := fmt.Errorf("object %s not found", key)
+			log.Errorf("HandleDeleteObjects: %s", err.Error())
+			return c.JSON(http.StatusBadRequest, err.Error())
+		}
 
-	deleteInput := &s3.DeleteObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(objectIdentifier),
-	}
+		deleteInput := &s3.DeleteObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+		}
 
-	_, err = bh.S3Svc.DeleteObject(deleteInput)
-	if err != nil {
-		msg := fmt.Sprintf("error deleting object. %s", err.Error())
-		log.Errorf("HandleDeleteObjects: %s", err.Error())
-		return c.JSON(http.StatusInternalServerError, msg)
-	}
+		_, err = bh.S3Svc.DeleteObject(deleteInput)
+		if err != nil {
+			msg := fmt.Sprintf("error deleting object. %s", err.Error())
+			log.Errorf("HandleDeleteObjects: %s", err.Error())
+			return c.JSON(http.StatusInternalServerError, msg)
+		}
 
-	log.Info("HandleDeleteObjects: Successfully deleted file with key:", objectIdentifier)
-	return c.JSON(http.StatusOK, "Successfully deleted file")
+		log.Info("HandleDeleteObjects: Successfully deleted file with key:", key)
+		return c.JSON(http.StatusOK, "Successfully deleted file")
+	} else {
+		// Handle an unknown path
+		return c.JSON(http.StatusBadRequest, "Unknown delete endpoint")
+	}
 }
 
 func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
