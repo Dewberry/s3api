@@ -193,7 +193,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 
 	ext := filepath.Ext(prefix)
 	base := strings.TrimSuffix(prefix, ext)
-	uuid := GenerateRandomString()
+	uuid := generateRandomString()
 	filename := fmt.Sprintf("%s-%s.%s", filepath.Base(base), uuid, "tar.gz")
 	outputFile := filepath.Join(os.Getenv("TEMP_PREFIX"), filename)
 
