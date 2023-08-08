@@ -31,11 +31,8 @@ func main() {
 
 	e.GET("/ping", auth.Authorize(bh.Ping, allUsers...))
 
-	// metadata for objects
-	e.GET("/object/metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
-	e.GET("/object/size", auth.Authorize(bh.HandleGetSize, allUsers...))
-
 	// object content
+	e.GET("/object/metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
 	e.GET("/object/content", auth.Authorize(bh.HandleObjectContents, allUsers...))
 	e.PUT("/object/move", auth.Authorize(bh.HandleMoveObject, writer...))
 	e.GET("/object/download", auth.Authorize(bh.HandleGetPresignedURL, allUsers...))
@@ -49,6 +46,9 @@ func main() {
 	e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	e.PUT("/prefix/move", auth.Authorize(bh.HandleMovePrefix, writer...))
 	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeleteObjects, admin...))
+
+	// universal
+	e.GET("/size", auth.Authorize(bh.HandleGetSize, allUsers...))
 
 	// multi-bucket -- not implemented
 	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writer...))

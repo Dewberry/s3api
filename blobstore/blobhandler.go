@@ -40,9 +40,9 @@ func (bh *BlobHandler) Ping(c echo.Context) error {
 		Bucket: aws.String(bh.Bucket),
 	})
 	if err != nil {
-		log.Error("Error connecting to S3 " + err.Error())
+		log.Errorf("Error connecting to S3 Bucket `%s`: %s ", bh.Bucket, err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
-	log.Info("Ping operation preformed succesfully, connection is healthy")
+	log.Infof("Ping operation preformed succesfully, connection to `%s` is healthy", bh.Bucket)
 	return c.JSON(http.StatusOK, "connection is healthy")
 }

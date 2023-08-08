@@ -1,9 +1,9 @@
 package blobstore
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -75,13 +75,12 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	var data []byte
-	err = json.NewDecoder(output.Body).Decode(&data)
+	body, err := io.ReadAll(output.Body)
 	if err != nil {
 		log.Error("HandleObjectContents: Error reading object data:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	log.Info("HandleObjectContents: Successfully fetched object data for key:", key)
-	return c.Blob(http.StatusOK, contentType, data)
+	return c.Blob(http.StatusOK, contentType, body)
 }
