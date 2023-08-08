@@ -38,7 +38,6 @@ func main() {
 	e.GET("/object/download", auth.Authorize(bh.HandleGetPresignedURL, allUsers...))
 	e.POST("/object/upload", auth.Authorize(bh.HandleMultipartUpload, writer...))
 	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObjects, admin...))
-	e.DELETE("/objects/delete", auth.Authorize(bh.HandleDeleteObjectsByList, admin...))
 
 	// prefix
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
@@ -49,7 +48,7 @@ func main() {
 
 	// universal
 	e.GET("/size", auth.Authorize(bh.HandleGetSize, allUsers...))
-
+	e.DELETE("/delete_keys", auth.Authorize(bh.HandleDeleteObjectsByList, admin...))
 	// multi-bucket -- not implemented
 	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writer...))
 	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writer...))
