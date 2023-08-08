@@ -33,7 +33,7 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 	}
 
 	if len(listOutput.Contents) == 0 {
-		err := errors.New("source prefix" + srcPrefix + " does not exist")
+		err := errors.New("source prefix " + srcPrefix + " does not exist")
 		log.Error(err.Error())
 		return c.JSON(http.StatusNotFound, err.Error())
 	}
@@ -61,32 +61,48 @@ func (bh *BlobHandler) HandleMoveObject(c echo.Context) error {
 		log.Error("HandleCopyObject", err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
+	fmt.Println("tetsing before getting teh bucket param")
 	bucket, err := getBucketParam(c, bh.Bucket)
 	if err != nil {
 		log.Error("HandleCopyObject: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
+
 	err = bh.copyObject(bucket, srcObjectKey, destObjectKey)
 	if err != nil {
 		log.Error("HandleCopyObject: Error when implementing copyObject", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
+	fmt.Println("tetsing after getting teh bucket param")
 	return c.JSON(http.StatusOK, fmt.Sprintf("Succesfully moved object from %s to %s", srcObjectKey, destObjectKey))
 }
 
 // renameObject renames an object within a bucket.
 func (bh *BlobHandler) copyObject(bucket, srcObjectKey, destObjectKey string) error {
-	// Check if the new key already exists in the bucket
-	_, err := bh.S3Svc.HeadObject(&s3.HeadObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(destObjectKey),
-	})
-	if err == nil {
-		// The new key already exists, return an error to indicate conflict
-		return errors.New("object" + srcObjectKey + "with the new key" + destObjectKey + "already exists in the bucket, " + err.Error())
-	}
 
+	// Check if the old key already exists in the bucket
+	oldKeyExists, err := bh.keyExists(bucket, srcObjectKey)
+	if err != nil {
+		// The new key already exists, return an error to indicate conflict
+		return fmt.Errorf("object %s already exists in the bucket; duplication will cause an overwrite. Please rename dest_key to a different name: %v", destObjectKey, err)
+	}
+	if !oldKeyExists {
+		return errors.New("object " + srcObjectKey + " does not exist")
+	}
+	// Check if the new key already exists in the bucket
+	newKeyExists, err := bh.keyExists(bucket, srcObjectKey)
+	if err != nil {
+		// The new key already exists, return an error to indicate conflict
+		return errors.New("object " + srcObjectKey + " with the new key " + destObjectKey + " already exists in the bucket, " + err.Error())
+	}
+	if !newKeyExists {
+		return errors.New(destObjectKey + " already exists in the bucket; duplication will cause an overwrite. Please rename dest_key to a different name")
+	}
+	// Check if the source and destination keys are the same
+	if srcObjectKey == destObjectKey {
+		return fmt.Errorf("source `%s` and destination `%s` keys are identical; no action taken", srcObjectKey, destObjectKey)
+	}
 	// Set up input parameters for the CopyObject API to rename the object
 	copyInput := &s3.CopyObjectInput{
 		Bucket:     aws.String(bucket),
