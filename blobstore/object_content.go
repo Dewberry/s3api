@@ -24,7 +24,7 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 
 	bucket, err := getBucketParam(c, bh.Bucket)
 	if err != nil {
-		log.Error("HandleListByPrefix: " + err.Error())
+		log.Error("HandleObjectContents: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 

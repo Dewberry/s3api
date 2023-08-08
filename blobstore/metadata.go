@@ -40,7 +40,7 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	}
 	bucket, err := getBucketParam(c, bh.Bucket)
 	if err != nil {
-		log.Error("HandleListByPrefix: " + err.Error())
+		log.Error("HandleGetSize: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	list, err := bh.getList(bucket, prefix, false)
@@ -83,7 +83,7 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	}
 	bucket, err := getBucketParam(c, bh.Bucket)
 	if err != nil {
-		log.Error("HandleListByPrefix: " + err.Error())
+		log.Error("HandleGetMetaData: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	// Set up the input parameters for the list objects operation
