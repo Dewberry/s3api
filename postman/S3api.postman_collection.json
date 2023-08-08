@@ -30,30 +30,31 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/object/copy?src_bucket=va-pluvial&dest_bucket=va-pluvial&src_key=dev/akopti/main&dest_key=dev/akopti/output.tar.gz",
+									"raw": "{{url}}/object/move?bucket=va-pluvial&src_key=dev/akopti/output.tar.gz&dest_key=dev/akopti/output.tar.gz2",
 									"host": [
 										"{{url}}"
 									],
 									"path": [
 										"object",
-										"copy"
+										"move"
 									],
 									"query": [
 										{
-											"key": "src_bucket",
+											"key": "bucket",
 											"value": "va-pluvial"
 										},
 										{
 											"key": "dest_bucket",
-											"value": "va-pluvial"
+											"value": "va-pluvial",
+											"disabled": true
 										},
 										{
 											"key": "src_key",
-											"value": "dev/akopti/main"
+											"value": "dev/akopti/output.tar.gz"
 										},
 										{
 											"key": "dest_key",
-											"value": "dev/akopti/output.tar.gz"
+											"value": "dev/akopti/output.tar.gz2"
 										},
 										{
 											"key": null,
@@ -149,7 +150,7 @@
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/object/delete?object_identifier=dev/jaxx_test.tar.gz",
+									"raw": "{{url}}/object/delete?key=dev/akopti",
 									"host": [
 										"{{url}}"
 									],
@@ -159,8 +160,8 @@
 									],
 									"query": [
 										{
-											"key": "object_identifier",
-											"value": "dev/jaxx_test.tar.gz"
+											"key": "key",
+											"value": "dev/akopti"
 										}
 									]
 								}
@@ -216,49 +217,6 @@
 							"response": []
 						},
 						{
-							"name": "DeleteListOfObjects",
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "DELETE",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"keys\":[\"temp/testing-anton/20801020202.zip\",\"temp/testing-anton/abcd.zip\",\"temp/testing-anton/akopti8-uSkdpi.tar.gz\"]\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{url}}/objects/delete?bucket=va-pluvial",
-									"host": [
-										"{{url}}"
-									],
-									"path": [
-										"objects",
-										"delete"
-									],
-									"query": [
-										{
-											"key": "bucket",
-											"value": "va-pluvial"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
 							"name": "GetMetadata",
 							"request": {
 								"auth": {
@@ -291,6 +249,30 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "content",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{utl}}/object/key?key",
+									"host": [
+										"{{utl}}"
+									],
+									"path": [
+										"object",
+										"key"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": null
+										}
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
@@ -313,7 +295,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/prefix/list?prefix=dev/020403040104/autoras2d-error/020403040104.g01&delimiter=false&bucket=va-pluvial",
+									"raw": "{{url}}/prefix/list?prefix=dev/akop&delimiter=true&bucket=va-pluvial",
 									"host": [
 										"{{url}}"
 									],
@@ -324,11 +306,11 @@
 									"query": [
 										{
 											"key": "prefix",
-											"value": "dev/020403040104/autoras2d-error/020403040104.g01"
+											"value": "dev/akop"
 										},
 										{
 											"key": "delimiter",
-											"value": "false"
+											"value": "true"
 										},
 										{
 											"key": "bucket",
@@ -401,7 +383,7 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/prefix/move?src_bucket=va-pluvial&dest_bucket=va-pluvial&src_prefix=dev/akopti/uploa&dest_prefix=dev/akopti/uploads/uploads/",
+									"raw": "{{url}}/prefix/move?src_prefix=dev/akopti/&dest_prefix=dev/akopti/test-api/",
 									"host": [
 										"{{url}}"
 									],
@@ -412,19 +394,21 @@
 									"query": [
 										{
 											"key": "src_bucket",
-											"value": "va-pluvial"
+											"value": "va-pluvial",
+											"disabled": true
 										},
 										{
 											"key": "dest_bucket",
-											"value": "va-pluvial"
+											"value": "va-pluvial",
+											"disabled": true
 										},
 										{
 											"key": "src_prefix",
-											"value": "dev/akopti/uploa"
+											"value": "dev/akopti/"
 										},
 										{
 											"key": "dest_prefix",
-											"value": "dev/akopti/uploads/uploads/"
+											"value": "dev/akopti/test-api/"
 										}
 									]
 								}
@@ -447,7 +431,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/prefix/download?prefix=dev/akopti/",
+									"raw": "{{url}}/prefix/download?prefix=dev/akop",
 									"host": [
 										"{{url}}"
 									],
@@ -458,12 +442,41 @@
 									"query": [
 										{
 											"key": "prefix",
-											"value": "dev/akopti/"
-										},
+											"value": "dev/akop"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "New Request",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "customfilepath",
-											"value": "020700110601_8autoras2dtar/020700110601_8/autoras2d",
-											"disabled": true
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/prefix/delete?prefix=dev/akopti/uploads/uploads",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"prefix",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "dev/akopti/uploads/uploads"
 										}
 									]
 								}
@@ -568,6 +581,48 @@
 					],
 					"path": [
 						"ping"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DeleteListOfObjects",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{bearer_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"keys\":[\"dev/akopti/test-api/output.tar.gz2\",\"dev/akopti\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/delete_keys?bucket=va-pluvial",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"delete_keys"
+					],
+					"query": [
+						{
+							"key": "bucket",
+							"value": "va-pluvial"
+						}
 					]
 				}
 			},
