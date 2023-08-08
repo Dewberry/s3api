@@ -42,8 +42,8 @@ func getBucketParam(c echo.Context, defaultBucket string) (string, error) {
 	return bucket, nil
 }
 
-// getList returns the list of object keys in the specified S3 bucket with the given prefix.
-func GenerateRandomString() string {
+// generateRandomString returns the list of object keys in the specified S3 bucket with the given prefix.
+func generateRandomString() string {
 	const (
 		chars       = "abcdefghijklmnopqrstuvwxyz"
 		randomChars = 6
