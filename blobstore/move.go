@@ -20,6 +20,12 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 		log.Error("HandleCopyPrefix", err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
+	if !strings.HasSuffix(srcPrefix, "/") {
+		srcPrefix = srcPrefix + "/"
+	}
+	if !strings.HasSuffix(destPrefix, "/") {
+		destPrefix = destPrefix + "/"
+	}
 	bucket, err := getBucketParam(c, bh.Bucket)
 	if err != nil {
 		log.Error("HandleCopyPrefix: " + err.Error())
