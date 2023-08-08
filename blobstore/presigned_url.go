@@ -166,11 +166,19 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		log.Error("HandleGetPresignedURLMultiObj: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
+	if !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
 
-	response, err := bh.getList(bucket, prefix, false)
+	response, err := bh.getList(bucket, prefix, true)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	if *response.KeyCount == 0 {
+		errMsg := fmt.Errorf("the specified prefix %s does not exist in S3", prefix)
+		log.Error("HandleGetPresignedURLMultiObj: " + errMsg.Error())
+		return c.JSON(http.StatusNotFound, errMsg.Error())
 	}
 	//check if size is below 5GB
 	size, fileCount, err := bh.getSize(response)
@@ -183,12 +191,6 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		err := fmt.Errorf("HandleGetPresignedURLMultiObj: Request entity is larger than %v GB, current file size is: %d, and current file count is: %d", float64(limit)/(1024*1024*1024), size, fileCount)
 		log.Error("HandleGetPresignedURLMultiObj: ", err.Error())
 		return c.JSON(http.StatusRequestEntityTooLarge, err.Error())
-	}
-
-	if *response.KeyCount == 0 {
-		errMsg := fmt.Errorf("the specified prefix %s does not exist in S3", prefix)
-		log.Error("HandleGetPresignedURLMultiObj: " + errMsg.Error())
-		return c.JSON(http.StatusNotFound, errMsg.Error())
 	}
 
 	ext := filepath.Ext(prefix)
