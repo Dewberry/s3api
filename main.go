@@ -27,6 +27,9 @@ func main() {
 		AllowCredentials: true,
 		AllowOrigins:     []string{"*"},
 	}))
+	e.Logger.SetLevel(log.DEBUG)
+
+	e.GET("/ping", auth.Authorize(bh.Ping, allUsers...))
 
 	// metadata for objects
 	e.GET("/object/metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
@@ -51,6 +54,4 @@ func main() {
 	e.PUT("/prefix/copy", auth.Authorize(bh.HandleCopyObject, writer...))
 
 	e.Logger.Fatal(e.Start(":" + apiConfig.Port))
-	e.Logger.SetLevel(log.DEBUG)
-
 }
