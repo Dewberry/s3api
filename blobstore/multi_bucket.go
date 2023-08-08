@@ -157,19 +157,6 @@ func (bh *BlobHandler) copyObject(srcBucketName, destBucketName, srcObjectKey, d
 		Key:    aws.String(srcObjectKey),
 	})
 	if err != nil {
-		// If deleting the source object fails, attempt to revert the copy
-		revertInput := &s3.CopyObjectInput{
-			Bucket:     aws.String(srcBucketName),
-			CopySource: aws.String(destBucketName + "/" + destObjectKey),
-			Key:        aws.String(srcObjectKey),
-		}
-
-		// Revert the copy by copying the object back to the original key
-		_, revertErr := bh.S3Svc.CopyObject(revertInput)
-		if revertErr != nil {
-			return errors.New("error deleting old object " + srcObjectKey + " in bucket " + srcBucketName + ", and failed to revert copy, " + err.Error())
-		}
-
 		return errors.New("error deleting old object " + srcObjectKey + " in bucket " + srcBucketName + ", " + err.Error())
 	}
 
