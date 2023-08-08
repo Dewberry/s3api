@@ -46,6 +46,18 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		log.Error("HandleListByPrefix: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
+
+	isObject, err := bh.keyExists(bucket, prefix)
+	if err != nil {
+		log.Error("HandleListByPrefix: " + err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	if isObject {
+		err := errors.New("prefix provided leads to a singluar object")
+		log.Error("HandleListByPrefix: " + err.Error())
+		return c.JSON(http.StatusTeapot, err.Error())
+	}
+
 	var result interface{}
 	isDetail := strings.Contains(c.Request().URL.String(), "list_with_details")
 	log.Debug("list_with_detail parameter  bool value:", isDetail)
