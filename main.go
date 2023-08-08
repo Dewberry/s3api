@@ -47,11 +47,12 @@ func main() {
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
+	e.PUT("/prefix/move", auth.Authorize(bh.HandleCopyObject, writer...))
 	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeleteObjects, admin...))
 
-	// multi-bucket
-	e.PUT("/object/copy", auth.Authorize(bh.HandleCopyObject, writer...))
-	e.PUT("/prefix/copy", auth.Authorize(bh.HandleCopyObject, writer...))
+	// multi-bucket -- not implemented
+	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writer...))
+	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writer...))
 
 	e.Logger.Fatal(e.Start(":" + apiConfig.Port))
 }

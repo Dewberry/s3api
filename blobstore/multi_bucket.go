@@ -12,6 +12,7 @@ import (
 )
 
 // HandleRenameObject renames an object within a bucket.
+// TODO: break up into 2 handlres
 func (bh *BlobHandler) HandleCopyObject(c echo.Context) error {
 	srcBucketName := c.QueryParam("src_bucket")
 	destBucketName := c.QueryParam("dest_bucket")
@@ -25,6 +26,9 @@ func (bh *BlobHandler) HandleCopyObject(c echo.Context) error {
 		log.Error("HandleCopyObject: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
+
+	// handle the and case
+	// (srcObjectKey != "" && destObjectKey != "") || (srcPrefix != "" && destPrefix != "")
 
 	if (srcObjectKey != "" && destObjectKey != "") || (srcPrefix != "" && destPrefix != "") {
 		// Determine if the operation involves copying a single object or a prefix
