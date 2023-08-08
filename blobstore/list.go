@@ -15,6 +15,18 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
+// ListResult is the result struct for listing objects with additional details.
+type ListResult struct {
+	ID         int       `json:"id"`
+	Name       string    `json:"filename"`
+	Size       string    `json:"size"`
+	Path       string    `json:"filepath"`
+	Type       string    `json:"type"`
+	IsDir      bool      `json:"isdir"`
+	Modified   time.Time `json:"modified"`
+	ModifiedBy string    `json:"modified_by"`
+}
+
 // HandleListByPrefix handles the API endpoint for listing objects by prefix in S3 bucket.
 // it will handle two endpoints one that returns a list without detail for /prefix/list and one
 // that returns a list with additional details for /prefix/list_with_detail
@@ -127,18 +139,6 @@ func (bh *BlobHandler) getList(bucket, prefix string, delimiter bool) (*s3.ListO
 	}
 
 	return response, nil
-}
-
-// ListResult is the result struct for listing objects with additional details.
-type ListResult struct {
-	ID         int       `json:"id"`
-	Name       string    `json:"filename"`
-	Size       string    `json:"size"`
-	Path       string    `json:"filepath"`
-	Type       string    `json:"type"`
-	IsDir      bool      `json:"isdir"`
-	Modified   time.Time `json:"modified"`
-	ModifiedBy string    `json:"modified_by"`
 }
 
 // listDir retrieves a detailed list of objects in the specified S3 bucket with the given prefix.
