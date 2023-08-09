@@ -32,7 +32,6 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	// List objects within the source prefix
-
 	listOutput, err := bh.getList(bucket, srcPrefix, true)
 	if err != nil {
 		return errors.New("error listing objects with prefix " + srcPrefix + " in bucket " + bucket + ", " + err.Error())
@@ -119,7 +118,7 @@ func (bh *BlobHandler) copyObject(bucket, srcObjectKey, destObjectKey string) er
 	// Copy the object to the new key (effectively renaming)
 	_, err = bh.S3Svc.CopyObject(copyInput)
 	if err != nil {
-		return errors.New("error copying object/s" + srcObjectKey + "with the new key" + destObjectKey + ", " + err.Error())
+		return errors.New("error copying object" + srcObjectKey + "with the new key" + destObjectKey + ", " + err.Error())
 	}
 
 	// Delete the source object
