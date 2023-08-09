@@ -6,7 +6,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log"
 )
 
 func main() {
@@ -20,14 +19,12 @@ func main() {
 	bh := apiConfig.BH
 
 	e := echo.New()
-	e.Logger.SetLevel(log.ERROR)
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowCredentials: true,
 		AllowOrigins:     []string{"*"},
 	}))
-	e.Logger.SetLevel(log.DEBUG)
 
 	e.GET("/ping", auth.Authorize(bh.Ping, allUsers...))
 
