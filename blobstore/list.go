@@ -106,6 +106,9 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 }
 
 // getList retrieves a list of objects in the specified S3 bucket with the given prefix.
+// if delimiter is set to true then it is going to search for any objects within the prefix provided, if no object sare found it will
+//return null even if there was prefixes within the user provided prefix. If delimiter is set to false then it will look for all prefixes
+//that start with the user provided prefix.
 func (bh *BlobHandler) getList(bucket, prefix string, delimiter bool) (*s3.ListObjectsV2Output, error) {
 	// Set up input parameters for the ListObjectsV2 API
 	input := &s3.ListObjectsV2Input{
