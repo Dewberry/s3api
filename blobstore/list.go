@@ -155,7 +155,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 		resp, err := bh.S3Svc.ListObjectsV2(query)
 		if err != nil {
-			log.Info("HandleListByPrefixWithDetail: error retrieving list with the following query ", err)
+			log.Error("HandleListByPrefixWithDetail: error retrieving list with the following query ", err)
 			errMsg := fmt.Errorf("HandleListByPrefixWithDetail: error retrieving list, %s", err.Error())
 			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
