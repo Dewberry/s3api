@@ -37,14 +37,14 @@ func main() {
 	e.PUT("/object/move", auth.Authorize(bh.HandleMoveObject, writer...))
 	e.GET("/object/download", auth.Authorize(bh.HandleGetPresignedURL, allUsers...))
 	e.POST("/object/upload", auth.Authorize(bh.HandleMultipartUpload, writer...))
-	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObjects, admin...))
+	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObject, admin...))
 
 	// prefix
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	e.PUT("/prefix/move", auth.Authorize(bh.HandleMovePrefix, writer...))
-	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeleteObjects, admin...))
+	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeletePrefix, admin...))
 
 	// universal
 	e.GET("/size", auth.Authorize(bh.HandleGetSize, allUsers...))
