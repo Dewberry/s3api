@@ -59,7 +59,7 @@ func (bh *BlobHandler) tarS3Files(r *s3.ListObjectsV2Output, bucket string, outp
 	for _, item := range r.Contents {
 		filePath := filepath.Join(strings.TrimPrefix(aws.StringValue(item.Key), prefix))
 		copyObj := aws.StringValue(item.Key)
-		log.Infof("Copying %s to %s", copyObj, outputFile)
+		log.Debugf("Copying %s to %s", copyObj, outputFile)
 
 		getResp, err := bh.S3Svc.GetObject(&s3.GetObjectInput{
 			Bucket: aws.String(bucket),
@@ -111,7 +111,7 @@ func (bh *BlobHandler) tarS3Files(r *s3.ListObjectsV2Output, bucket string, outp
 
 	wg.Wait()
 
-	log.Info("completed Tar of file succesfully")
+	log.Debugf("completed Tar of file succesfully")
 	return nil
 }
 
