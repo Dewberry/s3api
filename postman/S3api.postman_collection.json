@@ -28,7 +28,7 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/object/move?bucket=va-pluvial&src_key=dev/akopti/output.tar.gz&dest_key=dev/akopti/output.tar.gz2",
+									"raw": "{{url}}/object/move?bucket=va-pluvial&src_key=temp/dev/020403040301_1/autoras2d-5Cf9m4.tar.gz&dest_key=temp/dev/020403040301_1000/autoras2d-5Cf9m4.tar.gz",
 									"host": [
 										"{{url}}"
 									],
@@ -48,11 +48,11 @@
 										},
 										{
 											"key": "src_key",
-											"value": "dev/akopti/output.tar.gz"
+											"value": "temp/dev/020403040301_1/autoras2d-5Cf9m4.tar.gz"
 										},
 										{
 											"key": "dest_key",
-											"value": "dev/akopti/output.tar.gz2"
+											"value": "temp/dev/020403040301_1000/autoras2d-5Cf9m4.tar.gz"
 										},
 										{
 											"key": null,
@@ -133,7 +133,7 @@
 							"response": []
 						},
 						{
-							"name": "DeleteObjects",
+							"name": "DeleteObject",
 							"request": {
 								"auth": {
 									"type": "bearer",
@@ -381,7 +381,7 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{url}}/prefix/move?src_prefix=dev/akopti/&dest_prefix=dev/akopti/test-api/",
+									"raw": "{{url}}/prefix/move?src_prefix=temp/dev/020403040301_1&dest_prefix=temp/dev/020403040301_10000",
 									"host": [
 										"{{url}}"
 									],
@@ -402,11 +402,11 @@
 										},
 										{
 											"key": "src_prefix",
-											"value": "dev/akopti/"
+											"value": "temp/dev/020403040301_1"
 										},
 										{
 											"key": "dest_prefix",
-											"value": "dev/akopti/test-api/"
+											"value": "temp/dev/020403040301_10000"
 										}
 									]
 								}
@@ -448,7 +448,7 @@
 							"response": []
 						},
 						{
-							"name": "New Request",
+							"name": "DeletePrefix",
 							"request": {
 								"auth": {
 									"type": "bearer",
