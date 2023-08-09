@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 )
 
 type Claims struct {
@@ -33,6 +34,7 @@ type PublicKey struct {
 var publicKeys []PublicKey
 
 func getPublicKeys() ([]PublicKey, error) {
+	log.Info(os.Getenv("KEYCLOAK_PUBLIC_KEYS_URL"))
 	r, err := http.Get(os.Getenv("KEYCLOAK_PUBLIC_KEYS_URL"))
 	if err != nil {
 		return []PublicKey{}, err

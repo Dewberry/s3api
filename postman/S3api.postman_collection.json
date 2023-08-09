@@ -1,0 +1,660 @@
+{
+	"info": {
+		"_postman_id": "02cc0d00-d050-4528-bad5-c4b39baba6f9",
+		"name": "S3api",
+		"description": "# 🚀 Get started here\n\nThis collection guides you through CRUD operations (GET, POST, PUT, DELETE), variables, and tests.\n\n## 🔖 **How to use this collection**\n\n#### **Step 1: Send requests**\n\nRESTful APIs allow you to perform CRUD operations using the POST, GET, PUT, and DELETE HTTP methods.\n\nThis collection contains each of these request types. Open each request and click \"Send\" to see what happens.\n\n#### **Step 2: View responses**\n\nObserve the response tab for status code (200 OK), response time, and size.\n\n#### **Step 3: Send new Body data**\n\nUpdate or add new data in \"Body\" in the POST request. Typically, Body data is also used in PUT and PATCH requests.\n\n```\n{\n    \"name\": \"Add your name in the body\"\n}\n\n```\n\n#### **Step 4: Update the variable**\n\nVariables enable you to store and reuse values in Postman. We have created a variable called `base_url` with the sample request [https://postman-api-learner.glitch.me](https://postman-api-learner.glitch.me). Replace it with your API endpoint to customize this collection.\n\n#### **Step 5: Add tests in the \"Tests\" tab**\n\nTests help you confirm that your API is working as expected. You can write test scripts in JavaScript and view the output in the \"Test Results\" tab.\n\n<img src=\"https://content.pstmn.io/b5f280a7-4b09-48ec-857f-0a7ed99d7ef8/U2NyZWVuc2hvdCAyMDIzLTAzLTI3IGF0IDkuNDcuMjggUE0ucG5n\">\n\n## 💪 Pro tips\n\n- Use folders to group related requests and organize the collection.\n- Add more scripts in \"Tests\" to verify if the API works as expected and execute flows.\n    \n\n## ℹ️ Resources\n\n[Building requests](https://learning.postman.com/docs/sending-requests/requests/)  \n[Authorizing requests](https://learning.postman.com/docs/sending-requests/authorization/)  \n[Using variables](https://learning.postman.com/docs/sending-requests/variables/)  \n[Managing environments](https://learning.postman.com/docs/sending-requests/managing-environments/)  \n[Writing scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "S3",
+			"item": [
+				{
+					"name": "objects",
+					"item": [
+						{
+							"name": "Move",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/object/move?bucket=va-pluvial&src_key=temp/dev/020403040301_1/autoras2d-5Cf9m4.tar.gz&dest_key=temp/dev/020403040301_1000/autoras2d-5Cf9m4.tar.gz",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"move"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "va-pluvial"
+										},
+										{
+											"key": "dest_bucket",
+											"value": "va-pluvial",
+											"disabled": true
+										},
+										{
+											"key": "src_key",
+											"value": "temp/dev/020403040301_1/autoras2d-5Cf9m4.tar.gz"
+										},
+										{
+											"key": "dest_key",
+											"value": "temp/dev/020403040301_1000/autoras2d-5Cf9m4.tar.gz"
+										},
+										{
+											"key": null,
+											"value": "",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "GetPresignedURL",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/object/download?key=dev/020403040104/autoras2d-error/020403040104.g01",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"download"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "dev/020403040104/autoras2d-error/020403040104.g01"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "GetSize",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/object/size?prefix=dev/tmp",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"size"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "dev/tmp"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "DeleteObject",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/object/delete?key=dev/akopti",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "dev/akopti"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "MultipartUpload",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "",
+											"type": "file",
+											"src": "/Users/slawler/Downloads/020403040104.g01"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{url}}/object/upload?key=dev/akopti&override=false",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "dev/akopti"
+										},
+										{
+											"key": "override",
+											"value": "false"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "GetMetadata",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/object/metadata?key=dev/akopti/output.tar.gz",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"object",
+										"metadata"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "dev/akopti/output.tar.gz"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Content",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{utl}}/object/key?key",
+									"host": [
+										"{{utl}}"
+									],
+									"path": [
+										"object",
+										"key"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": null
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "prefix",
+					"item": [
+						{
+							"name": "List",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/prefix/list?prefix=dev/akop&delimiter=true&bucket=va-pluvial",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"prefix",
+										"list"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "dev/akop"
+										},
+										{
+											"key": "delimiter",
+											"value": "true"
+										},
+										{
+											"key": "bucket",
+											"value": "va-pluvial"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "ListWithDetails",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/prefix/list_with_details?prefix=models&delimiter=false&start_index=&end_index=",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"prefix",
+										"list_with_details"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "models"
+										},
+										{
+											"key": "delimiter",
+											"value": "false"
+										},
+										{
+											"key": "start_index",
+											"value": ""
+										},
+										{
+											"key": "end_index",
+											"value": ""
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Move",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/prefix/move?src_prefix=temp/dev/020403040301_1&dest_prefix=temp/dev/020403040301_10000",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"prefix",
+										"move"
+									],
+									"query": [
+										{
+											"key": "src_bucket",
+											"value": "va-pluvial",
+											"disabled": true
+										},
+										{
+											"key": "dest_bucket",
+											"value": "va-pluvial",
+											"disabled": true
+										},
+										{
+											"key": "src_prefix",
+											"value": "temp/dev/020403040301_1"
+										},
+										{
+											"key": "dest_prefix",
+											"value": "temp/dev/020403040301_10000"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "GetPresignedURLMultiObj",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/prefix/download?prefix=dev/akop",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"prefix",
+										"download"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "dev/akop"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "DeletePrefix",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{url}}/prefix/delete?prefix=dev/akopti/uploads/uploads",
+									"host": [
+										"{{url}}"
+									],
+									"path": [
+										"prefix",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "dev/akopti/uploads/uploads"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = JSON.parse(responseBody);\r",
+							"postman.setEnvironmentVariable(\"bearer_token\", jsonData.access_token);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{bearer_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "username",
+							"value": "{{auth_username}}",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "{{auth_password}}",
+							"type": "text"
+						},
+						{
+							"key": "client_id",
+							"value": "{{auth_client_id}}",
+							"type": "text"
+						},
+						{
+							"key": "grant_type",
+							"value": "{{auth_grant_type}}",
+							"type": "text"
+						},
+						{
+							"key": "client_secret",
+							"value": "{{auth_client_secret}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{auth_url}}/testing/protocol/openid-connect/token",
+					"host": [
+						"{{auth_url}}"
+					],
+					"path": [
+						"testing",
+						"protocol",
+						"openid-connect",
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Ping",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{bearer_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{url}}/ping",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"ping"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DeleteListOfObjects",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{bearer_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"keys\":[\"dev/akopti/test-api/output.tar.gz2\",\"dev/akopti\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/delete_keys?bucket=va-pluvial",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"delete_keys"
+					],
+					"query": [
+						{
+							"key": "bucket",
+							"value": "va-pluvial"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "id",
+			"value": "1"
+		},
+		{
+			"key": "base_url",
+			"value": "https://postman-rest-api-learner.glitch.me/"
+		}
+	]
+}
