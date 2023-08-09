@@ -170,7 +170,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		prefix = prefix + "/"
 	}
 
-	response, err := bh.getList(bucket, prefix, true)
+	response, err := bh.getList(bucket, prefix, false)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
