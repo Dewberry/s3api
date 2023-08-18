@@ -116,6 +116,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	query := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucket),
 		Prefix:  aws.String(prefix),
+		Delimiter: aws.String("/"),
 		MaxKeys: aws.Int64(1000),
 	}
 
