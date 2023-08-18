@@ -33,8 +33,10 @@ func NewBlobHandler() *BlobHandler {
 	config.Bucket = os.Getenv("S3_BUCKET")
 	return &config
 }
-
 func (bh *BlobHandler) Ping(c echo.Context) error {
+	return c.JSON(http.StatusOK, "connection without Auth is healthy")
+}
+func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
 	// Perform a HeadBucket operation to check the health of the S3 connection
 	_, err := bh.S3Svc.HeadBucket(&s3.HeadBucketInput{
 		Bucket: aws.String(bh.Bucket),
@@ -46,3 +48,4 @@ func (bh *BlobHandler) Ping(c echo.Context) error {
 	log.Infof("Ping operation preformed succesfully, connection to `%s` is healthy", bh.Bucket)
 	return c.JSON(http.StatusOK, "connection is healthy")
 }
+

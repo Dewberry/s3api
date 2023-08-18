@@ -26,8 +26,8 @@ func main() {
 		AllowOrigins:     []string{"*"},
 	}))
 
-	e.GET("/ping", auth.Authorize(bh.Ping, allUsers...))
-
+	e.GET("/ping", bh.Ping)
+	e.GET("/ping_with_auth", auth.Authorize(bh.PingWithAuth, allUsers...))
 	// object content
 	e.GET("/object/metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
 	e.GET("/object/content", auth.Authorize(bh.HandleObjectContents, allUsers...))
