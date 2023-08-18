@@ -46,6 +46,6 @@ func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	log.Infof("Ping operation preformed succesfully, connection to `%s` is healthy", bh.Bucket)
-	return c.JSON(http.StatusOK, "connection is healthy")
+	return c.JSON(http.StatusOK, "connection is healthy to s3 bucket")
 }
 
