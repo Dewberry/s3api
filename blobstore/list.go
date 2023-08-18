@@ -93,11 +93,11 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 // HandleListByPrefixWithDetail retrieves a detailed list of objects in the specified S3 bucket with the given prefix.
 func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
-	if prefix == "" {
-		err := errors.New("request must include a `prefix` parameter")
-		log.Error("HandleListByPrefixWithDetail: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
+	// if prefix == "" {
+	// 	err := errors.New("request must include a `prefix` parameter")
+	// 	log.Error("HandleListByPrefixWithDetail: " + err.Error())
+	// 	return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	// }
 
 	delimiterParam := c.QueryParam("delimiter")
 	var delimiter bool
@@ -125,21 +125,21 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		log.Error("HandleListByPrefixWithDetail: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-
-	isObject, err := bh.keyExists(bucket, prefix)
-	if err != nil {
-		log.Error("HandleListByPrefixWithDetail: " + err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
-	if isObject {
-		err := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
-		log.Error("HandleListByPrefixWithDetail: " + err.Error())
-		return c.JSON(http.StatusTeapot, err.Error())
-	}
-
 	if prefix != "" {
 		prefix = strings.Trim(prefix, "/") + "/"
+	}else{
+		isObject, err := bh.keyExists(bucket, prefix)
+		if err != nil {
+			log.Error("HandleListByPrefixWithDetail: " + err.Error())
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		if isObject {
+			err := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
+			log.Error("HandleListByPrefixWithDetail: " + err.Error())
+			return c.JSON(http.StatusTeapot, err.Error())
+		}
 	}
+
 	query := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucket),
 		Prefix:  aws.String(prefix),
