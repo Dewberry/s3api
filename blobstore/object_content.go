@@ -82,5 +82,5 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 	}
 
 	log.Info("HandleObjectContents: Successfully fetched object data for key:", key)
-	return c.Blob(http.StatusOK, contentType, body)
+	return c.JSON(http.StatusOK, body)
 }
