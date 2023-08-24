@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path/filepath"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -28,14 +26,6 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	fileEXT := strings.ToLower(filepath.Ext(key))
-
-	if fileEXT == "" {
-		err := errors.New("file has no extension")
-		log.Error("HandleObjectContents: " + err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
-	}
-
 	keyExist, err := bh.keyExists(bucket, key)
 	if err != nil {
 		log.Error("HandleObjectContents: Error checking if key exists:", err.Error())
@@ -46,25 +36,6 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 		log.Error("HandleObjectContents: " + err.Error())
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
-
-	var contentType string
-	switch fileEXT {
-	case ".csv", ".txt", ".py":
-		contentType = "text/plain"
-	case ".png":
-		contentType = "image/png"
-	case ".jpg", ".jpeg":
-		contentType = "image/jpeg"
-	case ".html", ".log":
-		contentType = "text/html"
-	case ".json":
-		contentType = "application/json"
-	default:
-		err := fmt.Errorf("file of type `%s` cannot be viewed", filepath.Ext(key))
-		log.Error("HandleObjectContents: " + err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
-	}
-
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
@@ -82,5 +53,6 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 	}
 
 	log.Info("HandleObjectContents: Successfully fetched object data for key:", key)
-	return c.Blob(http.StatusOK, contentType, body)
+	//TODO: add contentType
+	return c.Blob(http.StatusOK, "", body)
 }
