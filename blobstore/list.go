@@ -93,61 +93,33 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 // HandleListByPrefixWithDetail retrieves a detailed list of objects in the specified S3 bucket with the given prefix.
 func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
-	if prefix == "" {
-		err := errors.New("request must include a `prefix` parameter")
-		log.Error("HandleListByPrefixWithDetail: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
 
-	delimiterParam := c.QueryParam("delimiter")
-	var delimiter bool
-	if delimiterParam == "true" || delimiterParam == "false" {
-		var err error
-		delimiter, err = strconv.ParseBool(delimiterParam)
-		if err != nil {
-			log.Error("HandleListByPrefixWithDetail: Error parsing `delimiter` param:", err.Error())
-			return c.JSON(http.StatusUnprocessableEntity, err.Error())
-		}
-
-	} else {
-		err := errors.New("request must include a `delimiter`, options are `true` or `false`")
-		log.Error("HandleListByPrefixWithDetail: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-
-	}
-	if delimiter {
-		if !strings.HasSuffix(prefix, "/") {
-			prefix = prefix + "/"
-		}
-	}
 	bucket, err := getBucketParam(c, bh.Bucket)
 	if err != nil {
 		log.Error("HandleListByPrefixWithDetail: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-
-	isObject, err := bh.keyExists(bucket, prefix)
-	if err != nil {
-		log.Error("HandleListByPrefixWithDetail: " + err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
-	if isObject {
-		err := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
-		log.Error("HandleListByPrefixWithDetail: " + err.Error())
-		return c.JSON(http.StatusTeapot, err.Error())
-	}
-
 	if prefix != "" {
+		isObject, err := bh.keyExists(bucket, prefix)
+		if err != nil {
+			log.Error("HandleListByPrefixWithDetail: " + err.Error())
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		if isObject {
+			err := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
+			log.Error("HandleListByPrefixWithDetail: " + err.Error())
+			return c.JSON(http.StatusTeapot, err.Error())
+		}
 		prefix = strings.Trim(prefix, "/") + "/"
 	}
+
 	query := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucket),
 		Prefix:  aws.String(prefix),
+		Delimiter: aws.String("/"),
 		MaxKeys: aws.Int64(1000),
 	}
-	if delimiter {
-		query.SetDelimiter("/")
-	}
+
 	result := []ListResult{}
 	truncatedListing := true
 	var count int
