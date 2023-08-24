@@ -30,6 +30,9 @@ func NewBlobHandler() *BlobHandler {
 	}))
 	config.S3Svc = s3.New(sess)
 	config.Sess = sess
+	if(os.Getenv("S3_BUCKET")==""){
+		log.Fatal("S3_BUCKET environment variable is not set")
+	}
 	config.Bucket = os.Getenv("S3_BUCKET")
 	return &config
 }
