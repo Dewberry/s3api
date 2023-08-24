@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path/filepath"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -55,5 +53,6 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 	}
 
 	log.Info("HandleObjectContents: Successfully fetched object data for key:", key)
-	return c.Blob(http.StatusOK,"", body)
+	//TODO: add contentType
+	return c.Blob(http.StatusOK, "", body)
 }
