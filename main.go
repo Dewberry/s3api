@@ -35,7 +35,7 @@ func main() {
 	e.GET("/object/download", auth.Authorize(bh.HandleGetPresignedURL, allUsers...))
 	e.POST("/object/upload", auth.Authorize(bh.HandleMultipartUpload, writer...))
 	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObject, admin...))
-
+	e.GET("/object/exists", auth.Authorize(bh.HandleGetObjExist, allUsers...))
 	// prefix
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefixWithDetail, allUsers...))
