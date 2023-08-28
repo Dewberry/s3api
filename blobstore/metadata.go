@@ -106,3 +106,26 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	log.Info("HandleGetMetaData: Successfully retrieved metadata for key:", key)
 	return c.JSON(http.StatusOK, result)
 }
+
+func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
+	key := c.QueryParam("key")
+	if key == "" {
+		err := errors.New("request must include a `key` parameter")
+		log.Error("HandleGetObjExist: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+	bucket, err := getBucketParam(c, bh.Bucket)
+	if err != nil {
+		log.Error("HandleGetObjExist: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+	fmt.Println("bucket", bucket)
+
+	result, err := bh.keyExists(bucket, key)
+	if err != nil {
+		log.Error("HandleGetObjExist: " + err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	log.Info("HandleGetObjExist: Successfully retrieved metadata for key:", key)
+	return c.JSON(http.StatusOK, result)
+}
