@@ -1,8 +1,8 @@
 package main
 
 import (
-	"app/auth"
-	"app/config"
+	"github.com/Dewberry/s3api/auth"
+	"github.com/Dewberry/s3api/config"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
