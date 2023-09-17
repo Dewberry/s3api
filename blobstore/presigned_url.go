@@ -127,7 +127,7 @@ func (bh *BlobHandler) HandleGetPresignedURL(c echo.Context) error {
 		log.Error("HandleGetPresignedURL: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-	keyExist, err := bh.keyExists(bucket, key)
+	keyExist, err := bh.KeyExists(bucket, key)
 	if err != nil {
 		log.Error("HandleGetPresignedURL: Error checking if key exists:", err.Error())
 		return c.JSON(http.StatusBadRequest, err.Error())

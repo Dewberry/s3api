@@ -63,7 +63,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	isObject, err := bh.keyExists(bucket, prefix)
+	isObject, err := bh.KeyExists(bucket, prefix)
 	if err != nil {
 		log.Error("HandleListByPrefix: " + err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -100,7 +100,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	if prefix != "" {
-		isObject, err := bh.keyExists(bucket, prefix)
+		isObject, err := bh.KeyExists(bucket, prefix)
 		if err != nil {
 			log.Error("HandleListByPrefixWithDetail: " + err.Error())
 			return c.JSON(http.StatusInternalServerError, err.Error())

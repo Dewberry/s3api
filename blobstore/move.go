@@ -87,7 +87,7 @@ func (bh *BlobHandler) HandleMoveObject(c echo.Context) error {
 func (bh *BlobHandler) copyObject(bucket, srcObjectKey, destObjectKey string) error {
 
 	// Check if the old key already exists in the bucket
-	oldKeyExists, err := bh.keyExists(bucket, srcObjectKey)
+	oldKeyExists, err := bh.KeyExists(bucket, srcObjectKey)
 	if err != nil {
 		// The new key already exists, return an error to indicate conflict
 		return fmt.Errorf("object %s already exists in the bucket; duplication will cause an overwrite. Please rename dest_key to a different name: %v", destObjectKey, err)
@@ -96,7 +96,7 @@ func (bh *BlobHandler) copyObject(bucket, srcObjectKey, destObjectKey string) er
 		return errors.New("object " + srcObjectKey + " does not exist")
 	}
 	// Check if the new key already exists in the bucket
-	newKeyExists, err := bh.keyExists(bucket, srcObjectKey)
+	newKeyExists, err := bh.KeyExists(bucket, srcObjectKey)
 	if err != nil {
 		// The new key already exists, return an error to indicate conflict
 		return errors.New("object " + srcObjectKey + " with the new key " + destObjectKey + " already exists in the bucket, " + err.Error())

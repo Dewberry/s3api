@@ -120,7 +120,7 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	result, err := bh.keyExists(bucket, key)
+	result, err := bh.KeyExists(bucket, key)
 	if err != nil {
 		log.Error("HandleGetObjExist: " + err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())

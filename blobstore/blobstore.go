@@ -12,7 +12,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func (bh *BlobHandler) keyExists(bucket string, key string) (bool, error) {
+func (bh *BlobHandler) KeyExists(bucket string, key string) (bool, error) {
 	_, err := bh.S3Svc.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
