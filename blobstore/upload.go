@@ -143,7 +143,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 		log.Errorf("HandleMultipartUpload: %s", err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-	keyExist, err := bh.keyExists(bucket, key)
+	keyExist, err := bh.KeyExists(bucket, key)
 	if err != nil {
 		log.Errorf("HandleMultipartUpload: Error checking if key exists: %s", err.Error())
 		return c.JSON(http.StatusBadRequest, err)

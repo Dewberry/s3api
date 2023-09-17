@@ -26,7 +26,7 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	keyExist, err := bh.keyExists(bucket, key)
+	keyExist, err := bh.KeyExists(bucket, key)
 	if err != nil {
 		log.Error("HandleObjectContents: Error checking if key exists:", err.Error())
 		return c.JSON(http.StatusBadRequest, err)
