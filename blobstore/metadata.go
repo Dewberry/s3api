@@ -43,7 +43,7 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		log.Error("HandleGetSize: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-	list, err := bh.getList(bucket, prefix, false)
+	list, err := bh.GetList(bucket, prefix, false)
 	if err != nil {
 		log.Error("HandleGetSize: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())

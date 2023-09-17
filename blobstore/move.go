@@ -32,7 +32,7 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	// List objects within the source prefix
-	listOutput, err := bh.getList(bucket, srcPrefix, true)
+	listOutput, err := bh.GetList(bucket, srcPrefix, true)
 	if err != nil {
 		return errors.New("error listing objects with prefix " + srcPrefix + " in bucket " + bucket + ", " + err.Error())
 	}
