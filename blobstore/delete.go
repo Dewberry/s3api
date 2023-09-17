@@ -131,7 +131,7 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 	if !strings.HasSuffix(prefix, "/") {
 		prefix = prefix + "/"
 	}
-	response, err := bh.getList(bucket, prefix, false)
+	response, err := bh.GetList(bucket, prefix, false)
 	if err != nil {
 		log.Errorf("HandleDeleteObjects:  Error getting list: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err)
