@@ -1,4 +1,4 @@
-module app
+module github.com/Dewberry/s3api
 
 go 1.19
 
