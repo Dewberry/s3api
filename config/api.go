@@ -1,9 +1,10 @@
 package config
 
 import (
-	"app/blobstore"
 	"fmt"
 	"os"
+
+	"github.com/Dewberry/s3api/blobstore"
 )
 
 const CSI string = `
