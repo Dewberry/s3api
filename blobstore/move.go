@@ -105,10 +105,9 @@ func (bh *BlobHandler) CopyObject(bucket, srcObjectKey, destObjectKey string) er
 	// Check if the new key already exists in the bucket
 	newKeyExists, err := bh.KeyExists(bucket, destObjectKey)
 	if err != nil {
-		// The new key already exists, return an error to indicate conflict
 		return fmt.Errorf("error checking if object %s exists: %s", destObjectKey, err.Error())
 	}
-	if !newKeyExists {
+	if newKeyExists {
 		return errors.New(destObjectKey + " already exists in the bucket; duplication will cause an overwrite. Please rename dest_key to a different name")
 	}
 	// Set up input parameters for the CopyObject API to rename the object
