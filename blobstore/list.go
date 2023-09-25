@@ -69,9 +69,18 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	if isObject {
-		err := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
-		log.Error("HandleListByPrefix: " + err.Error())
-		return c.JSON(http.StatusTeapot, err.Error())
+		objMeta, err := bh.GetMetaData(bucket, prefix)
+		if err != nil {
+			log.Error("HandleListByPrefix: " + err.Error())
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		if *objMeta.ContentLength == 0 {
+			log.Infof("HandleListByPrefix: Detected a zero byte directory marker within prefix: %s", prefix)
+		} else {
+			err = fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
+			log.Error("HandleListByPrefix: " + err.Error())
+			return c.JSON(http.StatusTeapot, err.Error())
+		}
 	}
 
 	listOutput, err := bh.GetList(bucket, prefix, delimiter)
@@ -106,9 +115,18 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, err.Error())
 		}
 		if isObject {
-			err := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
-			log.Error("HandleListByPrefixWithDetail: " + err.Error())
-			return c.JSON(http.StatusTeapot, err.Error())
+			objMeta, err := bh.GetMetaData(bucket, prefix)
+			if err != nil {
+				log.Error("HandleListByPrefixWithDetail: " + err.Error())
+				return c.JSON(http.StatusInternalServerError, err.Error())
+			}
+			if *objMeta.ContentLength == 0 {
+				log.Infof("HandleListByPrefixWithDetail: Detected a zero byte directory marker within prefix: %s", prefix)
+			} else {
+				err = fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
+				log.Error("HandleListByPrefixWithDetail: " + err.Error())
+				return c.JSON(http.StatusTeapot, err.Error())
+			}
 		}
 		prefix = strings.Trim(prefix, "/") + "/"
 	}
