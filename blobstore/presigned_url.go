@@ -21,7 +21,7 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-func (bh *BlobHandler) getPresignedURL(bucket, key string, expDays int) (string, error) {
+func (bh *BlobHandler) GetPresignedURL(bucket, key string, expDays int) (string, error) {
 	duration := time.Duration(expDays) * 24 * time.Hour
 	req, _ := bh.S3Svc.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),
@@ -143,7 +143,7 @@ func (bh *BlobHandler) HandleGetPresignedURL(c echo.Context) error {
 		log.Error("HandleGetPresignedURL: Error getting `URL_EXP_DAYS` from env file:", err.Error())
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
-	url, err := bh.getPresignedURL(bucket, key, expPeriod)
+	url, err := bh.GetPresignedURL(bucket, key, expPeriod)
 	if err != nil {
 		log.Error("HandleGetPresignedURL: Error getting presigned URL:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -181,7 +181,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, errMsg.Error())
 	}
 	//check if size is below 5GB
-	size, fileCount, err := bh.getSize(response)
+	size, fileCount, err := bh.GetSize(response)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting size:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -209,7 +209,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting `URL_EXP_DAYS` from env file:", err.Error())
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
-	href, err := bh.getPresignedURL(bucket, outputFile, expPeriod)
+	href, err := bh.GetPresignedURL(bucket, outputFile, expPeriod)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting presigned URL:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
