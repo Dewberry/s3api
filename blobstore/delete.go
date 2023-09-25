@@ -12,7 +12,7 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-func (bh *BlobHandler) recursivelyDeleteObjects(bucket, prefix string) error {
+func (bh *BlobHandler) RecursivelyDeleteObjects(bucket, prefix string) error {
 	prefixPath := strings.Trim(prefix, "/") + "/"
 	query := &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
@@ -49,7 +49,7 @@ func (bh *BlobHandler) recursivelyDeleteObjects(bucket, prefix string) error {
 	return nil
 }
 
-func (bh *BlobHandler) deleteKeys(bucket string, key ...string) error {
+func (bh *BlobHandler) DeleteKeys(bucket string, key ...string) error {
 	objects := make([]*s3.ObjectIdentifier, 0, len(key))
 	for _, p := range key {
 		s3Path := strings.TrimPrefix(p, "/")
@@ -142,7 +142,7 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 	// This will recursively delete all objects with the specified prefix
-	err = bh.recursivelyDeleteObjects(bucket, prefix)
+	err = bh.RecursivelyDeleteObjects(bucket, prefix)
 	if err != nil {
 		msg := fmt.Sprintf("error deleting objects. %s", err.Error())
 		log.Errorf("HandleDeleteObjects: %s", msg)
@@ -201,7 +201,7 @@ func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
 	}
 
 	// Delete the objects using the deleteKeys function
-	err = bh.deleteKeys(bucket, keys...)
+	err = bh.DeleteKeys(bucket, keys...)
 	if err != nil {
 		msg := fmt.Sprintf("error deleting objects. %s", err.Error())
 		log.Errorf("HandleDeleteObjectsByList: %s", msg)

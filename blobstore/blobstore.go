@@ -23,10 +23,10 @@ func (bh *BlobHandler) KeyExists(bucket string, key string) (bool, error) {
 			case "NotFound": // s3.ErrCodeNoSuchKey does not work, aws is missing this error code so we hardwire a string
 				return false, nil
 			default:
-				return false, fmt.Errorf("keyExists: %s", err)
+				return false, fmt.Errorf("KeyExists: %s", err)
 			}
 		}
-		return false, fmt.Errorf("keyExists: %s", err)
+		return false, fmt.Errorf("KeyExists: %s", err)
 	}
 	return true, nil
 }
