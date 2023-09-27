@@ -146,7 +146,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	keyExist, err := bh.KeyExists(bucket, key)
 	if err != nil {
 		log.Errorf("HandleMultipartUpload: Error checking if key exists: %s", err.Error())
-		return c.JSON(http.StatusBadRequest, err)
+		return c.JSON(http.StatusInternalServerError, err)
 	}
 	if keyExist && !override {
 		err := fmt.Errorf("object %s already exists and override is set to %t", key, override)
