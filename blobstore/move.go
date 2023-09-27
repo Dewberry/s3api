@@ -85,7 +85,7 @@ func (bh *BlobHandler) HandleMoveObject(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	fmt.Println("tetsing after getting teh bucket param")
+	fmt.Println("tetsing after getting the bucket param")
 	return c.JSON(http.StatusOK, fmt.Sprintf("Succesfully moved object from %s to %s", srcObjectKey, destObjectKey))
 }
 
