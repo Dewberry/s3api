@@ -69,7 +69,6 @@ func SessionManager() (*s3.S3, *session.Session, error) {
 
 	if s3Mock {
 		minioSecretAccessKey := os.Getenv("MINIO_SECRET_ACCESS_KEY")
-		fmt.Println("Using minio to mock s3")
 		endpoint := os.Getenv("MINIO_S3_ENDPOINT")
 		if endpoint == "" {
 			return nil, nil, errors.New("`MINIO_S3_ENDPOINT` env var required if using Minio (S3_MOCK). Set `S3_MOCK` to false or add an `MINIO_S3_ENDPOINT` to the env")
@@ -84,9 +83,30 @@ func SessionManager() (*s3.S3, *session.Session, error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("error connecting to minio session: %s", err.Error())
 		}
+		fmt.Println("Using minio to mock s3")
 
-		return s3.New(sess), sess, nil
+		bucketName := os.Getenv("S3_BUCKET")
 
+		// Check if the bucket exists
+		s3SVC := s3.New(sess)
+		_, err = s3SVC.HeadBucket(&s3.HeadBucketInput{
+			Bucket: aws.String(bucketName),
+		})
+		if err != nil {
+			// Bucket does not exist, create it
+			_, err := s3SVC.CreateBucket(&s3.CreateBucketInput{
+				Bucket: aws.String(bucketName),
+			})
+			if err != nil {
+				fmt.Println("Error creating bucket:", err)
+				return nil, nil, nil
+			}
+			fmt.Println("Bucket created successfully")
+		} else {
+			fmt.Println("Bucket already exists")
+		}
+
+		return s3SVC, sess, nil
 	} else {
 		awsSecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 		fmt.Println("Using AWS S3")
