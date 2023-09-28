@@ -56,7 +56,7 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 	if err != nil {
 		log.Error("HandleObjectContents: " + err.Error())
 		if strings.Contains(err.Error(), "object") {
-			return c.JSON(http.StatusBadRequest, err.Error())
+			return c.JSON(http.StatusNotFound, err.Error())
 		} else {
 			return c.JSON(http.StatusInternalServerError, err.Error())
 		}
