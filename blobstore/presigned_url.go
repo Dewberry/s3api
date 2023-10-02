@@ -130,7 +130,7 @@ func (bh *BlobHandler) HandleGetPresignedURL(c echo.Context) error {
 	keyExist, err := bh.KeyExists(bucket, key)
 	if err != nil {
 		log.Error("HandleGetPresignedURL: Error checking if key exists:", err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	if !keyExist {
 		err := fmt.Errorf("object %s not found", key)
@@ -187,7 +187,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	limit := uint64(1024 * 1024 * 1024 * 5)
-	if size > limit {
+	if size >= limit {
 		err := fmt.Errorf("HandleGetPresignedURLMultiObj: Request entity is larger than %v GB, current file size is: %d, and current file count is: %d", float64(limit)/(1024*1024*1024), size, fileCount)
 		log.Error("HandleGetPresignedURLMultiObj: ", err.Error())
 		return c.JSON(http.StatusRequestEntityTooLarge, err.Error())
