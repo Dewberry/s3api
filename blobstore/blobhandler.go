@@ -61,13 +61,13 @@ func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
 
 func SessionManager() (*s3.S3, *session.Session, error) {
 	region := os.Getenv("AWS_REGION")
-	accessKeyID := os.Getenv("AWS_ACCESS_KEY_ID")
 
 	//extracts the bool string from env, if not set it will default to false
 	s3MockStr := os.Getenv("S3_MOCK")
 	s3Mock := s3MockStr == "true"
 
 	if s3Mock {
+		minioAccessKey := os.Getenv("MINIO_ACCESS_KEY_ID")
 		minioSecretAccessKey := os.Getenv("MINIO_SECRET_ACCESS_KEY")
 		endpoint := os.Getenv("MINIO_S3_ENDPOINT")
 		if endpoint == "" {
@@ -77,7 +77,7 @@ func SessionManager() (*s3.S3, *session.Session, error) {
 		sess, err := session.NewSession(&aws.Config{
 			Endpoint:         aws.String(endpoint),
 			Region:           aws.String(region),
-			Credentials:      credentials.NewStaticCredentials(accessKeyID, minioSecretAccessKey, ""),
+			Credentials:      credentials.NewStaticCredentials(minioAccessKey, minioSecretAccessKey, ""),
 			S3ForcePathStyle: aws.Bool(true),
 		})
 		if err != nil {
@@ -108,11 +108,12 @@ func SessionManager() (*s3.S3, *session.Session, error) {
 
 		return s3SVC, sess, nil
 	} else {
+		awsAccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID")
 		awsSecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 		fmt.Println("Using AWS S3")
 		sess, err := session.NewSession(&aws.Config{
 			Region:      aws.String(region),
-			Credentials: credentials.NewStaticCredentials(accessKeyID, awsSecretAccessKey, ""),
+			Credentials: credentials.NewStaticCredentials(awsAccessKeyID, awsSecretAccessKey, ""),
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("error creating s3 session: %s", err.Error())
