@@ -31,6 +31,7 @@ func (bh *BlobHandler) GetSize(list *s3.ListObjectsV2Output) (uint64, uint32, er
 }
 
 // HandleGetSize retrieves the total size and the number of files in the specified S3 bucket with the given prefix.
+// HandleGetSize retrieves the total size and the number of files in the specified S3 bucket with the given prefix.
 func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
@@ -43,11 +44,28 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		log.Error("HandleGetSize: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
+	// Check if the prefix points directly to an object
+	isObject, err := bh.KeyExists(bucket, prefix)
+	if err != nil {
+		log.Error("HandleGetSize: Error checking if prefix is an object:", err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if isObject {
+		// Prefix points directly to an object instead of a collection of objects
+		return c.JSON(http.StatusTeapot, "The provided prefix points to a single object rather than a collection")
+	}
 	list, err := bh.GetList(bucket, prefix, false)
 	if err != nil {
 		log.Error("HandleGetSize: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
+
+	if len(list.Contents) == 0 {
+		// No objects found with the provided prefix
+		return c.JSON(http.StatusNotFound, "Prefix not found")
+	}
+
 	size, fileCount, err := bh.GetSize(list)
 	if err != nil {
 		log.Error("HandleGetSize: Error getting size:", err.Error())
@@ -96,7 +114,6 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 		log.Error("HandleGetMetaData: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-
 	result, err := bh.GetMetaData(bucket, key)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == "NotFound" {

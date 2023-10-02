@@ -34,6 +34,9 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 
 	err = bh.CopyPrefix(bucket, srcPrefix, destPrefix)
 	if err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			return c.JSON(http.StatusNotFound, err.Error())
+		}
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
@@ -81,11 +84,13 @@ func (bh *BlobHandler) HandleMoveObject(c echo.Context) error {
 
 	err = bh.CopyObject(bucket, srcObjectKey, destObjectKey)
 	if err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			return c.JSON(http.StatusNotFound, err.Error())
+		}
 		log.Error("HandleCopyObject: Error when implementing copyObject", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	fmt.Println("tetsing after getting the bucket param")
 	return c.JSON(http.StatusOK, fmt.Sprintf("Succesfully moved object from %s to %s", srcObjectKey, destObjectKey))
 }
 
