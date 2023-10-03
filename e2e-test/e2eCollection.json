@@ -1,0 +1,3133 @@
+{
+	"info": {
+		"_postman_id": "b84ef492-67f3-49d8-b327-a1ec96cd9f6d",
+		"name": "E2E Testing Collection Copy",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "18773467",
+		"_collection_link": "https://universal-comet-524706.postman.co/workspace/Dewberry~fe115dcb-2f48-4ca3-a618-e462c6ac4255/collection/18773467-b84ef492-67f3-49d8-b327-a1ec96cd9f6d?action=share&source=collection_link&creator=18773467"
+	},
+	"item": [
+		{
+			"name": "Ping Endpoints",
+			"item": [
+				{
+					"name": "GET /ping",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('ping without auth success', function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/ping",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"ping"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET /ping_with_auth",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('ping with auth did not work as expected', function () {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/ping_with_auth",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"ping_with_auth"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);\r",
+									"postman.setEnvironmentVariable(\"bearer_token\", jsonData.access_token);\r",
+									"\r",
+									"pm.test('Logging in', function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "username",
+									"value": "{{auth_username}}",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "{{auth_password}}",
+									"type": "text"
+								},
+								{
+									"key": "client_id",
+									"value": "{{auth_client_id}}",
+									"type": "text"
+								},
+								{
+									"key": "grant_type",
+									"value": "{{auth_grant_type}}",
+									"type": "text"
+								},
+								{
+									"key": "client_secret",
+									"value": "{{auth_client_secret}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{auth_url}}/testing/protocol/openid-connect/token",
+							"host": [
+								"{{auth_url}}"
+							],
+							"path": [
+								"testing",
+								"protocol",
+								"openid-connect",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET /ping_with_auth 2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('ping with auth did work as expected', function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/ping_with_auth",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"ping_with_auth"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "successful run",
+			"item": [
+				{
+					"name": "1/object/upload",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "",
+									"type": "file",
+									"src": "staff_table.csv"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"upload"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								},
+								{
+									"key": "override",
+									"value": "{{e2eoverride}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2/object/exists",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/exists?key={{e2ePathToObj}}{{e2eObjName}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"exists"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3/object/metadata",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/metadata?key={{e2ePathToObj}}{{e2eObjName}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"metadata"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4/object/content",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/content?key={{e2ePathToObj}}{{e2eObjName}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"content"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5/object/download",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/download?key={{e2ePathToObj}}{{e2eObjName}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"download"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6/prefix/size",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/prefix/size?prefix={{e2ePathToObj}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"prefix",
+								"size"
+							],
+							"query": [
+								{
+									"key": "prefix",
+									"value": "{{e2ePathToObj}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7/object/move",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"move"
+							],
+							"query": [
+								{
+									"key": "src_key",
+									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								},
+								{
+									"key": "dest_key",
+									"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8/prefix/list",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/prefix/list?prefix={{e2ePathToObj}}&delimiter={{e2eoverride}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"prefix",
+								"list"
+							],
+							"query": [
+								{
+									"key": "prefix",
+									"value": "{{e2ePathToObj}}"
+								},
+								{
+									"key": "delimiter",
+									"value": "{{e2eoverride}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9/prefix/list_with_details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/prefix/list_with_details?prefix={{e2ePathToObj}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"prefix",
+								"list_with_details"
+							],
+							"query": [
+								{
+									"key": "prefix",
+									"value": "{{e2ePathToObj}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10/prefix/download",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/prefix/download?prefix={{e2ePathToObj}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"prefix",
+								"download"
+							],
+							"query": [
+								{
+									"key": "prefix",
+									"value": "{{e2ePathToObj}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "11/object/upload 2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "",
+									"type": "file",
+									"src": "staff_table.csv"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"upload"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								},
+								{
+									"key": "override",
+									"value": "{{e2eoverride}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "12/prefix/move",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/prefix/move?src_prefix={{e2ePathToObj}}{{e2ePathToObj}}&dest_prefix={{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"prefix",
+								"move"
+							],
+							"query": [
+								{
+									"key": "src_prefix",
+									"value": "{{e2ePathToObj}}{{e2ePathToObj}}"
+								},
+								{
+									"key": "dest_prefix",
+									"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "13/object/delete",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/delete?key={{e2ePathToObj}}{{e2eObjName}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"delete"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "14/prefix/delete",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/prefix/delete?prefix={{e2ePathToObj}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"prefix",
+								"delete"
+							],
+							"query": [
+								{
+									"key": "prefix",
+									"value": "{{e2ePathToObj}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "15/object/upload 3",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "",
+									"type": "file",
+									"src": "staff_table.csv"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}1&override={{e2eoverride}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"upload"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2ePathToObj}}{{e2eObjName}}1"
+								},
+								{
+									"key": "override",
+									"value": "{{e2eoverride}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "16/object/upload 4",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "",
+									"type": "file",
+									"src": "staff_table.csv"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}2&override={{e2eoverride}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"upload"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2ePathToObj}}{{e2eObjName}}2"
+								},
+								{
+									"key": "override",
+									"value": "{{e2eoverride}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "17/delete_keys",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"keys\": [\"{{e2ePathToObj}}{{e2eObjName}}1\", \"{{e2ePathToObj}}{{e2eObjName}}2\"]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{s3_api_root_url}}/delete_keys",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"delete_keys"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('successfully executed endpoint', function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "unsuccesful runs",
+			"item": [
+				{
+					"name": "SuccesfulTestingInput",
+					"item": [
+						{
+							"name": "1/object/upload",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "",
+											"type": "file",
+											"src": "staff_table.csv"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}"
+										},
+										{
+											"key": "override",
+											"value": "{{e2eoverride}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "1/object/upload Copy",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "",
+											"type": "file",
+											"src": "staff_table.csv"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}2&override={{e2eoverride}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
+										},
+										{
+											"key": "override",
+											"value": "{{e2eoverride}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Succesfully uploaded test data', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "UnprocessableEntity",
+					"item": [
+						{
+							"name": "1/object/upload",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "",
+											"type": "file",
+											"src": "staff_table.csv"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/upload?override={{e2eoverride}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}",
+											"disabled": true
+										},
+										{
+											"key": "override",
+											"value": "{{e2eoverride}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "11/object/upload 2",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"let keyValue = pm.environment.get(\"e2ekey\"); \r",
+											"if (keyValue === \"invalid\") {\r",
+											"    pm.request.url.query.remove(\"override\");\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "",
+											"type": "file",
+											"src": "staff_table.csv"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}"
+										},
+										{
+											"key": "override",
+											"value": "{{e2eoverride}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "15/object/upload 3",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "",
+											"type": "file",
+											"src": "staff_table.csv"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/upload",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}1",
+											"disabled": true
+										},
+										{
+											"key": "override",
+											"value": "{{e2eoverride}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2/object/exists",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/exists",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"exists"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "8/prefix/list",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/list",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"list"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{e2ePathToObj}}",
+											"disabled": true
+										},
+										{
+											"key": "delimiter",
+											"value": "{{e2eoverride}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "6/prefix/size",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/size",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"size"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{e2ePathToObj}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "3/object/metadata",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/metadata",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"metadata"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "4/object/content",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/content",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"content"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "5/object/download",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/download",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"download"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "17/delete_keys",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"keys\": []\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{s3_api_root_url}}/delete_keys",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"delete_keys"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "14/prefix/delete",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/delete",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{e2ePathToObj}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "7/object/move",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/move",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"move"
+									],
+									"query": [
+										{
+											"key": "src_key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}",
+											"disabled": true
+										},
+										{
+											"key": "dest_key",
+											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "13/object/delete",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/delete",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "10/prefix/download",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/download",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"download"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{e2ePathToObj}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "12/prefix/move",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/move",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"move"
+									],
+									"query": [
+										{
+											"key": "src_prefix",
+											"value": "{{e2ePathToObj}}{{e2ePathToObj}}",
+											"disabled": true
+										},
+										{
+											"key": "dest_prefix",
+											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Unprocessable entity executed endpoint', function () {",
+									"    pm.response.to.have.status(422);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "NotFound",
+					"item": [
+						{
+							"name": "14/prefix/delete",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/delete?prefix=invalid",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "invalid"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "13/object/delete",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/delete?key=invalid",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "invalid"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "4/object/content",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/content?key=invalid",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"content"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "invalid"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "17/delete_keys",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"keys\": [\"invalid\"]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{s3_api_root_url}}/delete_keys",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"delete_keys"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "10/prefix/download",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/download?prefix=invalid",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"download"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "invalid"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "5/object/download",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/download?key=invalid",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"download"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "invalid"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "3/object/metadata",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/metadata?key=invalid",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"metadata"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "invalid"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "7/object/move",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/move?src_key=invalid&dest_key={{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"move"
+									],
+									"query": [
+										{
+											"key": "src_key",
+											"value": "invalid"
+										},
+										{
+											"key": "dest_key",
+											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "12/prefix/move",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/move?src_prefix=invalid&dest_prefix={{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"move"
+									],
+									"query": [
+										{
+											"key": "src_prefix",
+											"value": "invalid"
+										},
+										{
+											"key": "dest_prefix",
+											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "6/size",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/size?prefix=invalid",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"size"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "invalid"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('successfully attempted a not found', function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "BadRequest",
+					"item": [
+						{
+							"name": "/object/move",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2eObjName}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"move"
+									],
+									"query": [
+										{
+											"key": "src_key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}"
+										},
+										{
+											"key": "dest_key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "17/delete_keys",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "key:{\"stuff,\"}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{s3_api_root_url}}/delete_keys",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"delete_keys"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "1/object/upload Copy",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "",
+											"value": "",
+											"type": "text",
+											"disabled": true
+										}
+									]
+								},
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}"
+										},
+										{
+											"key": "override",
+											"value": "{{e2eoverride}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Bad Request Success', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "conflict",
+					"item": [
+						{
+							"name": "/object/move 2",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2eObjName}}2",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"move"
+									],
+									"query": [
+										{
+											"key": "src_key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}"
+										},
+										{
+											"key": "dest_key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "1/object/upload",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "",
+											"type": "file",
+											"src": "staff_table.csv"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"object",
+										"upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}"
+										},
+										{
+											"key": "override",
+											"value": "{{e2eoverride}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('conflict Success', function () {",
+									"    pm.response.to.have.status(409);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "TeaPot",
+					"item": [
+						{
+							"name": "8/prefix/list",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/list?prefix={{e2ePathToObj}}{{e2eObjName}}2&delimiter={{e2eoverride}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"list"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
+										},
+										{
+											"key": "delimiter",
+											"value": "{{e2eoverride}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "9/prefix/list_with_details",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/list_with_details?prefix={{e2ePathToObj}}{{e2eObjName}}2",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"list_with_details"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "6/prefix/size",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/size?prefix={{e2ePathToObj}}{{e2eObjName}}2",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"size"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('TeaPot error Success', function () {",
+									"    pm.response.to.have.status(418);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "clean up",
+					"item": [
+						{
+							"name": "14/prefix/delete",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/delete?prefix={{e2ePathToObj}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{e2ePathToObj}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	]
+}
