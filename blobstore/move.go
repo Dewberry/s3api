@@ -84,7 +84,11 @@ func (bh *BlobHandler) HandleMoveObject(c echo.Context) error {
 
 	err = bh.CopyObject(bucket, srcObjectKey, destObjectKey)
 	if err != nil {
-		if strings.Contains(err.Error(), "does not exist") {
+		if strings.Contains(err.Error(), "keys are identical; no action taken") {
+			return c.JSON(http.StatusBadRequest, err.Error()) // 400 Bad Request
+		} else if strings.Contains(err.Error(), "already exists in the bucket; duplication will cause an overwrite") {
+			return c.JSON(http.StatusConflict, err.Error()) // 409 Conflict
+		} else if strings.Contains(err.Error(), "does not exist") {
 			return c.JSON(http.StatusNotFound, err.Error())
 		}
 		log.Error("HandleCopyObject: Error when implementing copyObject", err.Error())
