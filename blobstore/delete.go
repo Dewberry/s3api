@@ -69,7 +69,7 @@ func (bh *BlobHandler) HandleDeleteObject(c echo.Context) error {
 	keyExist, err := bh.KeyExists(bucket, key)
 	if err != nil {
 		log.Errorf("HandleDeleteObjects: Error checking if key exists: %s", err.Error())
-		return c.JSON(http.StatusBadRequest, err)
+		return c.JSON(http.StatusInternalServerError, err)
 	}
 	if !keyExist {
 		err := fmt.Errorf("object %s not found", key)

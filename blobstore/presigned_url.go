@@ -141,7 +141,7 @@ func (bh *BlobHandler) HandleGetPresignedURL(c echo.Context) error {
 	expPeriod, err := strconv.Atoi(os.Getenv("URL_EXP_DAYS"))
 	if err != nil {
 		log.Error("HandleGetPresignedURL: Error getting `URL_EXP_DAYS` from env file:", err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	url, err := bh.GetPresignedURL(bucket, key, expPeriod)
 	if err != nil {
@@ -207,7 +207,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 	expPeriod, err := strconv.Atoi(os.Getenv("URL_EXP_DAYS"))
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting `URL_EXP_DAYS` from env file:", err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	href, err := bh.GetPresignedURL(bucket, outputFile, expPeriod)
 	if err != nil {

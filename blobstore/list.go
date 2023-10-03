@@ -68,12 +68,14 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		log.Error("HandleListByPrefix: " + err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
+
 	if isObject {
 		objMeta, err := bh.GetMetaData(bucket, prefix)
 		if err != nil {
 			log.Error("HandleListByPrefix: " + err.Error())
 			return c.JSON(http.StatusInternalServerError, err.Error())
 		}
+		fmt.Println("is object? ", objMeta)
 		if *objMeta.ContentLength == 0 {
 			log.Infof("HandleListByPrefix: Detected a zero byte directory marker within prefix: %s", prefix)
 		} else {
