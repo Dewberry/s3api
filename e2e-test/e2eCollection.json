@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "b84ef492-67f3-49d8-b327-a1ec96cd9f6d",
-		"name": "E2E Testing Collection Copy",
+		"_postman_id": "fa40a51e-51b4-45f8-ae0e-21a554bfc5a0",
+		"name": "E2E Testing Collection Copy 2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "18773467",
-		"_collection_link": "https://universal-comet-524706.postman.co/workspace/Dewberry~fe115dcb-2f48-4ca3-a618-e462c6ac4255/collection/18773467-b84ef492-67f3-49d8-b327-a1ec96cd9f6d?action=share&source=collection_link&creator=18773467"
+		"_collection_link": "https://universal-comet-524706.postman.co/workspace/Dewberry~fe115dcb-2f48-4ca3-a618-e462c6ac4255/collection/18773467-fa40a51e-51b4-45f8-ae0e-21a554bfc5a0?action=share&source=collection_link&creator=18773467"
 	},
 	"item": [
 		{
@@ -90,9 +90,13 @@
 									"var jsonData = JSON.parse(responseBody);\r",
 									"postman.setEnvironmentVariable(\"bearer_token\", jsonData.access_token);\r",
 									"\r",
-									"pm.test('Logging in', function () {\r",
+									"pm.test(\"Logging in\", function () {\r",
+									"    if(pm.response.code !== 200){\r",
+									"        console.log(\"Error body: \", pm.response.text());\r",
+									"    }\r",
 									"    pm.response.to.have.status(200);\r",
-									"});"
+									"});\r",
+									""
 								],
 								"type": "text/javascript"
 							}
@@ -163,9 +167,14 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test('ping with auth did work as expected', function () {\r",
+									"pm.test(\"Logging in\", function () {\r",
+									"    if(pm.response.code !== 200){\r",
+									"        console.log(\"Error body: \", pm.response.text());\r",
+									"        console.log('Bearer Token:', pm.environment.get('bearer_token'));\r",
+									"    }\r",
 									"    pm.response.to.have.status(200);\r",
-									"});"
+									"});\r",
+									""
 								],
 								"type": "text/javascript"
 							}

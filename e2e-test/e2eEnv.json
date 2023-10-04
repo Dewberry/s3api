@@ -4,7 +4,7 @@
 	"values": [
 		{
 			"key": "s3_api_root_url",
-			"value": "s3api:5005",
+			"value": "localhost:5005",
 			"type": "default",
 			"enabled": true
 		},
@@ -34,7 +34,7 @@
 		},
 		{
 			"key": "auth_client_secret",
-			"value": "{{auth_client_secret}}",
+			"value": "{{KEYCLOAK_SECRET}}",
 			"type": "secret",
 			"enabled": true
 		},
