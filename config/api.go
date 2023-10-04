@@ -1,9 +1,11 @@
 package config
 
 import (
-	"app/blobstore"
 	"fmt"
+	"log"
 	"os"
+
+	"github.com/Dewberry/s3api/blobstore"
 )
 
 const CSI string = `
@@ -30,8 +32,10 @@ func Init() *APIConfig {
 }
 
 func newAPI() *APIConfig {
-	bh := blobstore.NewBlobHandler()
-
+	bh, err := blobstore.NewBlobHandler()
+	if err != nil {
+		log.Fatalf("error initializing a new blobhandler: %v", err)
+	}
 	api := new(APIConfig)
 	api.Name = SERVICE_NAME
 	api.Port = SERVICE_PORT

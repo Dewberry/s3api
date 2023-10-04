@@ -1,8 +1,8 @@
 package main
 
 import (
-	"app/auth"
-	"app/config"
+	"github.com/Dewberry/s3api/auth"
+	"github.com/Dewberry/s3api/config"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -42,9 +42,9 @@ func main() {
 	e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	e.PUT("/prefix/move", auth.Authorize(bh.HandleMovePrefix, writer...))
 	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeletePrefix, admin...))
+	e.GET("/prefix/size", auth.Authorize(bh.HandleGetSize, allUsers...))
 
 	// universal
-	e.GET("/size", auth.Authorize(bh.HandleGetSize, allUsers...))
 	e.DELETE("/delete_keys", auth.Authorize(bh.HandleDeleteObjectsByList, admin...))
 	// multi-bucket -- not implemented
 	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writer...))

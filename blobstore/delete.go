@@ -12,7 +12,7 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-func (bh *BlobHandler) recursivelyDeleteObjects(bucket, prefix string) error {
+func (bh *BlobHandler) RecursivelyDeleteObjects(bucket, prefix string) error {
 	prefixPath := strings.Trim(prefix, "/") + "/"
 	query := &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
@@ -49,28 +49,6 @@ func (bh *BlobHandler) recursivelyDeleteObjects(bucket, prefix string) error {
 	return nil
 }
 
-func (bh *BlobHandler) deleteKeys(bucket string, key ...string) error {
-	objects := make([]*s3.ObjectIdentifier, 0, len(key))
-	for _, p := range key {
-		s3Path := strings.TrimPrefix(p, "/")
-		object := &s3.ObjectIdentifier{
-			Key: aws.String(s3Path),
-		}
-		objects = append(objects, object)
-	}
-
-	input := &s3.DeleteObjectsInput{
-		Bucket: aws.String(bucket),
-		Delete: &s3.Delete{
-			Objects: objects,
-			Quiet:   aws.Bool(false),
-		},
-	}
-
-	_, err := bh.S3Svc.DeleteObjects(input)
-	return fmt.Errorf("deleteKeys: error Deleting objects: %s", err)
-}
-
 // HandleDeleteObject handles the API endpoint for deleting an object/s from an S3 bucket.
 // It expects the 'key' query parameter to specify the object key and the 'bucket' query parameter to specify the bucket name (optional, falls back to environment variable 'S3_BUCKET').
 // It returns an appropriate JSON response indicating the success or failure of the deletion.
@@ -88,15 +66,15 @@ func (bh *BlobHandler) HandleDeleteObject(c echo.Context) error {
 	}
 
 	// If the key is not a folder, proceed with deleting a single object
-	keyExist, err := bh.keyExists(bucket, key)
+	keyExist, err := bh.KeyExists(bucket, key)
 	if err != nil {
 		log.Errorf("HandleDeleteObjects: Error checking if key exists: %s", err.Error())
-		return c.JSON(http.StatusBadRequest, err)
+		return c.JSON(http.StatusInternalServerError, err)
 	}
 	if !keyExist {
 		err := fmt.Errorf("object %s not found", key)
 		log.Errorf("HandleDeleteObjects: %s", err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusNotFound, err.Error())
 	}
 
 	deleteInput := &s3.DeleteObjectInput{
@@ -131,7 +109,7 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 	if !strings.HasSuffix(prefix, "/") {
 		prefix = prefix + "/"
 	}
-	response, err := bh.getList(bucket, prefix, false)
+	response, err := bh.GetList(bucket, prefix, false)
 	if err != nil {
 		log.Errorf("HandleDeleteObjects:  Error getting list: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err)
@@ -139,10 +117,10 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 	if *response.KeyCount == 0 {
 		err := fmt.Errorf("the specified prefix %s does not exist in S3", prefix)
 		log.Errorf("HandleDeleteObjects: %s", err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusNotFound, err.Error())
 	}
 	// This will recursively delete all objects with the specified prefix
-	err = bh.recursivelyDeleteObjects(bucket, prefix)
+	err = bh.RecursivelyDeleteObjects(bucket, prefix)
 	if err != nil {
 		msg := fmt.Sprintf("error deleting objects. %s", err.Error())
 		log.Errorf("HandleDeleteObjects: %s", msg)
@@ -152,6 +130,31 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 	log.Info("HandleDeleteObjects: Successfully deleted prefix and its contents for prefix:", prefix)
 	return c.JSON(http.StatusOK, "Successfully deleted prefix and its contents")
 
+}
+
+func (bh *BlobHandler) DeleteKeys(bucket string, key []string) error {
+	objects := make([]*s3.ObjectIdentifier, 0, len(key))
+	for _, p := range key {
+		s3Path := strings.TrimPrefix(p, "/")
+		object := &s3.ObjectIdentifier{
+			Key: aws.String(s3Path),
+		}
+		objects = append(objects, object)
+	}
+
+	input := &s3.DeleteObjectsInput{
+		Bucket: aws.String(bucket),
+		Delete: &s3.Delete{
+			Objects: objects,
+			Quiet:   aws.Bool(false),
+		},
+	}
+
+	_, err := bh.S3Svc.DeleteObjects(input)
+	if err != nil {
+		return fmt.Errorf("deleteKeys: error Deleting objects: %s", err.Error())
+	}
+	return nil
 }
 
 func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
@@ -185,23 +188,23 @@ func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
 		key := aws.String(s3Path)
 
 		// Check if the key exists before appending it to the keys list
-		keyExists, err := bh.keyExists(bucket, s3Path)
+		keyExists, err := bh.KeyExists(bucket, s3Path)
 		if err != nil {
 			msg := fmt.Errorf("error checking if key exists. %s", err.Error())
 			log.Errorf("HandleDeleteObjectsByList: %s", msg)
-			return c.JSON(http.StatusNotFound, msg)
+			return c.JSON(http.StatusInternalServerError, msg)
 		}
 		if !keyExists {
 			errMsg := fmt.Sprintf("object %s not found", s3Path)
 			log.Errorf("HandleDeleteObjectsByList: %s", errMsg)
-			return c.JSON(http.StatusBadRequest, errMsg)
+			return c.JSON(http.StatusNotFound, errMsg)
 		}
 
 		keys = append(keys, *key)
 	}
 
 	// Delete the objects using the deleteKeys function
-	err = bh.deleteKeys(bucket, keys...)
+	err = bh.DeleteKeys(bucket, keys)
 	if err != nil {
 		msg := fmt.Sprintf("error deleting objects. %s", err.Error())
 		log.Errorf("HandleDeleteObjectsByList: %s", msg)

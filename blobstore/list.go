@@ -63,18 +63,27 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	isObject, err := bh.keyExists(bucket, prefix)
+	isObject, err := bh.KeyExists(bucket, prefix)
 	if err != nil {
 		log.Error("HandleListByPrefix: " + err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	if isObject {
-		err := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
-		log.Error("HandleListByPrefix: " + err.Error())
-		return c.JSON(http.StatusTeapot, err.Error())
+		objMeta, err := bh.GetMetaData(bucket, prefix)
+		if err != nil {
+			log.Error("HandleListByPrefix: " + err.Error())
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		if *objMeta.ContentLength == 0 {
+			log.Infof("HandleListByPrefix: Detected a zero byte directory marker within prefix: %s", prefix)
+		} else {
+			err = fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
+			log.Error("HandleListByPrefix: " + err.Error())
+			return c.JSON(http.StatusTeapot, err.Error())
+		}
 	}
 
-	listOutput, err := bh.getList(bucket, prefix, delimiter)
+	listOutput, err := bh.GetList(bucket, prefix, delimiter)
 	if err != nil {
 		log.Error("HandleListByPrefix: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -100,24 +109,33 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	if prefix != "" {
-		isObject, err := bh.keyExists(bucket, prefix)
+		isObject, err := bh.KeyExists(bucket, prefix)
 		if err != nil {
 			log.Error("HandleListByPrefixWithDetail: " + err.Error())
 			return c.JSON(http.StatusInternalServerError, err.Error())
 		}
 		if isObject {
-			err := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
-			log.Error("HandleListByPrefixWithDetail: " + err.Error())
-			return c.JSON(http.StatusTeapot, err.Error())
+			objMeta, err := bh.GetMetaData(bucket, prefix)
+			if err != nil {
+				log.Error("HandleListByPrefixWithDetail: " + err.Error())
+				return c.JSON(http.StatusInternalServerError, err.Error())
+			}
+			if *objMeta.ContentLength == 0 {
+				log.Infof("HandleListByPrefixWithDetail: Detected a zero byte directory marker within prefix: %s", prefix)
+			} else {
+				err = fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
+				log.Error("HandleListByPrefixWithDetail: " + err.Error())
+				return c.JSON(http.StatusTeapot, err.Error())
+			}
 		}
 		prefix = strings.Trim(prefix, "/") + "/"
 	}
 
 	query := &s3.ListObjectsV2Input{
-		Bucket:  aws.String(bucket),
-		Prefix:  aws.String(prefix),
+		Bucket:    aws.String(bucket),
+		Prefix:    aws.String(prefix),
 		Delimiter: aws.String("/"),
-		MaxKeys: aws.Int64(1000),
+		MaxKeys:   aws.Int64(1000),
 	}
 
 	result := []ListResult{}
@@ -175,11 +193,11 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	return c.JSON(http.StatusOK, result)
 }
 
-// getList retrieves a list of objects in the specified S3 bucket with the given prefix.
+// GetList retrieves a list of objects in the specified S3 bucket with the given prefix.
 // if delimiter is set to true then it is going to search for any objects within the prefix provided, if no object sare found it will
-//return null even if there was prefixes within the user provided prefix. If delimiter is set to false then it will look for all prefixes
-//that start with the user provided prefix.
-func (bh *BlobHandler) getList(bucket, prefix string, delimiter bool) (*s3.ListObjectsV2Output, error) {
+// return null even if there was prefixes within the user provided prefix. If delimiter is set to false then it will look for all prefixes
+// that start with the user provided prefix.
+func (bh *BlobHandler) GetList(bucket, prefix string, delimiter bool) (*s3.ListObjectsV2Output, error) {
 	// Set up input parameters for the ListObjectsV2 API
 	input := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucket),

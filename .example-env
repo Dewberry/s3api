@@ -1,12 +1,26 @@
+## Auth:
+KEYCLOAK_ID='ID-string'
+KEYCLOAK_SECRET='secret-string'
+KEYCLOAK_ISSUER='issuer-string'
+KEYCLOAK_PUBLIC_KEYS_URL='public-keys-url-string'
+
+# MINIO
+MINIO_S3_ENDPOINT='http://minio:9000'
+MINIO_S3_REGION='s3-region-string'
+MINIO_S3_DISABLE_SSL='bool-string'
+MINIO_S3_FORCE_PATH_STYLE='bool-string'
+MINIO_SECRET_ACCESS_KEY='access-key-string'
+S3_MOCK='true'
+
 # aws
 AWS_ACCESS_KEY_ID='access-key-id-string'
 AWS_SECRET_ACCESS_KEY='secret-acces-key-string'
 AWS_REGION='us-east-1'
 S3_BUCKET='bucket'
 
-
-
 #for getting presigned URL
 URL_EXP_DAYS = 7
 #temp subprefix in bucket that will be written to when arhicving and zippping
 TEMP_PREFIX = 'downloads-temp'
+
+

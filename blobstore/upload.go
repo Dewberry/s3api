@@ -14,7 +14,7 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-func (bh *BlobHandler) uploadS3Obj(bucket string, key string, body io.ReadCloser) error {
+func (bh *BlobHandler) UploadS3Obj(bucket string, key string, body io.ReadCloser) error {
 	// Initialize the multipart upload to S3
 	params := &s3.CreateMultipartUploadInput{
 		Bucket: aws.String(bucket),
@@ -143,21 +143,34 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 		log.Errorf("HandleMultipartUpload: %s", err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-	keyExist, err := bh.keyExists(bucket, key)
+
+	// Check if the request body is empty
+	buf := make([]byte, 1)
+	_, err = c.Request().Body.Read(buf)
+	if err == io.EOF {
+		err := errors.New("no file provided in the request body")
+		log.Error("HandleMultipartUpload: " + err.Error())
+		return c.JSON(http.StatusBadRequest, err.Error()) // Return 400 Bad Request
+	}
+
+	// Reset the request body to its original state
+	c.Request().Body = io.NopCloser(io.MultiReader(bytes.NewReader(buf), c.Request().Body))
+
+	keyExist, err := bh.KeyExists(bucket, key)
 	if err != nil {
 		log.Errorf("HandleMultipartUpload: Error checking if key exists: %s", err.Error())
-		return c.JSON(http.StatusBadRequest, err)
+		return c.JSON(http.StatusInternalServerError, err)
 	}
 	if keyExist && !override {
 		err := fmt.Errorf("object %s already exists and override is set to %t", key, override)
 		log.Errorf("HandleMultipartUpload: %s" + err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusConflict, err.Error())
 	}
 
 	body := c.Request().Body
 	defer body.Close()
 
-	err = bh.uploadS3Obj(bucket, key, body)
+	err = bh.UploadS3Obj(bucket, key, body)
 	if err != nil {
 		log.Errorf("HandleMultipartUpload: Error uploading S3 object: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())

@@ -1,0 +1,75 @@
+{
+	"id": "16dc1b6d-ceea-4d23-8c02-c162f5d684c6",
+	"name": "S3API",
+	"values": [
+		{
+			"key": "s3_api_root_url",
+			"value": "localhost:5005",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "auth_url",
+			"value": "https://auth.dewberryanalytics.com/auth/realms",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "auth_username",
+			"value": "akopti@dewberry.com",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "auth_password",
+			"value": "{{auth_password}}",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "auth_client_id",
+			"value": "s3api",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "auth_client_secret",
+			"value": "{{KEYCLOAK_SECRET}}",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "auth_grant_type",
+			"value": "password",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "bearer_token",
+			"value": "",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "e2eObjName",
+			"value": "staff_table3.txt",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "e2ePathToObj",
+			"value": "e2e_testing/",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "e2eoverride",
+			"value": "false",
+			"type": "default",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2023-10-02T16:40:29.335Z",
+	"_postman_exported_using": "Postman/10.18.9"
+}
