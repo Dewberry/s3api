@@ -1,0 +1,53 @@
+name: E2E tests
+
+on:
+  push:
+    branches: [module_v2]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  newman-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Create env file
+        run: |
+          touch .env
+          echo KEYCLOAK_ID='s3api' >> .env
+          echo KEYCLOAK_SECRET='${{ secrets.KEYCLOAK_SECRET }}' >> .env
+          echo KEYCLOAK_ISSUER='https://auth.dewberryanalytics.com/auth/realms/testing' >> .env
+          echo KEYCLOAK_PUBLIC_KEYS_URL='https://auth.dewberryanalytics.com/auth/realms/testing/protocol/openid-connect/certs' >> .env
+          echo MINIO_S3_ENDPOINT='http://minio:9000' >> .env
+          echo AWS_REGION='us-east-1' >> .env
+          echo MINIO_S3_DISABLE_SSL='true' >> .env
+          echo MINIO_S3_FORCE_PATH_STYLE='true' >> .env
+          echo MINIO_ACCESS_KEY_ID=user >> .env
+          echo MINIO_SECRET_ACCESS_KEY=password >> .env
+          echo S3_MOCK='true' >> .env
+          echo URL_EXP_DAYS='7' >> .env
+          echo TEMP_PREFIX='downloads-temp' >> .env
+          echo S3_BUCKET='test-bucket' >> .env
+      - name: Substitute secret variables in JSON
+        env:
+          auth_password: ${{ secrets.AUTH_PASSWORD }}
+          KEYCLOAK_SECRET: ${{ secrets.KEYCLOAK_SECRET }}
+        run: |
+          echo "Is auth_password set: $(if [ -z "$auth_password" ]; then echo "No"; else echo "Yes"; fi)"
+          echo "Is KEYCLOAK_SECRET set: $(if [ -z "$KEYCLOAK_SECRET" ]; then echo "No"; else echo "Yes"; fi)"
+          envsubst < e2e-test/e2eEnv.template.json > e2e-test/e2eEnv.json
+      - name: Build the docker-compose stack
+        run: docker-compose build -d
+
+      - name: Create network
+        run: docker network create s3_net
+
+      - name: Build and Run the docker-compose stack
+        run: docker-compose up -d
+
+      - name: Run newman tests
+        run: >
+          docker run --network="host" -v /home/runner/work/s3api/s3api/e2e-test:/etc/newman postman/newman:5.3.1-alpine run /etc/newman/e2eCollection.json -e /etc/newman/e2eEnv.json --reporters cli --bail --color on
