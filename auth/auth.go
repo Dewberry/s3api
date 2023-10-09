@@ -2,12 +2,13 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 )
@@ -16,7 +17,7 @@ type Claims struct {
 	UserName    string              `json:"preferred_username"`
 	Email       string              `json:"email"`
 	RealmAccess map[string][]string `json:"realm_access"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 type PublicKey struct {
@@ -92,16 +93,14 @@ func validateToken(tokenString string) (*Claims, error) {
 
 	if err != nil {
 		// Provide more context on the error when parsing the token
-		if ve, ok := err.(*jwt.ValidationError); ok {
-			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-				return nil, fmt.Errorf("failed to parse JWT: malformed token")
-			} else if ve.Errors&(jwt.ValidationErrorSignatureInvalid|jwt.ValidationErrorUnverifiable) != 0 {
-				return nil, fmt.Errorf("failed to parse JWT: invalid signature")
-			} else if ve.Errors&jwt.ValidationErrorExpired != 0 {
-				return nil, fmt.Errorf("failed to parse JWT: token expired")
-			} else {
-				return nil, fmt.Errorf("failed to parse JWT: %v", err)
-			}
+		if errors.Is(err, jwt.ErrTokenMalformed) {
+			return nil, fmt.Errorf("failed to parse JWT: malformed token")
+		} else if errors.Is(err, jwt.ErrTokenSignatureInvalid) {
+			// Invalid signature
+			return nil, fmt.Errorf("failed to parse JWT: invalid signature")
+		} else if errors.Is(err, jwt.ErrTokenExpired) || errors.Is(err, jwt.ErrTokenNotValidYet) {
+			// Token is either expired or not active yet
+			return nil, fmt.Errorf("failed to parse JWT: token expired")
 		}
 		return nil, fmt.Errorf("failed to parse JWT: %v", err)
 	}
