@@ -26,13 +26,21 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 	if !strings.HasSuffix(destPrefix, "/") {
 		destPrefix = destPrefix + "/"
 	}
-	bucket, err := getBucketParam(c, bh.Bucket)
-	if err != nil {
+
+	bucket := c.QueryParam("bucket")
+	if bucket == "" {
+		err := errors.New("parameter 'bucket' is required")
 		log.Error("HandleCopyPrefix: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	err = bh.CopyPrefix(bucket, srcPrefix, destPrefix)
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		log.Errorf("bucket %s is not available", bucket)
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+
+	err = s3Ctrl.CopyPrefix(bucket, srcPrefix, destPrefix)
 	if err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
 			return c.JSON(http.StatusNotFound, err.Error())
@@ -43,9 +51,9 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 	return c.JSON(http.StatusOK, fmt.Sprintf("Successfully moved prefix from %s to %s", srcPrefix, destPrefix))
 }
 
-func (bh *BlobHandler) CopyPrefix(bucket, srcPrefix, destPrefix string) error {
+func (s3Ctrl *S3Controller) CopyPrefix(bucket, srcPrefix, destPrefix string) error {
 	// List objects within the source prefix
-	listOutput, err := bh.GetList(bucket, srcPrefix, true)
+	listOutput, err := s3Ctrl.GetList(bucket, srcPrefix, true)
 	if err != nil {
 		return errors.New("error listing objects with prefix " + srcPrefix + " in bucket " + bucket + ", " + err.Error())
 	}
@@ -59,7 +67,7 @@ func (bh *BlobHandler) CopyPrefix(bucket, srcPrefix, destPrefix string) error {
 		srcObjectKey := aws.StringValue(object.Key)
 		destObjectKey := strings.Replace(srcObjectKey, srcPrefix, destPrefix, 1)
 
-		copyErr := bh.CopyObject(bucket, srcObjectKey, destObjectKey)
+		copyErr := s3Ctrl.CopyObject(bucket, srcObjectKey, destObjectKey)
 		if copyErr != nil {
 			// If an error occurs during copying, return immediately
 			return copyErr
@@ -76,13 +84,21 @@ func (bh *BlobHandler) HandleMoveObject(c echo.Context) error {
 		log.Error("HandleCopyObject", err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-	bucket, err := getBucketParam(c, bh.Bucket)
-	if err != nil {
+
+	bucket := c.QueryParam("bucket")
+	if bucket == "" {
+		err := errors.New("parameter 'bucket' is required")
 		log.Error("HandleCopyObject: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	err = bh.CopyObject(bucket, srcObjectKey, destObjectKey)
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		log.Errorf("bucket %s is not available", bucket)
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+
+	err = s3Ctrl.CopyObject(bucket, srcObjectKey, destObjectKey)
 	if err != nil {
 		if strings.Contains(err.Error(), "keys are identical; no action taken") {
 			return c.JSON(http.StatusBadRequest, err.Error()) // 400 Bad Request
@@ -98,13 +114,13 @@ func (bh *BlobHandler) HandleMoveObject(c echo.Context) error {
 	return c.JSON(http.StatusOK, fmt.Sprintf("Succesfully moved object from %s to %s", srcObjectKey, destObjectKey))
 }
 
-func (bh *BlobHandler) CopyObject(bucket, srcObjectKey, destObjectKey string) error {
+func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey string) error {
 	// Check if the source and destination keys are the same
 	if srcObjectKey == destObjectKey {
 		return fmt.Errorf("source `%s` and destination `%s` keys are identical; no action taken", srcObjectKey, destObjectKey)
 	}
 	// Check if the old key exists in the bucket
-	oldKeyExists, err := bh.KeyExists(bucket, srcObjectKey)
+	oldKeyExists, err := s3Ctrl.KeyExists(bucket, srcObjectKey)
 	if err != nil {
 		return fmt.Errorf("error checking if object %s exists: %s", destObjectKey, err.Error())
 	}
@@ -112,7 +128,7 @@ func (bh *BlobHandler) CopyObject(bucket, srcObjectKey, destObjectKey string) er
 		return errors.New("`srcObjectKey` " + srcObjectKey + " does not exist")
 	}
 	// Check if the new key already exists in the bucket
-	newKeyExists, err := bh.KeyExists(bucket, destObjectKey)
+	newKeyExists, err := s3Ctrl.KeyExists(bucket, destObjectKey)
 	if err != nil {
 		return fmt.Errorf("error checking if object %s exists: %s", destObjectKey, err.Error())
 	}
@@ -127,13 +143,13 @@ func (bh *BlobHandler) CopyObject(bucket, srcObjectKey, destObjectKey string) er
 	}
 
 	// Copy the object to the new key (effectively renaming)
-	_, err = bh.S3Svc.CopyObject(copyInput)
+	_, err = s3Ctrl.S3Svc.CopyObject(copyInput)
 	if err != nil {
 		return errors.New("error copying object" + srcObjectKey + "with the new key" + destObjectKey + ", " + err.Error())
 	}
 
 	// Delete the source object
-	_, err = bh.S3Svc.DeleteObject(&s3.DeleteObjectInput{
+	_, err = s3Ctrl.S3Svc.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(srcObjectKey),
 	})

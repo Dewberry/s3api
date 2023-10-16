@@ -13,8 +13,8 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-func (bh *BlobHandler) FetchObjectContent(bucket string, key string) ([]byte, error) {
-	keyExist, err := bh.KeyExists(bucket, key)
+func (s3Ctrl *S3Controller) FetchObjectContent(bucket string, key string) ([]byte, error) {
+	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func (bh *BlobHandler) FetchObjectContent(bucket string, key string) ([]byte, er
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	}
-	output, err := bh.S3Svc.GetObject(input)
+	output, err := s3Ctrl.S3Svc.GetObject(input)
 	if err != nil {
 		return nil, err
 	}
@@ -46,13 +46,19 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	bucket, err := getBucketParam(c, bh.Bucket)
-	if err != nil {
-		log.Error("HandleObjectContents: " + err.Error())
+	bucket := c.QueryParam("bucket")
+	if bucket == "" {
+		err := errors.New("parameter 'bucket' is required")
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	body, err := bh.FetchObjectContent(bucket, key)
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		log.Errorf("bucket %s is not available", bucket)
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+
+	body, err := s3Ctrl.FetchObjectContent(bucket, key)
 	if err != nil {
 		log.Error("HandleObjectContents: " + err.Error())
 		if strings.Contains(err.Error(), "object") {

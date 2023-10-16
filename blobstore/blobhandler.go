@@ -14,16 +14,22 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
+type S3Controller struct {
+	Sess    *session.Session
+	S3Svc   *s3.S3
+	Buckets []string
+}
+
 // Store configuration for the handler
 type BlobHandler struct {
-	Sess   *session.Session
-	S3Svc  *s3.S3
-	Bucket string
+	S3Controllers []S3Controller
 }
 
 // Initializes resources and return a new handler
 // errors are fatal
 func NewBlobHandler() (*BlobHandler, error) {
+	var s3Controllers []S3Controller
+
 	config := BlobHandler{}
 
 	// Set up a session with AWS credentials and region
@@ -32,31 +38,67 @@ func NewBlobHandler() (*BlobHandler, error) {
 		return nil, fmt.Errorf("failed to create AWS session: %v", err)
 	}
 
-	config.S3Svc = s3SVC
-	config.Sess = sess
+	S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
 
-	if os.Getenv("S3_BUCKET") == "" {
-		return nil, errors.New("S3_BUCKET environment variable is not set")
+	result, err := S3Ctrl.listBuckets()
+	if err != nil {
+		return nil, err
 	}
-	config.Bucket = os.Getenv("S3_BUCKET")
+	var bucketNames []string
+	// Return the list of bucket names as a slice of strings
+	for _, bucket := range result.Buckets {
+		bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
+	}
+
+	S3Ctrl.Buckets = bucketNames
+	s3Controllers = append(s3Controllers, S3Ctrl)
+
+	config.S3Controllers = s3Controllers
 
 	return &config, nil
+}
+
+func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
+	var s3Ctrl S3Controller
+	for _, controller := range bh.S3Controllers {
+		for _, b := range controller.Buckets {
+			if b == bucket {
+				s3Ctrl = controller
+				return &s3Ctrl, nil
+			}
+		}
+	}
+	return &s3Ctrl, errors.New("bucket not fond")
 }
 
 func (bh *BlobHandler) Ping(c echo.Context) error {
 	return c.JSON(http.StatusOK, "connection without Auth is healthy")
 }
+
 func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
 	// Perform a HeadBucket operation to check the health of the S3 connection
-	_, err := bh.S3Svc.HeadBucket(&s3.HeadBucketInput{
-		Bucket: aws.String(bh.Bucket),
-	})
-	if err != nil {
-		log.Errorf("Error connecting to S3 Bucket `%s`: %s ", bh.Bucket, err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+	bucketHealth := make(map[string]string)
+	var valid string
+
+	for _, s3Ctrl := range bh.S3Controllers {
+		for _, b := range s3Ctrl.Buckets {
+			_, err := s3Ctrl.S3Svc.HeadBucket(&s3.HeadBucketInput{
+				Bucket: aws.String(b),
+			})
+			if err != nil {
+				valid = "unhealthy"
+				log.Debugf("Ping operation preformed succesfully, connection to `%s` is unhealthy", b)
+			} else {
+				valid = "healthy"
+				log.Debugf("Ping operation preformed succesfully, connection to `%s` is healthy", b)
+			}
+
+			bucketHealth[b] = valid
+			print(b, valid)
+		}
 	}
-	log.Infof("Ping operation preformed succesfully, connection to `%s` is healthy", bh.Bucket)
-	return c.JSON(http.StatusOK, "connection is healthy to s3 bucket")
+
+	return c.JSON(http.StatusOK, bucketHealth)
 }
 
 func SessionManager() (*s3.S3, *session.Session, error) {
@@ -83,7 +125,7 @@ func SessionManager() (*s3.S3, *session.Session, error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("error connecting to minio session: %s", err.Error())
 		}
-		fmt.Println("Using minio to mock s3")
+		log.Info("Using minio to mock s3")
 
 		bucketName := os.Getenv("S3_BUCKET")
 
@@ -98,19 +140,19 @@ func SessionManager() (*s3.S3, *session.Session, error) {
 				Bucket: aws.String(bucketName),
 			})
 			if err != nil {
-				fmt.Println("Error creating bucket:", err)
+				log.Errorf("Error creating bucket:", err)
 				return nil, nil, nil
 			}
-			fmt.Println("Bucket created successfully")
+			log.Info("Bucket created successfully")
 		} else {
-			fmt.Println("Bucket already exists")
+			log.Info("Bucket already exists")
 		}
 
 		return s3SVC, sess, nil
 	} else {
 		awsAccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID")
 		awsSecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-		fmt.Println("Using AWS S3")
+		log.Info("Using AWS S3")
 		sess, err := session.NewSession(&aws.Config{
 			Region:      aws.String(region),
 			Credentials: credentials.NewStaticCredentials(awsAccessKeyID, awsSecretAccessKey, ""),

@@ -36,6 +36,15 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
+	bucket := c.QueryParam("bucket")
+	if prefix == "" {
+		err := errors.New("request must include a `bucket` parameter")
+		log.Error("HandleListByPrefix: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+
+	fmt.Println(bucket)
+
 	delimiterParam := c.QueryParam("delimiter")
 	var delimiter bool
 	if delimiterParam == "true" || delimiterParam == "false" {
@@ -57,19 +66,21 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 			prefix = prefix + "/"
 		}
 	}
-	bucket, err := getBucketParam(c, bh.Bucket)
+
+	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Error("HandleListByPrefix: " + err.Error())
+		log.Errorf("bucket %s is not available", bucket)
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	isObject, err := bh.KeyExists(bucket, prefix)
+	isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 	if err != nil {
-		log.Error("HandleListByPrefix: " + err.Error())
+		log.Error("HandleListByPrefix: can't find bucket or object " + err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
+
 	if isObject {
-		objMeta, err := bh.GetMetaData(bucket, prefix)
+		objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
 		if err != nil {
 			log.Error("HandleListByPrefix: " + err.Error())
 			return c.JSON(http.StatusInternalServerError, err.Error())
@@ -83,7 +94,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		}
 	}
 
-	listOutput, err := bh.GetList(bucket, prefix, delimiter)
+	listOutput, err := s3Ctrl.GetList(bucket, prefix, delimiter)
 	if err != nil {
 		log.Error("HandleListByPrefix: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -103,19 +114,27 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 
-	bucket, err := getBucketParam(c, bh.Bucket)
-	if err != nil {
-		log.Error("HandleListByPrefixWithDetail: " + err.Error())
+	bucket := c.QueryParam("bucket")
+	if bucket == "" {
+		err := errors.New("parameter 'bucket' is required")
+		log.Error("HandleMultipartUpload: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
+
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		log.Errorf("bucket %s is not available", bucket)
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+
 	if prefix != "" {
-		isObject, err := bh.KeyExists(bucket, prefix)
+		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 		if err != nil {
 			log.Error("HandleListByPrefixWithDetail: " + err.Error())
 			return c.JSON(http.StatusInternalServerError, err.Error())
 		}
 		if isObject {
-			objMeta, err := bh.GetMetaData(bucket, prefix)
+			objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
 			if err != nil {
 				log.Error("HandleListByPrefixWithDetail: " + err.Error())
 				return c.JSON(http.StatusInternalServerError, err.Error())
@@ -143,7 +162,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	var count int
 	for truncatedListing {
 
-		resp, err := bh.S3Svc.ListObjectsV2(query)
+		resp, err := s3Ctrl.S3Svc.ListObjectsV2(query)
 		if err != nil {
 			log.Error("HandleListByPrefixWithDetail: error retrieving list with the following query ", err)
 			errMsg := fmt.Errorf("HandleListByPrefixWithDetail: error retrieving list, %s", err.Error())
@@ -197,7 +216,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 // if delimiter is set to true then it is going to search for any objects within the prefix provided, if no object sare found it will
 // return null even if there was prefixes within the user provided prefix. If delimiter is set to false then it will look for all prefixes
 // that start with the user provided prefix.
-func (bh *BlobHandler) GetList(bucket, prefix string, delimiter bool) (*s3.ListObjectsV2Output, error) {
+func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool) (*s3.ListObjectsV2Output, error) {
 	// Set up input parameters for the ListObjectsV2 API
 	input := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucket),
@@ -209,7 +228,7 @@ func (bh *BlobHandler) GetList(bucket, prefix string, delimiter bool) (*s3.ListO
 	}
 	// Retrieve the list of objects in the bucket with the specified prefix
 	var response *s3.ListObjectsV2Output
-	err := bh.S3Svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, lastPage bool) bool {
+	err := s3Ctrl.S3Svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, lastPage bool) bool {
 		if response == nil {
 			response = page
 		} else {

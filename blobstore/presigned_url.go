@@ -21,17 +21,17 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-func (bh *BlobHandler) GetPresignedURL(bucket, key string, expDays int) (string, error) {
+func (s3Ctrl *S3Controller) GetPresignedURL(bucket, key string, expDays int) (string, error) {
 	duration := time.Duration(expDays) * 24 * time.Hour
-	req, _ := bh.S3Svc.GetObjectRequest(&s3.GetObjectInput{
+	req, _ := s3Ctrl.S3Svc.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 	return req.Presign(duration)
 }
 
-func (bh *BlobHandler) tarS3Files(r *s3.ListObjectsV2Output, bucket string, outputFile string, prefix string) (err error) {
-	uploader := s3manager.NewUploader(bh.Sess)
+func (s3Ctrl *S3Controller) tarS3Files(r *s3.ListObjectsV2Output, bucket string, outputFile string, prefix string) (err error) {
+	uploader := s3manager.NewUploader(s3Ctrl.Sess)
 	pr, pw := io.Pipe()
 
 	gzipWriter := gzip.NewWriter(pw)
@@ -61,7 +61,7 @@ func (bh *BlobHandler) tarS3Files(r *s3.ListObjectsV2Output, bucket string, outp
 		copyObj := aws.StringValue(item.Key)
 		log.Debugf("Copying %s to %s", copyObj, outputFile)
 
-		getResp, err := bh.S3Svc.GetObject(&s3.GetObjectInput{
+		getResp, err := s3Ctrl.S3Svc.GetObject(&s3.GetObjectInput{
 			Bucket: aws.String(bucket),
 			Key:    aws.String(copyObj),
 		})
@@ -116,18 +116,26 @@ func (bh *BlobHandler) tarS3Files(r *s3.ListObjectsV2Output, bucket string, outp
 }
 
 func (bh *BlobHandler) HandleGetPresignedURL(c echo.Context) error {
-	bucket, err := getBucketParam(c, bh.Bucket)
-	if err != nil {
-		log.Error("HandleGetPresignedURL: " + err.Error())
+	bucket := c.QueryParam("bucket")
+	if bucket == "" {
+		err := errors.New("parameter 'bucket' is required")
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
+
 	key := c.QueryParam("key")
 	if key == "" {
 		err := errors.New("parameter `key` is required")
 		log.Error("HandleGetPresignedURL: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-	keyExist, err := bh.KeyExists(bucket, key)
+
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		log.Errorf("bucket %s is not available", bucket)
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+
+	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
 		log.Error("HandleGetPresignedURL: Error checking if key exists:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -143,7 +151,7 @@ func (bh *BlobHandler) HandleGetPresignedURL(c echo.Context) error {
 		log.Error("HandleGetPresignedURL: Error getting `URL_EXP_DAYS` from env file:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
-	url, err := bh.GetPresignedURL(bucket, key, expPeriod)
+	url, err := s3Ctrl.GetPresignedURL(bucket, key, expPeriod)
 	if err != nil {
 		log.Error("HandleGetPresignedURL: Error getting presigned URL:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -161,16 +169,23 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	bucket, err := getBucketParam(c, bh.Bucket)
-	if err != nil {
-		log.Error("HandleGetPresignedURLMultiObj: " + err.Error())
+	bucket := c.QueryParam("bucket")
+	if bucket == "" {
+		err := errors.New("parameter 'bucket' is required")
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
+
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		log.Errorf("bucket %s is not available", bucket)
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+
 	if !strings.HasSuffix(prefix, "/") {
 		prefix = prefix + "/"
 	}
 
-	response, err := bh.GetList(bucket, prefix, false)
+	response, err := s3Ctrl.GetList(bucket, prefix, false)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -199,7 +214,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 	filename := fmt.Sprintf("%s-%s.%s", filepath.Base(base), uuid, "tar.gz")
 	outputFile := filepath.Join(os.Getenv("TEMP_PREFIX"), filename)
 
-	err = bh.tarS3Files(response, bucket, outputFile, prefix)
+	err = s3Ctrl.tarS3Files(response, bucket, outputFile, prefix)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error tarring S3 files:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -209,7 +224,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting `URL_EXP_DAYS` from env file:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
-	href, err := bh.GetPresignedURL(bucket, outputFile, expPeriod)
+	href, err := s3Ctrl.GetPresignedURL(bucket, outputFile, expPeriod)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting presigned URL:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())

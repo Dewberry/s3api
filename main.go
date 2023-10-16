@@ -28,6 +28,7 @@ func main() {
 
 	e.GET("/ping", bh.Ping)
 	e.GET("/ping_with_auth", auth.Authorize(bh.PingWithAuth, allUsers...))
+
 	// object content
 	e.GET("/object/metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
 	e.GET("/object/content", auth.Authorize(bh.HandleObjectContents, allUsers...))
@@ -36,6 +37,7 @@ func main() {
 	e.POST("/object/upload", auth.Authorize(bh.HandleMultipartUpload, writer...))
 	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObject, admin...))
 	e.GET("/object/exists", auth.Authorize(bh.HandleGetObjExist, allUsers...))
+
 	// prefix
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefixWithDetail, allUsers...))
@@ -46,6 +48,9 @@ func main() {
 
 	// universal
 	e.DELETE("/delete_keys", auth.Authorize(bh.HandleDeleteObjectsByList, admin...))
+
+	// multi-bucket
+	e.GET("/list_buckets", auth.Authorize(bh.HandleListBuckets, allUsers...))
 	// multi-bucket -- not implemented
 	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writer...))
 	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writer...))
