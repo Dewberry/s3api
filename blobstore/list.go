@@ -18,6 +18,7 @@ import (
 // ListResult is the result struct for listing objects with additional details.
 type ListResult struct {
 	ID         int       `json:"id"`
+	Bucket     string    `json:"bucket"`
 	Name       string    `json:"filename"`
 	Size       string    `json:"size"`
 	Path       string    `json:"filepath"`
@@ -37,7 +38,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
-	if prefix == "" {
+	if bucket == "" {
 		err := errors.New("request must include a `bucket` parameter")
 		log.Error("HandleListByPrefix: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
@@ -117,7 +118,6 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	if bucket == "" {
 		err := errors.New("parameter 'bucket' is required")
-		log.Error("HandleMultipartUpload: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
