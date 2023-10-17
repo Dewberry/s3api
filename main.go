@@ -15,7 +15,7 @@ func main() {
 	allUsers := []string{"admin", "reader", "writer"}
 	writer := []string{"admin", "writer"}
 
-	apiConfig := config.Init()
+	apiConfig := config.Init(".env.json")
 	bh := apiConfig.BH
 
 	e := echo.New()
