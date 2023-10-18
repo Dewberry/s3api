@@ -2,7 +2,7 @@ name: E2E tests
 
 on:
   push:
-    branches: [main]
+    branches: [Feature/multi accts buckets]
   pull_request:
   workflow_dispatch:
 
