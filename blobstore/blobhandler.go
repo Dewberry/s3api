@@ -34,7 +34,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		log.Info("Using MinIO")
 
 		creds := NewMinioConfig()
-		s3SVC, sess, err := MinIOSessionManager(creds)
+		s3SVC, sess, err := minIOSessionManager(creds)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create MinIO session: %v", err)
 		}
@@ -52,7 +52,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	if err != nil {
 		log.Warn("No env.json credentials found, attmepting to retreive from environment")
 		creds := AWSFromENV()
-		s3SVC, sess, err := AWSSessionManager(creds)
+		s3SVC, sess, err := aWSSessionManager(creds)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create AWS session: %v", err)
 		}
@@ -69,7 +69,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	for _, creds := range awsConfig.Accounts {
 		var bucketNames []string
 		// Set up a session with AWS credentials and region
-		s3SVC, sess, err := AWSSessionManager(creds)
+		s3SVC, sess, err := aWSSessionManager(creds)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create AWS session: %v", err)
 		}
@@ -94,7 +94,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	return &config, nil
 }
 
-func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
+func (bh *BlobHandler) getController(bucket string) (*S3Controller, error) {
 	var s3Ctrl S3Controller
 	for _, controller := range bh.S3Controllers {
 		for _, b := range controller.Buckets {
@@ -137,7 +137,7 @@ func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
 	return c.JSON(http.StatusOK, bucketHealth)
 }
 
-func AWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
+func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
 	log.Info("Using AWS S3")
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String(creds.AWS_REGION),
@@ -149,7 +149,7 @@ func AWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
 	return s3.New(sess), sess, nil
 }
 
-func MinIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
+func minIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Endpoint:         aws.String(mc.S3Endpoint),
 		Region:           aws.String(mc.S3Region),

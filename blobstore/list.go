@@ -68,7 +68,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		}
 	}
 
-	s3Ctrl, err := bh.GetController(bucket)
+	s3Ctrl, err := bh.getController(bucket)
 	if err != nil {
 		log.Errorf("bucket %s is not available", bucket)
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
@@ -121,7 +121,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	s3Ctrl, err := bh.GetController(bucket)
+	s3Ctrl, err := bh.getController(bucket)
 	if err != nil {
 		log.Errorf("bucket %s is not available", bucket)
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
