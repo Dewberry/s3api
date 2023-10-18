@@ -11,9 +11,9 @@ import (
 func main() {
 
 	// administrator := []string{"administrator", "read", "write"}
-	admin := []string{"admin"}
-	allUsers := []string{"admin", "reader", "writer"}
-	writer := []string{"admin", "writer"}
+	admin := []string{"s3_admin"}
+	allUsers := []string{"s3_admin", "s3_reader", "s3_writer"}
+	writer := []string{"s3_admin", "s3_writer"}
 
 	apiConfig := config.Init(".env.json")
 	bh := apiConfig.BH
