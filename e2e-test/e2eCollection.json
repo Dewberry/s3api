@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "fa40a51e-51b4-45f8-ae0e-21a554bfc5a0",
+		"_postman_id": "0a073b9d-5085-4565-9fc1-afe9a1aa4ee6",
 		"name": "E2E Testing Collection Copy 2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "18773467",
-		"_collection_link": "https://universal-comet-524706.postman.co/workspace/Dewberry~fe115dcb-2f48-4ca3-a618-e462c6ac4255/collection/18773467-fa40a51e-51b4-45f8-ae0e-21a554bfc5a0?action=share&source=collection_link&creator=18773467"
+		"_collection_link": "https://universal-comet-524706.postman.co/workspace/Dewberry~fe115dcb-2f48-4ca3-a618-e462c6ac4255/collection/18773467-0a073b9d-5085-4565-9fc1-afe9a1aa4ee6?action=share&source=collection_link&creator=18773467"
 	},
 	"item": [
 		{
@@ -256,7 +256,7 @@
 							]
 						},
 						"url": {
-							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}",
+							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -272,6 +272,10 @@
 								{
 									"key": "override",
 									"value": "{{e2eoverride}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -305,7 +309,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/object/exists?key={{e2ePathToObj}}{{e2eObjName}}",
+							"raw": "{{s3_api_root_url}}/object/exists?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -317,6 +321,10 @@
 								{
 									"key": "key",
 									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -350,7 +358,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/object/metadata?key={{e2ePathToObj}}{{e2eObjName}}",
+							"raw": "{{s3_api_root_url}}/object/metadata?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -362,6 +370,10 @@
 								{
 									"key": "key",
 									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -395,7 +407,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/object/content?key={{e2ePathToObj}}{{e2eObjName}}",
+							"raw": "{{s3_api_root_url}}/object/content?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -407,6 +419,10 @@
 								{
 									"key": "key",
 									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -440,7 +456,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/object/download?key={{e2ePathToObj}}{{e2eObjName}}",
+							"raw": "{{s3_api_root_url}}/object/download?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -452,6 +468,10 @@
 								{
 									"key": "key",
 									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -485,7 +505,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/size?prefix={{e2ePathToObj}}",
+							"raw": "{{s3_api_root_url}}/prefix/size?prefix={{e2ePathToObj}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -497,6 +517,10 @@
 								{
 									"key": "prefix",
 									"value": "{{e2ePathToObj}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -530,7 +554,7 @@
 						"method": "PUT",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}",
+							"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -546,6 +570,10 @@
 								{
 									"key": "dest_key",
 									"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -579,7 +607,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/list?prefix={{e2ePathToObj}}&delimiter={{e2eoverride}}",
+							"raw": "{{s3_api_root_url}}/prefix/list?prefix={{e2ePathToObj}}&delimiter={{e2eoverride}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -595,6 +623,10 @@
 								{
 									"key": "delimiter",
 									"value": "{{e2eoverride}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -628,7 +660,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/list_with_details?prefix={{e2ePathToObj}}",
+							"raw": "{{s3_api_root_url}}/prefix/list_with_details?prefix={{e2ePathToObj}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -640,6 +672,10 @@
 								{
 									"key": "prefix",
 									"value": "{{e2ePathToObj}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -673,7 +709,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/download?prefix={{e2ePathToObj}}",
+							"raw": "{{s3_api_root_url}}/prefix/download?prefix={{e2ePathToObj}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -685,6 +721,10 @@
 								{
 									"key": "prefix",
 									"value": "{{e2ePathToObj}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -737,7 +777,7 @@
 							]
 						},
 						"url": {
-							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}",
+							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -753,6 +793,10 @@
 								{
 									"key": "override",
 									"value": "{{e2eoverride}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -786,7 +830,7 @@
 						"method": "PUT",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/move?src_prefix={{e2ePathToObj}}{{e2ePathToObj}}&dest_prefix={{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}",
+							"raw": "{{s3_api_root_url}}/prefix/move?src_prefix={{e2ePathToObj}}{{e2ePathToObj}}&dest_prefix={{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -802,6 +846,10 @@
 								{
 									"key": "dest_prefix",
 									"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -835,7 +883,7 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/object/delete?key={{e2ePathToObj}}{{e2eObjName}}",
+							"raw": "{{s3_api_root_url}}/object/delete?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -847,6 +895,10 @@
 								{
 									"key": "key",
 									"value": "{{e2ePathToObj}}{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -880,7 +932,7 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/delete?prefix={{e2ePathToObj}}",
+							"raw": "{{s3_api_root_url}}/prefix/delete?prefix={{e2ePathToObj}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -892,6 +944,10 @@
 								{
 									"key": "prefix",
 									"value": "{{e2ePathToObj}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -944,7 +1000,7 @@
 							]
 						},
 						"url": {
-							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}1&override={{e2eoverride}}",
+							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}1&override={{e2eoverride}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -960,6 +1016,10 @@
 								{
 									"key": "override",
 									"value": "{{e2eoverride}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -1012,7 +1072,7 @@
 							]
 						},
 						"url": {
-							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}2&override={{e2eoverride}}",
+							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}2&override={{e2eoverride}}&bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
@@ -1028,6 +1088,10 @@
 								{
 									"key": "override",
 									"value": "{{e2eoverride}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
 								}
 							]
 						}
@@ -1070,12 +1134,18 @@
 							}
 						},
 						"url": {
-							"raw": "{{s3_api_root_url}}/delete_keys",
+							"raw": "{{s3_api_root_url}}/delete_keys?bucket={{bucket}}",
 							"host": [
 								"{{s3_api_root_url}}"
 							],
 							"path": [
 								"delete_keys"
+							],
+							"query": [
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
+								}
 							]
 						}
 					},
@@ -1157,7 +1227,7 @@
 									]
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}",
+									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1173,6 +1243,10 @@
 										{
 											"key": "override",
 											"value": "{{e2eoverride}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1225,7 +1299,7 @@
 									]
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}2&override={{e2eoverride}}",
+									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}2&override={{e2eoverride}}&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1241,6 +1315,10 @@
 										{
 											"key": "override",
 											"value": "{{e2eoverride}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1320,7 +1398,7 @@
 									]
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?override={{e2eoverride}}",
+									"raw": "{{s3_api_root_url}}/object/upload?override={{e2eoverride}}&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1337,6 +1415,10 @@
 										{
 											"key": "override",
 											"value": "{{e2eoverride}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1392,7 +1474,7 @@
 									]
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}",
+									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1409,6 +1491,10 @@
 											"key": "override",
 											"value": "{{e2eoverride}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1461,7 +1547,7 @@
 									]
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload",
+									"raw": "{{s3_api_root_url}}/object/upload?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1479,6 +1565,10 @@
 											"key": "override",
 											"value": "{{e2eoverride}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1512,7 +1602,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/exists",
+									"raw": "{{s3_api_root_url}}/object/exists?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1525,6 +1615,10 @@
 											"key": "key",
 											"value": "{{e2ePathToObj}}{{e2eObjName}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1558,7 +1652,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/list",
+									"raw": "{{s3_api_root_url}}/prefix/list?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1576,6 +1670,10 @@
 											"key": "delimiter",
 											"value": "{{e2eoverride}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1609,7 +1707,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/size",
+									"raw": "{{s3_api_root_url}}/prefix/size?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1622,6 +1720,10 @@
 											"key": "prefix",
 											"value": "{{e2ePathToObj}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1655,7 +1757,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/metadata",
+									"raw": "{{s3_api_root_url}}/object/metadata?bukcet={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1668,6 +1770,10 @@
 											"key": "key",
 											"value": "{{e2ePathToObj}}{{e2eObjName}}",
 											"disabled": true
+										},
+										{
+											"key": "bukcet",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1701,7 +1807,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/content",
+									"raw": "{{s3_api_root_url}}/object/content?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1714,6 +1820,10 @@
 											"key": "key",
 											"value": "{{e2ePathToObj}}{{e2eObjName}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1747,7 +1857,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/download",
+									"raw": "{{s3_api_root_url}}/object/download?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1760,6 +1870,10 @@
 											"key": "key",
 											"value": "{{e2ePathToObj}}{{e2eObjName}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1802,12 +1916,18 @@
 									}
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/delete_keys",
+									"raw": "{{s3_api_root_url}}/delete_keys?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
 									"path": [
 										"delete_keys"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
 									]
 								}
 							},
@@ -1840,7 +1960,7 @@
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/delete",
+									"raw": "{{s3_api_root_url}}/prefix/delete?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1853,6 +1973,10 @@
 											"key": "prefix",
 											"value": "{{e2ePathToObj}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1886,7 +2010,7 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/move",
+									"raw": "{{s3_api_root_url}}/object/move?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1904,6 +2028,10 @@
 											"key": "dest_key",
 											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1937,7 +2065,7 @@
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/delete",
+									"raw": "{{s3_api_root_url}}/object/delete?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1950,6 +2078,10 @@
 											"key": "key",
 											"value": "{{e2ePathToObj}}{{e2eObjName}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -1983,7 +2115,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/download",
+									"raw": "{{s3_api_root_url}}/prefix/download?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -1996,6 +2128,10 @@
 											"key": "prefix",
 											"value": "{{e2ePathToObj}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2029,7 +2165,7 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/move",
+									"raw": "{{s3_api_root_url}}/prefix/move?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2047,6 +2183,10 @@
 											"key": "dest_prefix",
 											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}",
 											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2107,7 +2247,7 @@
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/delete?prefix=invalid",
+									"raw": "{{s3_api_root_url}}/prefix/delete?prefix=invalid&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2119,6 +2259,10 @@
 										{
 											"key": "prefix",
 											"value": "invalid"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2152,7 +2296,7 @@
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/delete?key=invalid",
+									"raw": "{{s3_api_root_url}}/object/delete?key=invalid&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2164,6 +2308,10 @@
 										{
 											"key": "key",
 											"value": "invalid"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2197,7 +2345,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/content?key=invalid",
+									"raw": "{{s3_api_root_url}}/object/content?key=invalid&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2209,6 +2357,10 @@
 										{
 											"key": "key",
 											"value": "invalid"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2251,12 +2403,18 @@
 									}
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/delete_keys",
+									"raw": "{{s3_api_root_url}}/delete_keys?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
 									"path": [
 										"delete_keys"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
 									]
 								}
 							},
@@ -2289,7 +2447,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/download?prefix=invalid",
+									"raw": "{{s3_api_root_url}}/prefix/download?prefix=invalid&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2301,6 +2459,10 @@
 										{
 											"key": "prefix",
 											"value": "invalid"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2334,7 +2496,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/download?key=invalid",
+									"raw": "{{s3_api_root_url}}/object/download?key=invalid&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2346,6 +2508,10 @@
 										{
 											"key": "key",
 											"value": "invalid"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2379,7 +2545,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/metadata?key=invalid",
+									"raw": "{{s3_api_root_url}}/object/metadata?key=invalid&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2391,6 +2557,10 @@
 										{
 											"key": "key",
 											"value": "invalid"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2424,7 +2594,7 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/move?src_key=invalid&dest_key={{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}",
+									"raw": "{{s3_api_root_url}}/object/move?src_key=invalid&dest_key={{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2440,6 +2610,10 @@
 										{
 											"key": "dest_key",
 											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2473,7 +2647,7 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/move?src_prefix=invalid&dest_prefix={{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}",
+									"raw": "{{s3_api_root_url}}/prefix/move?src_prefix=invalid&dest_prefix={{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2489,6 +2663,10 @@
 										{
 											"key": "dest_prefix",
 											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2522,7 +2700,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/size?prefix=invalid",
+									"raw": "{{s3_api_root_url}}/prefix/size?prefix=invalid&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2534,6 +2712,10 @@
 										{
 											"key": "prefix",
 											"value": "invalid"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2594,7 +2776,7 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2eObjName}}",
+									"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2610,6 +2792,10 @@
 										{
 											"key": "dest_key",
 											"value": "{{e2ePathToObj}}{{e2eObjName}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2652,12 +2838,18 @@
 									}
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/delete_keys",
+									"raw": "{{s3_api_root_url}}/delete_keys?bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
 									"path": [
 										"delete_keys"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
 									]
 								}
 							},
@@ -2710,7 +2902,7 @@
 									]
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}",
+									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2726,6 +2918,10 @@
 										{
 											"key": "override",
 											"value": "{{e2eoverride}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2786,7 +2982,7 @@
 								"method": "PUT",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2eObjName}}2",
+									"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2eObjName}}2&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2802,6 +2998,10 @@
 										{
 											"key": "dest_key",
 											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2854,7 +3054,7 @@
 									]
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}",
+									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2870,6 +3070,10 @@
 										{
 											"key": "override",
 											"value": "{{e2eoverride}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2930,7 +3134,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/list?prefix={{e2ePathToObj}}{{e2eObjName}}2&delimiter={{e2eoverride}}",
+									"raw": "{{s3_api_root_url}}/prefix/list?prefix={{e2ePathToObj}}{{e2eObjName}}2&delimiter={{e2eoverride}}&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2946,6 +3150,10 @@
 										{
 											"key": "delimiter",
 											"value": "{{e2eoverride}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2979,7 +3187,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/list_with_details?prefix={{e2ePathToObj}}{{e2eObjName}}2",
+									"raw": "{{s3_api_root_url}}/prefix/list_with_details?prefix={{e2ePathToObj}}{{e2eObjName}}2&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2991,6 +3199,10 @@
 										{
 											"key": "prefix",
 											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -3024,7 +3236,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/size?prefix={{e2ePathToObj}}{{e2eObjName}}2",
+									"raw": "{{s3_api_root_url}}/prefix/size?prefix={{e2ePathToObj}}{{e2eObjName}}2&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -3036,6 +3248,10 @@
 										{
 											"key": "prefix",
 											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -3096,7 +3312,7 @@
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/delete?prefix={{e2ePathToObj}}",
+									"raw": "{{s3_api_root_url}}/prefix/delete?prefix={{e2ePathToObj}}&bucket={{bucket}}",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -3108,6 +3324,10 @@
 										{
 											"key": "prefix",
 											"value": "{{e2ePathToObj}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
 								}
