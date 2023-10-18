@@ -38,7 +38,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create MinIO session: %v", err)
 		}
-		buckets := []string{os.Getenv("S3_Bucket")}
+		buckets := []string{os.Getenv("S3_BUCKET")}
 		s3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: buckets}
 		config.S3Controllers = []S3Controller{s3Ctrl}
 		config.NamedBucketOnly = true
