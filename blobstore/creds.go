@@ -24,6 +24,7 @@ type MinioConfig struct {
 	ForcePathStyle  string `json:"MINIO_S3_FORCE_PATH_STYLE"`
 	AccessKeyID     string `json:"MINIO_ACCESS_KEY_ID"`
 	SecretAccessKey string `json:"MINIO_SECRET_ACCESS_KEY"`
+	Bucket          string `json:"S3_BUCKET"`
 	S3Mock          string `json:"S3_MOCK"`
 }
 
@@ -82,7 +83,7 @@ func validateEnvJSON(filePath string) error {
 	// Parse the JSON data into the AWSConfig struct
 	var awsConfig AWSConfig
 	if err := json.Unmarshal(jsonData, &awsConfig); err != nil {
-		return fmt.Errorf("error parsing .env.json: %v", err)
+		return fmt.Errorf("error parsing .env.json: %s", err.Error())
 	}
 
 	// Check if there is at least one account defined
@@ -112,7 +113,7 @@ func validateEnvJSON(filePath string) error {
 	return nil
 }
 
-func NewAWSConfig(envJson string) (AWSConfig, error) {
+func newAWSConfig(envJson string) (AWSConfig, error) {
 	var awsConfig AWSConfig
 	err := validateEnvJSON(envJson)
 	if err != nil {
@@ -129,7 +130,7 @@ func NewAWSConfig(envJson string) (AWSConfig, error) {
 	return awsConfig, nil
 }
 
-func AWSFromENV() AWSCreds {
+func awsFromENV() AWSCreds {
 	var creds AWSCreds
 	creds.AWS_ACCESS_KEY_ID = os.Getenv("AWS_ACCESS_KEY_ID")
 	creds.AWS_SECRET_ACCESS_KEY = os.Getenv("AWS_SECRET_ACCESS_KEY")
@@ -137,13 +138,14 @@ func AWSFromENV() AWSCreds {
 	return creds
 }
 
-func NewMinioConfig() MinioConfig {
+func newMinioConfig() MinioConfig {
 	var mc MinioConfig
 	mc.S3Endpoint = os.Getenv("MINIO_S3_ENDPOINT")
 	mc.S3Region = os.Getenv("MINIO_S3_REGION")
 	mc.DisableSSL = os.Getenv("MINIO_S3_DISABLE_SSL")
 	mc.ForcePathStyle = os.Getenv("MINIO_S3_FORCE_PATH_STYLE")
 	mc.AccessKeyID = os.Getenv("MINIO_ACCESS_KEY_ID")
+	mc.Bucket = os.Getenv("S3_BUCKET")
 	mc.SecretAccessKey = os.Getenv("MINIO_SECRET_ACCESS_KEY")
 	return mc
 }

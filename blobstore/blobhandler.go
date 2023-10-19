@@ -35,22 +35,22 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		log.Info("Using MinIO")
 
 		// Load MinIO credentials from environment
-		creds := NewMinioConfig()
+		creds := newMinioConfig()
 
 		// Validate MinIO credentials, check if they are missing or incomplete
 		// if not then the s3api won't start
 		if err := creds.validateMinioConfig(); err != nil {
-			log.Fatalf("MINIO credentials are either completely not there or are missing variables: %s", err.Error())
+			log.Fatalf("MINIO credentials are either not provided or contain missing variables: %s", err.Error())
 		}
 
 		// Create a MinIO session and S3 client
 		s3SVC, sess, err := minIOSessionManager(creds)
 		if err != nil {
-			log.Fatalf("failed to create MinIO session: %v", err)
+			log.Fatalf("failed to create MinIO session: %s", err.Error())
 		}
 
 		// Configure the BlobHandler with MinIO session and bucket information
-		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{os.Getenv("S3_BUCKET")}}}
+		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{creds.Bucket}}}
 		config.NamedBucketOnly = true
 
 		// Return the configured BlobHandler
@@ -60,23 +60,23 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	// Using AWS S3
 
 	// Load AWS credentials from the provided .env.json file
-	awsConfig, err := NewAWSConfig(envJson)
+	awsConfig, err := newAWSConfig(envJson)
 
 	// Check if loading AWS credentials from .env.json failed
 	if err != nil {
 		log.Warnf("env.json credentials extraction failed, attmepting to retreive from environment, %s", err.Error())
-		creds := AWSFromENV()
+		creds := awsFromENV()
 
 		// Validate AWS credentials, check if they are missing or incomplete
 		// if not then the s3api won't start
 		if err := creds.validateAWSCreds(); err != nil {
-			log.Fatalf("AWS credentials are either completely not there or are missing variables: %s", err.Error())
+			log.Fatalf("AWS credentials are either not provided or contain missing variables: %s", err.Error())
 		}
 
 		// Create an AWS session and S3 client
 		s3SVC, sess, err := aWSSessionManager(creds)
 		if err != nil {
-			log.Fatalf("failed to create AWS session: %v", err)
+			log.Fatalf("failed to create AWS session: %s", err.Error())
 		}
 
 		// Configure the BlobHandler with AWS session and bucket information
@@ -94,7 +94,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		// Create an AWS session and S3 client for each account
 		s3SVC, sess, err := aWSSessionManager(creds)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create AWS session: %v", err)
+			return nil, fmt.Errorf("failed to create AWS session: %s", err.Error())
 		}
 
 		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
@@ -146,20 +146,18 @@ func minIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
 	}
 	log.Info("Using minio to mock s3")
 
-	bucketName := os.Getenv("S3_BUCKET")
-
 	// Check if the bucket exists
 	s3SVC := s3.New(sess)
 	_, err = s3SVC.HeadBucket(&s3.HeadBucketInput{
-		Bucket: aws.String(bucketName),
+		Bucket: aws.String(mc.Bucket),
 	})
 	if err != nil {
 		// Bucket does not exist, create it
 		_, err := s3SVC.CreateBucket(&s3.CreateBucketInput{
-			Bucket: aws.String(bucketName),
+			Bucket: aws.String(mc.Bucket),
 		})
 		if err != nil {
-			log.Errorf("Error creating bucket:", err)
+			log.Errorf("Error creating bucket: %s", err.Error())
 			return nil, nil, nil
 		}
 		log.Info("Bucket created successfully")
@@ -204,11 +202,10 @@ func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
 			})
 			if err != nil {
 				valid = "unhealthy"
-				log.Debugf("Ping operation preformed succesfully, connection to `%s` is unhealthy", b)
 			} else {
 				valid = "healthy"
-				log.Debugf("Ping operation preformed succesfully, connection to `%s` is healthy", b)
 			}
+			log.Debugf("Ping operation preformed succesfully, connection to `%s` is %s", b, valid)
 
 			bucketHealth[b] = valid
 			print(b, valid)
