@@ -3,6 +3,7 @@ package blobstore
 // Not implemented
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -21,7 +22,8 @@ func (s3Ctrl *S3Controller) listBuckets() (*s3.ListBucketsOutput, error) {
 	// Retrieve the list of buckets
 	result, err = s3Ctrl.S3Svc.ListBuckets(input)
 	if err != nil {
-		return nil, err
+		errMsg := fmt.Errorf("failed to call ListBuckets: %s", err.Error())
+		return nil, errMsg
 	}
 	return result, nil
 }

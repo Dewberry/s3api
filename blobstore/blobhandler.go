@@ -94,7 +94,9 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		// Create an AWS session and S3 client for each account
 		s3SVC, sess, err := aWSSessionManager(creds)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create AWS session: %s", err.Error())
+			errMsg := fmt.Errorf("failed to create AWS session: %s", err.Error())
+			log.Error(errMsg.Error())
+			return nil, errMsg
 		}
 
 		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
@@ -102,7 +104,9 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		// Retrieve the list of buckets for each account
 		result, err := S3Ctrl.listBuckets()
 		if err != nil {
-			return nil, err
+			errMsg := fmt.Errorf("failed to retrieve list of buckets: %s", err.Error())
+			log.Error(errMsg.Error())
+			return nil, errMsg
 		}
 
 		// Extract and store bucket names associated with the account
