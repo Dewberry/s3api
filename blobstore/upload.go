@@ -121,13 +121,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
-	if key == "" {
-		err := errors.New("parameter 'bucket' is required")
-		log.Error("HandleMultipartUpload: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
-
-	s3Ctrl, err := bh.getController(bucket)
+	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
 		log.Errorf("bucket %s is not available", bucket)
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())

@@ -80,7 +80,6 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 		log.Infof("HandleListBuckets: Returning named bucket %s", bucket)
 		result.Bucket = bucket
 		return c.JSON(http.StatusOK, []ListResult{result})
-
 	} else {
 		var results []ListResult
 

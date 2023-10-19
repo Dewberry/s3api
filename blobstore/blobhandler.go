@@ -1,7 +1,6 @@
 package blobstore
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -171,7 +170,12 @@ func minIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
 	return s3SVC, sess, nil
 }
 
-func (bh *BlobHandler) getController(bucket string) (*S3Controller, error) {
+func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
+	if bucket == "" {
+		err := fmt.Errorf("parameter 'bucket' is required")
+		log.Error(err.Error())
+		return nil, err
+	}
 	var s3Ctrl S3Controller
 	for _, controller := range bh.S3Controllers {
 		for _, b := range controller.Buckets {
@@ -181,7 +185,7 @@ func (bh *BlobHandler) getController(bucket string) (*S3Controller, error) {
 			}
 		}
 	}
-	return &s3Ctrl, errors.New("bucket not found")
+	return &s3Ctrl, fmt.Errorf("bucket '%s' not found", bucket)
 }
 
 func (bh *BlobHandler) Ping(c echo.Context) error {

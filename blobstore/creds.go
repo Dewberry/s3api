@@ -7,10 +7,6 @@ import (
 	"strings"
 )
 
-type Credentials interface {
-	Exist() bool
-}
-
 type AWSCreds struct {
 	AWS_ACCESS_KEY_ID     string `json:"AWS_ACCESS_KEY_ID"`
 	AWS_SECRET_ACCESS_KEY string `json:"AWS_SECRET_ACCESS_KEY"`
