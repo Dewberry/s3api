@@ -1,15 +1,30 @@
 package main
 
 import (
+	"os"
+
 	"github.com/Dewberry/s3api/auth"
 	"github.com/Dewberry/s3api/config"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-
+	log.SetFormatter(&log.JSONFormatter{})
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "info"
+	}
+	level, err := log.ParseLevel(logLevel)
+	if err != nil {
+		log.WithError(err).Error("Invalid log level")
+		level = log.InfoLevel
+	}
+	log.SetLevel(level)
+	log.SetReportCaller(true)
+	log.Infof("level level set to: %s", level)
 	// administrator := []string{"administrator", "read", "write"}
 	admin := []string{"s3_admin"}
 	allUsers := []string{"s3_admin", "s3_reader", "s3_writer"}

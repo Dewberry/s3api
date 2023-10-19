@@ -18,7 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	log "github.com/sirupsen/logrus"
 )
 
 func (s3Ctrl *S3Controller) GetPresignedURL(bucket, key string, expDays int) (string, error) {

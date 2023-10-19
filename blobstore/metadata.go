@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	log "github.com/sirupsen/logrus"
 )
 
 func (bh *BlobHandler) GetSize(list *s3.ListObjectsV2Output) (uint64, uint32, error) {
