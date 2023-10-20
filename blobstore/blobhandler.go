@@ -183,11 +183,43 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 		for _, b := range controller.Buckets {
 			if b == bucket {
 				s3Ctrl = controller
+
+				// Detect the bucket's region
+				region, err := getBucketRegion(controller.S3Svc, b)
+				if err != nil {
+					log.Errorf("Failed to get region for bucket '%s': %s", b, err.Error())
+					continue
+				}
+				//TODO: make a conditional to not always make a new session if the region is the same
+				// Update the session and client with the correct region
+				s3Ctrl.Sess.Config.Region = aws.String(region)
+				s3Ctrl.S3Svc = s3.New(s3Ctrl.Sess)
+
 				return &s3Ctrl, nil
 			}
 		}
 	}
 	return &s3Ctrl, fmt.Errorf("bucket '%s' not found", bucket)
+}
+
+func getBucketRegion(S3Svc *s3.S3, bucketName string) (string, error) {
+	req, output := S3Svc.GetBucketLocationRequest(&s3.GetBucketLocationInput{
+		Bucket: aws.String(bucketName),
+	})
+
+	// Customize or log details from req if needed
+	// e.g., req.SetBufferBody([]byte("body data"))
+
+	err := req.Send()
+	if err != nil {
+		return "", err
+	}
+
+	if output.LocationConstraint == nil {
+		return "us-east-1", nil
+	}
+
+	return *output.LocationConstraint, nil
 }
 
 func (bh *BlobHandler) Ping(c echo.Context) error {
