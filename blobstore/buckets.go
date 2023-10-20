@@ -75,31 +75,45 @@ func (s3Ctrl *S3Controller) listBuckets() (*s3.ListBucketsOutput, error) {
 //		return result, nil
 //	}
 
+type BucketInfo struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
 func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
-	var allBucketNames []string
+	var allBuckets []BucketInfo
 
 	if bh.NamedBucketOnly {
 		bucketName := bh.S3Controllers[0].Buckets[0]
 		log.Infof("HandleListBuckets: Returning named bucket %s", bucketName)
 
-		allBucketNames = append(allBucketNames, bucketName)
+		allBuckets = append(allBuckets, BucketInfo{
+			ID:   1, // Or any other starting ID you want
+			Name: bucketName,
+		})
 	} else {
+		currentID := 1 // Initialize ID counter
+
 		for _, s3Ctrl := range bh.S3Controllers {
 			response, err := s3Ctrl.listBuckets()
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, err.Error())
 			}
 
-			// Extract the bucket names from the response and append to allBucketNames
+			// Extract the bucket names from the response and append to allBuckets
 			for _, bucket := range response.Buckets {
-				allBucketNames = append(allBucketNames, aws.StringValue(bucket.Name))
+				allBuckets = append(allBuckets, BucketInfo{
+					ID:   currentID,
+					Name: aws.StringValue(bucket.Name),
+				})
+				currentID++ // Increment the ID for the next bucket
 			}
 		}
 
-		log.Info("HandleListBuckets: Successfully retrieved list of bucket names")
+		log.Info("HandleListBuckets: Successfully retrieved list of buckets")
 	}
 
-	return c.JSON(http.StatusOK, allBucketNames)
+	return c.JSON(http.StatusOK, allBuckets)
 }
 
 // func (bh *BlobHandler) HandleCreateBucket(c echo.Context) error {
