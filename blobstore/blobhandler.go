@@ -23,6 +23,7 @@ type S3Controller struct {
 type BlobHandler struct {
 	S3Controllers   []S3Controller
 	NamedBucketOnly bool
+	Sessions        map[string]*session.Session
 }
 
 // Initializes resources and return a new handler (errors are fatal)
@@ -190,10 +191,20 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 					log.Errorf("Failed to get region for bucket '%s': %s", b, err.Error())
 					continue
 				}
-				//TODO: make a conditional to not always make a new session if the region is the same
-				// Update the session and client with the correct region
-				s3Ctrl.Sess.Config.Region = aws.String(region)
-				s3Ctrl.S3Svc = s3.New(s3Ctrl.Sess)
+				// Check if the region is the same. If not, update the session and client
+				currentRegion := *s3Ctrl.Sess.Config.Region
+				if currentRegion != region {
+					newSession, err := session.NewSession(&aws.Config{
+						Region:      aws.String(region),
+						Credentials: s3Ctrl.Sess.Config.Credentials,
+					})
+					if err != nil {
+						log.Errorf("Failed to create a new session for region '%s': %s", region, err.Error())
+						continue
+					}
+					s3Ctrl.Sess = newSession
+					s3Ctrl.S3Svc = s3.New(s3Ctrl.Sess)
+				}
 
 				return &s3Ctrl, nil
 			}
