@@ -217,7 +217,7 @@ func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool) (*s3.
 	}
 	// Retrieve the list of objects in the bucket with the specified prefix
 	var response *s3.ListObjectsV2Output
-	err := s3Ctrl.S3Svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, lastPage bool) bool {
+	err := s3Ctrl.S3Svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, _ bool) bool {
 		if response == nil {
 			response = page
 		} else {
