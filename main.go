@@ -48,11 +48,11 @@ func main() {
 	e.GET("/object/metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
 	e.GET("/object/content", auth.Authorize(bh.HandleObjectContents, allUsers...))
 	e.PUT("/object/move", auth.Authorize(bh.HandleMoveObject, writer...))
-	e.GET("/object/download", auth.Authorize(bh.HandleGetPresignedURL, allUsers...))
+	e.GET("/object/download", auth.Authorize(bh.HandleGetPresignedDownloadURL, allUsers...))
 	e.POST("/object/upload", auth.Authorize(bh.HandleMultipartUpload, writer...))
 	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObject, admin...))
 	e.GET("/object/exists", auth.Authorize(bh.HandleGetObjExist, allUsers...))
-
+	e.GET("/object/presigned_upload", auth.Authorize(bh.HandleGetPresignedUploadURL, allUsers...))
 	// prefix
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefixWithDetail, allUsers...))

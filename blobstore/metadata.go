@@ -43,8 +43,9 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("bucket %s is not available", bucket)
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	// Check if the prefix points directly to an object
@@ -100,8 +101,9 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("bucket %s is not available", bucket)
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	result, err := s3Ctrl.GetMetaData(bucket, key)
@@ -130,8 +132,9 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("bucket %s is not available", bucket)
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	result, err := s3Ctrl.KeyExists(bucket, key)

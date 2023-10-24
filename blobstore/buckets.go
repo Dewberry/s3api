@@ -88,7 +88,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 		log.Infof("HandleListBuckets: Returning named bucket %s", bucketName)
 
 		allBuckets = append(allBuckets, BucketInfo{
-			ID:   1, // Or any other starting ID you want
+			ID:   1,
 			Name: bucketName,
 		})
 	} else {
