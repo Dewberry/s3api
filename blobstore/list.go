@@ -116,7 +116,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	if prefix != "" {
+	if prefix != "" && prefix != "./" && prefix != "/" {
 		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 		if err != nil {
 			log.Error("HandleListByPrefixWithDetail: " + err.Error())
