@@ -218,9 +218,6 @@ func getBucketRegion(S3Svc *s3.S3, bucketName string) (string, error) {
 		Bucket: aws.String(bucketName),
 	})
 
-	// Customize or log details from req if needed
-	// e.g., req.SetBufferBody([]byte("body data"))
-
 	err := req.Send()
 	if err != nil {
 		return "", err

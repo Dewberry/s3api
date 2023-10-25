@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -123,8 +124,9 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("bucket %s is not available", bucket)
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	overrideParam := c.QueryParam("override")
@@ -179,4 +181,46 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 
 	log.Infof("HandleMultipartUpload: Successfully uploaded file with key: %s", key)
 	return c.JSON(http.StatusOK, "Successfully uploaded file")
+}
+
+func (s3Ctrl *S3Controller) GetUploadPresignedURL(bucket string, key string, expMin int) (string, error) {
+	duration := time.Duration(expMin) * time.Minute
+	req, _ := s3Ctrl.S3Svc.PutObjectRequest(&s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+
+	urlStr, err := req.Presign(duration)
+	if err != nil {
+		return "", err
+	}
+
+	return urlStr, nil
+}
+
+func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
+
+	key := c.QueryParam("key")
+	if key == "" {
+		err := errors.New("`key` parameters are required")
+		log.Error("HandleGeneratePresignedURL: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+
+	presignedURL, err := s3Ctrl.GetUploadPresignedURL(bucket, key, 15)
+	if err != nil {
+		log.Errorf("HandleGeneratePresignedURL: Error generating presigned URL: %s", err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	log.Infof("HandleGeneratePresignedURL: Successfully generated presigned URL for key: %s", key)
+	return c.JSON(http.StatusOK, presignedURL)
 }
