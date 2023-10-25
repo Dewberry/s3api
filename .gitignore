@@ -21,5 +21,6 @@
 go.work
 .env
 main
+.env.json
 .data
 .env.json
