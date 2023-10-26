@@ -23,7 +23,6 @@ type S3Controller struct {
 type BlobHandler struct {
 	S3Controllers   []S3Controller
 	NamedBucketOnly bool
-	Sessions        map[string]*session.Session
 }
 
 // Initializes resources and return a new handler (errors are fatal)
@@ -61,6 +60,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	// Using AWS S3
 
 	// Load AWS credentials from the provided .env.json file
+	log.Debug("looking for .env.json")
 	awsConfig, err := newAWSConfig(envJson)
 
 	// Check if loading AWS credentials from .env.json failed
@@ -193,6 +193,7 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 				}
 				// Check if the region is the same. If not, update the session and client
 				currentRegion := *s3Ctrl.Sess.Config.Region
+				log.Debugf("current region: %s region of bucket: %s", currentRegion, region)
 				if currentRegion != region {
 					newSession, err := session.NewSession(&aws.Config{
 						Region:      aws.String(region),
