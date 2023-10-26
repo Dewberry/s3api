@@ -10,7 +10,6 @@ import (
 type AWSCreds struct {
 	AWS_ACCESS_KEY_ID     string `json:"AWS_ACCESS_KEY_ID"`
 	AWS_SECRET_ACCESS_KEY string `json:"AWS_SECRET_ACCESS_KEY"`
-	AWS_REGION            string `json:"AWS_REGION"`
 }
 
 type AWSConfig struct {
@@ -35,9 +34,6 @@ func (creds AWSCreds) validateAWSCreds() error {
 	}
 	if creds.AWS_SECRET_ACCESS_KEY == "" {
 		missingFields = append(missingFields, "AWS_SECRET_ACCESS_KEY")
-	}
-	if creds.AWS_REGION == "" {
-		missingFields = append(missingFields, "AWS_REGION")
 	}
 
 	if len(missingFields) > 0 {
@@ -100,9 +96,6 @@ func validateEnvJSON(filePath string) error {
 		if account.AWS_SECRET_ACCESS_KEY == "" {
 			missingFields = append(missingFields, "AWS_SECRET_ACCESS_KEY")
 		}
-		if account.AWS_REGION == "" {
-			missingFields = append(missingFields, "AWS_REGION")
-		}
 
 		if len(missingFields) > 0 {
 			return fmt.Errorf("missing fields (%s) for AWS account %d in envJson file", strings.Join(missingFields, ", "), i+1)
@@ -134,7 +127,6 @@ func awsFromENV() AWSCreds {
 	var creds AWSCreds
 	creds.AWS_ACCESS_KEY_ID = os.Getenv("AWS_ACCESS_KEY_ID")
 	creds.AWS_SECRET_ACCESS_KEY = os.Getenv("AWS_SECRET_ACCESS_KEY")
-	creds.AWS_REGION = os.Getenv("AWS_REGION")
 	return creds
 }
 

@@ -130,7 +130,6 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
 	log.Info("Using AWS S3")
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(creds.AWS_REGION),
 		Credentials: credentials.NewStaticCredentials(creds.AWS_ACCESS_KEY_ID, creds.AWS_SECRET_ACCESS_KEY, ""),
 	})
 	if err != nil {
