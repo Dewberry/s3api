@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	log "github.com/sirupsen/logrus"
 )
 
 func (bh *BlobHandler) GetSize(list *s3.ListObjectsV2Output) (uint64, uint32, error) {
@@ -39,13 +39,17 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		log.Error("HandleGetSize: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-	bucket, err := getBucketParam(c, bh.Bucket)
+
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Error("HandleGetSize: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
+
 	// Check if the prefix points directly to an object
-	isObject, err := bh.KeyExists(bucket, prefix)
+	isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 	if err != nil {
 		log.Error("HandleGetSize: Error checking if prefix is an object:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -55,7 +59,7 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		// Prefix points directly to an object instead of a collection of objects
 		return c.JSON(http.StatusTeapot, "The provided prefix points to a single object rather than a collection")
 	}
-	list, err := bh.GetList(bucket, prefix, false)
+	list, err := s3Ctrl.GetList(bucket, prefix, false)
 	if err != nil {
 		log.Error("HandleGetSize: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -86,21 +90,6 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
-func (bh *BlobHandler) GetMetaData(bucket, key string) (*s3.HeadObjectOutput, error) {
-	// Set up the input parameters for the list objects operation
-	input := &s3.HeadObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	}
-
-	result, err := bh.S3Svc.HeadObject(input)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
 func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
@@ -109,12 +98,15 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	bucket, err := getBucketParam(c, bh.Bucket)
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Error("HandleGetMetaData: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	result, err := bh.GetMetaData(bucket, key)
+
+	result, err := s3Ctrl.GetMetaData(bucket, key)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == "NotFound" {
 			err := fmt.Errorf("object %s not found", key)
@@ -136,17 +128,35 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 		log.Error("HandleGetObjExist: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-	bucket, err := getBucketParam(c, bh.Bucket)
+
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Error("HandleGetObjExist: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
-	result, err := bh.KeyExists(bucket, key)
+	result, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
 		log.Error("HandleGetObjExist: " + err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	log.Info("HandleGetObjExist: Successfully retrieved metadata for key:", key)
 	return c.JSON(http.StatusOK, result)
+}
+
+func (s3Ctrl *S3Controller) GetMetaData(bucket, key string) (*s3.HeadObjectOutput, error) {
+	// Set up the input parameters for the list objects operation
+	input := &s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}
+
+	result, err := s3Ctrl.S3Svc.HeadObject(input)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

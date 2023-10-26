@@ -1,7 +1,6 @@
 package blobstore
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -9,11 +8,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/labstack/echo/v4"
 )
 
-func (bh *BlobHandler) KeyExists(bucket string, key string) (bool, error) {
-	_, err := bh.S3Svc.HeadObject(&s3.HeadObjectInput{
+func (s3Ctrl *S3Controller) KeyExists(bucket string, key string) (bool, error) {
+	_, err := s3Ctrl.S3Svc.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
@@ -29,17 +27,6 @@ func (bh *BlobHandler) KeyExists(bucket string, key string) (bool, error) {
 		return false, fmt.Errorf("KeyExists: %s", err)
 	}
 	return true, nil
-}
-
-func getBucketParam(c echo.Context, defaultBucket string) (string, error) {
-	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		if defaultBucket == "" {
-			return "", errors.New("error: `bucket` parameter was not provided by the user and is not a default value")
-		}
-		bucket = defaultBucket
-	}
-	return bucket, nil
 }
 
 func generateRandomString() string {

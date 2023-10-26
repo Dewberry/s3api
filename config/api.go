@@ -27,12 +27,12 @@ type APIConfig struct {
 	BH      *blobstore.BlobHandler
 }
 
-func Init() *APIConfig {
-	return newAPI()
+func Init(envJson string) *APIConfig {
+	return newAPI(envJson)
 }
 
-func newAPI() *APIConfig {
-	bh, err := blobstore.NewBlobHandler()
+func newAPI(envJson string) *APIConfig {
+	bh, err := blobstore.NewBlobHandler(envJson)
 	if err != nil {
 		log.Fatalf("error initializing a new blobhandler: %v", err)
 	}

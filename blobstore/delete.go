@@ -9,16 +9,16 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	log "github.com/sirupsen/logrus"
 )
 
-func (bh *BlobHandler) RecursivelyDeleteObjects(bucket, prefix string) error {
+func (s3Ctrl *S3Controller) RecursivelyDeleteObjects(bucket, prefix string) error {
 	prefixPath := strings.Trim(prefix, "/") + "/"
 	query := &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefixPath),
 	}
-	resp, err := bh.S3Svc.ListObjectsV2(query)
+	resp, err := s3Ctrl.S3Svc.ListObjectsV2(query)
 	if err != nil {
 		return fmt.Errorf("recursivelyDeleteObjects: error listing objects: %s", err)
 	}
@@ -32,7 +32,7 @@ func (bh *BlobHandler) RecursivelyDeleteObjects(bucket, prefix string) error {
 		}
 
 		if len(objectsToDelete) > 0 {
-			_, err = bh.S3Svc.DeleteObjects(&s3.DeleteObjectsInput{
+			_, err = s3Ctrl.S3Svc.DeleteObjects(&s3.DeleteObjectsInput{
 				Bucket: aws.String(bucket),
 				Delete: &s3.Delete{
 					Objects: objectsToDelete,
@@ -53,20 +53,23 @@ func (bh *BlobHandler) RecursivelyDeleteObjects(bucket, prefix string) error {
 // It expects the 'key' query parameter to specify the object key and the 'bucket' query parameter to specify the bucket name (optional, falls back to environment variable 'S3_BUCKET').
 // It returns an appropriate JSON response indicating the success or failure of the deletion.
 func (bh *BlobHandler) HandleDeleteObject(c echo.Context) error {
-	bucket, err := getBucketParam(c, bh.Bucket)
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("HandleDeleteObjects: %s", err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
+
 	key := c.QueryParam("key")
 	if key == "" {
-		err = errors.New("parameter 'key' is required")
+		err := errors.New("parameter 'key' is required")
 		log.Errorf("HandleDeleteObjects: %s", err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
 	// If the key is not a folder, proceed with deleting a single object
-	keyExist, err := bh.KeyExists(bucket, key)
+	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
 		log.Errorf("HandleDeleteObjects: Error checking if key exists: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err)
@@ -82,7 +85,7 @@ func (bh *BlobHandler) HandleDeleteObject(c echo.Context) error {
 		Key:    aws.String(key),
 	}
 
-	_, err = bh.S3Svc.DeleteObject(deleteInput)
+	_, err = s3Ctrl.S3Svc.DeleteObject(deleteInput)
 	if err != nil {
 		msg := fmt.Sprintf("error deleting object. %s", err.Error())
 		log.Errorf("HandleDeleteObjects: %s", err.Error())
@@ -94,12 +97,14 @@ func (bh *BlobHandler) HandleDeleteObject(c echo.Context) error {
 }
 
 func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
-
-	bucket, err := getBucketParam(c, bh.Bucket)
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("HandleDeleteObjects: %s", err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
+
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
 		err = errors.New("parameter 'prefix' is required")
@@ -109,7 +114,7 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 	if !strings.HasSuffix(prefix, "/") {
 		prefix = prefix + "/"
 	}
-	response, err := bh.GetList(bucket, prefix, false)
+	response, err := s3Ctrl.GetList(bucket, prefix, false)
 	if err != nil {
 		log.Errorf("HandleDeleteObjects:  Error getting list: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err)
@@ -120,7 +125,7 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, err.Error())
 	}
 	// This will recursively delete all objects with the specified prefix
-	err = bh.RecursivelyDeleteObjects(bucket, prefix)
+	err = s3Ctrl.RecursivelyDeleteObjects(bucket, prefix)
 	if err != nil {
 		msg := fmt.Sprintf("error deleting objects. %s", err.Error())
 		log.Errorf("HandleDeleteObjects: %s", msg)
@@ -132,7 +137,7 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 
 }
 
-func (bh *BlobHandler) DeleteKeys(bucket string, key []string) error {
+func (s3Ctrl *S3Controller) DeleteKeys(bucket string, key []string) error {
 	objects := make([]*s3.ObjectIdentifier, 0, len(key))
 	for _, p := range key {
 		s3Path := strings.TrimPrefix(p, "/")
@@ -150,7 +155,7 @@ func (bh *BlobHandler) DeleteKeys(bucket string, key []string) error {
 		},
 	}
 
-	_, err := bh.S3Svc.DeleteObjects(input)
+	_, err := s3Ctrl.S3Svc.DeleteObjects(input)
 	if err != nil {
 		return fmt.Errorf("deleteKeys: error Deleting objects: %s", err.Error())
 	}
@@ -175,10 +180,12 @@ func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg)
 	}
 
-	bucket, err := getBucketParam(c, bh.Bucket)
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("HandleDeleteObjectsByList: %s", err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	// Prepare the keys for deletion
@@ -188,7 +195,7 @@ func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
 		key := aws.String(s3Path)
 
 		// Check if the key exists before appending it to the keys list
-		keyExists, err := bh.KeyExists(bucket, s3Path)
+		keyExists, err := s3Ctrl.KeyExists(bucket, s3Path)
 		if err != nil {
 			msg := fmt.Errorf("error checking if key exists. %s", err.Error())
 			log.Errorf("HandleDeleteObjectsByList: %s", msg)
@@ -204,7 +211,7 @@ func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
 	}
 
 	// Delete the objects using the deleteKeys function
-	err = bh.DeleteKeys(bucket, keys)
+	err = s3Ctrl.DeleteKeys(bucket, keys)
 	if err != nil {
 		msg := fmt.Sprintf("error deleting objects. %s", err.Error())
 		log.Errorf("HandleDeleteObjectsByList: %s", msg)

@@ -7,21 +7,22 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	log "github.com/sirupsen/logrus"
 )
 
-func (bh *BlobHandler) UploadS3Obj(bucket string, key string, body io.ReadCloser) error {
+func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadCloser) error {
 	// Initialize the multipart upload to S3
 	params := &s3.CreateMultipartUploadInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	}
 
-	resp, err := bh.S3Svc.CreateMultipartUpload(params)
+	resp, err := s3Ctrl.S3Svc.CreateMultipartUpload(params)
 	if err != nil {
 		return fmt.Errorf("uploadS3Obj: error initializing multipart upload. %s", err.Error())
 	}
@@ -56,7 +57,7 @@ func (bh *BlobHandler) UploadS3Obj(bucket string, key string, body io.ReadCloser
 				Body:       bytes.NewReader(buffer.Bytes()),
 			}
 
-			result, err := bh.S3Svc.UploadPart(params)
+			result, err := s3Ctrl.S3Svc.UploadPart(params)
 			if err != nil {
 				return fmt.Errorf("uploadS3Obj: error streaming POST body to S3. %s, %+v", err.Error(), result)
 			}
@@ -85,7 +86,7 @@ func (bh *BlobHandler) UploadS3Obj(bucket string, key string, body io.ReadCloser
 		Body:       bytes.NewReader(buffer.Bytes()),
 	}
 
-	result, err := bh.S3Svc.UploadPart(params2)
+	result, err := s3Ctrl.S3Svc.UploadPart(params2)
 	if err != nil {
 		return fmt.Errorf("uploadS3Obj: error streaming POST body to S3. %s, %+v", err.Error(), result)
 	}
@@ -103,7 +104,7 @@ func (bh *BlobHandler) UploadS3Obj(bucket string, key string, body io.ReadCloser
 		UploadId:        resp.UploadId,
 		MultipartUpload: &s3.CompletedMultipartUpload{Parts: completedParts},
 	}
-	_, err = bh.S3Svc.CompleteMultipartUpload(completeParams)
+	_, err = s3Ctrl.S3Svc.CompleteMultipartUpload(completeParams)
 	if err != nil {
 		return fmt.Errorf("uploadS3Obj: error completing multipart upload. %s", err.Error())
 	}
@@ -120,10 +121,12 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	bucket, err := getBucketParam(c, bh.Bucket)
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Error("HandleMultipartUpload: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	overrideParam := c.QueryParam("override")
@@ -156,7 +159,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	// Reset the request body to its original state
 	c.Request().Body = io.NopCloser(io.MultiReader(bytes.NewReader(buf), c.Request().Body))
 
-	keyExist, err := bh.KeyExists(bucket, key)
+	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
 		log.Errorf("HandleMultipartUpload: Error checking if key exists: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err)
@@ -170,7 +173,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	body := c.Request().Body
 	defer body.Close()
 
-	err = bh.UploadS3Obj(bucket, key, body)
+	err = s3Ctrl.UploadS3Obj(bucket, key, body)
 	if err != nil {
 		log.Errorf("HandleMultipartUpload: Error uploading S3 object: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -178,4 +181,46 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 
 	log.Infof("HandleMultipartUpload: Successfully uploaded file with key: %s", key)
 	return c.JSON(http.StatusOK, "Successfully uploaded file")
+}
+
+func (s3Ctrl *S3Controller) GetUploadPresignedURL(bucket string, key string, expMin int) (string, error) {
+	duration := time.Duration(expMin) * time.Minute
+	req, _ := s3Ctrl.S3Svc.PutObjectRequest(&s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+
+	urlStr, err := req.Presign(duration)
+	if err != nil {
+		return "", err
+	}
+
+	return urlStr, nil
+}
+
+func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
+
+	key := c.QueryParam("key")
+	if key == "" {
+		err := errors.New("`key` parameters are required")
+		log.Error("HandleGeneratePresignedURL: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+
+	presignedURL, err := s3Ctrl.GetUploadPresignedURL(bucket, key, 15)
+	if err != nil {
+		log.Errorf("HandleGeneratePresignedURL: Error generating presigned URL: %s", err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	log.Infof("HandleGeneratePresignedURL: Successfully generated presigned URL for key: %s", key)
+	return c.JSON(http.StatusOK, presignedURL)
 }
