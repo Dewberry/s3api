@@ -3,12 +3,13 @@ package blobstore
 // Not implemented
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	log "github.com/sirupsen/logrus"
 )
 
 // listBuckets returns the list of all S3 buckets.
@@ -21,7 +22,8 @@ func (s3Ctrl *S3Controller) listBuckets() (*s3.ListBucketsOutput, error) {
 	// Retrieve the list of buckets
 	result, err = s3Ctrl.S3Svc.ListBuckets(input)
 	if err != nil {
-		return nil, err
+		errMsg := fmt.Errorf("failed to call ListBuckets: %s", err.Error())
+		return nil, errMsg
 	}
 	return result, nil
 }
@@ -70,39 +72,48 @@ func (s3Ctrl *S3Controller) listBuckets() (*s3.ListBucketsOutput, error) {
 // 		return nil, err
 // 	}
 
-// 	return result, nil
-// }
+//		return result, nil
+//	}
+
+type BucketInfo struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
 
 func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
-	var result ListResult
-	if bh.NamedBucketOnly {
-		bucket := bh.S3Controllers[0].Buckets[0]
-		log.Infof("HandleListBuckets: Returning named bucket %s", bucket)
-		result.Bucket = bucket
-		return c.JSON(http.StatusOK, []ListResult{result})
+	var allBuckets []BucketInfo
 
+	if bh.NamedBucketOnly {
+		bucketName := bh.S3Controllers[0].Buckets[0]
+		log.Infof("HandleListBuckets: Returning named bucket %s", bucketName)
+
+		allBuckets = append(allBuckets, BucketInfo{
+			ID:   1,
+			Name: bucketName,
+		})
 	} else {
-		var results []ListResult
+		currentID := 1 // Initialize ID counter
 
 		for _, s3Ctrl := range bh.S3Controllers {
-			var listResult ListResult
 			response, err := s3Ctrl.listBuckets()
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, err.Error())
 			}
 
-			// Return the list of bucket names as a slice of strings
+			// Extract the bucket names from the response and append to allBuckets
 			for _, bucket := range response.Buckets {
-				listResult.Bucket = aws.StringValue(bucket.Name)
-				results = append(results, listResult)
+				allBuckets = append(allBuckets, BucketInfo{
+					ID:   currentID,
+					Name: aws.StringValue(bucket.Name),
+				})
+				currentID++ // Increment the ID for the next bucket
 			}
 		}
 
 		log.Info("HandleListBuckets: Successfully retrieved list of buckets")
-		return c.JSON(http.StatusOK, results)
-
 	}
 
+	return c.JSON(http.StatusOK, allBuckets)
 }
 
 // func (bh *BlobHandler) HandleCreateBucket(c echo.Context) error {

@@ -1,7 +1,6 @@
 package blobstore
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	log "github.com/sirupsen/logrus"
 )
 
 type S3Controller struct {
@@ -28,83 +27,208 @@ type BlobHandler struct {
 
 // Initializes resources and return a new handler (errors are fatal)
 func NewBlobHandler(envJson string) (*BlobHandler, error) {
-
+	// Create a new BlobHandler configuration
 	config := BlobHandler{}
+
+	// Check if the S3_MOCK environment variable is set to "true"
 	if os.Getenv("S3_MOCK") == "true" {
 		log.Info("Using MinIO")
 
-		creds := NewMinioConfig()
-		s3SVC, sess, err := MinIOSessionManager(creds)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create MinIO session: %v", err)
+		// Load MinIO credentials from environment
+		creds := newMinioConfig()
+
+		// Validate MinIO credentials, check if they are missing or incomplete
+		// if not then the s3api won't start
+		if err := creds.validateMinioConfig(); err != nil {
+			log.Fatalf("MINIO credentials are either not provided or contain missing variables: %s", err.Error())
 		}
-		buckets := []string{os.Getenv("S3_Bucket")}
-		s3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: buckets}
-		config.S3Controllers = []S3Controller{s3Ctrl}
+
+		// Create a MinIO session and S3 client
+		s3SVC, sess, err := minIOSessionManager(creds)
+		if err != nil {
+			log.Fatalf("failed to create MinIO session: %s", err.Error())
+		}
+
+		// Configure the BlobHandler with MinIO session and bucket information
+		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{creds.Bucket}}}
 		config.NamedBucketOnly = true
+
+		// Return the configured BlobHandler
 		return &config, nil
 	}
 
-	log.Info("Looking for env.json credentials")
+	// Using AWS S3
 
-	awsConfig, err := NewAWSConfig(envJson)
+	// Load AWS credentials from the provided .env.json file
+	log.Debug("looking for .env.json")
+	awsConfig, err := newAWSConfig(envJson)
 
+	// Check if loading AWS credentials from .env.json failed
 	if err != nil {
-		log.Warn("No env.json credentials found, attmepting to retreive from environment")
-		creds := AWSFromENV()
-		s3SVC, sess, err := AWSSessionManager(creds)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create AWS session: %v", err)
+		log.Warnf("env.json credentials extraction failed, attmepting to retreive from environment, %s", err.Error())
+		creds := awsFromENV()
+
+		// Validate AWS credentials, check if they are missing or incomplete
+		// if not then the s3api won't start
+		if err := creds.validateAWSCreds(); err != nil {
+			log.Fatalf("AWS credentials are either not provided or contain missing variables: %s", err.Error())
 		}
 
-		bucket := os.Getenv("S3_BUCKET")
-		buckets := []string{bucket}
-		s3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: buckets}
-		config.S3Controllers = []S3Controller{s3Ctrl}
+		// Create an AWS session and S3 client
+		s3SVC, sess, err := aWSSessionManager(creds)
+		if err != nil {
+			log.Fatalf("failed to create AWS session: %s", err.Error())
+		}
+
+		// Configure the BlobHandler with AWS session and bucket information
+		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{os.Getenv("S3_BUCKET")}}}
 		config.NamedBucketOnly = true
+
+		// Return the configured BlobHandler
 		return &config, nil
 	}
 
-	var s3Controllers []S3Controller
+	// Using AWS S3 with multiple accounts
+
+	// Load AWS credentials for multiple accounts from .env.json
 	for _, creds := range awsConfig.Accounts {
-		var bucketNames []string
-		// Set up a session with AWS credentials and region
-		s3SVC, sess, err := AWSSessionManager(creds)
+		// Create an AWS session and S3 client for each account
+		s3SVC, sess, err := aWSSessionManager(creds)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create AWS session: %v", err)
+			errMsg := fmt.Errorf("failed to create AWS session: %s", err.Error())
+			log.Error(errMsg.Error())
+			return nil, errMsg
 		}
+
 		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
 
+		// Retrieve the list of buckets for each account
 		result, err := S3Ctrl.listBuckets()
 		if err != nil {
-			return nil, err
+			errMsg := fmt.Errorf("failed to retrieve list of buckets: %s", err.Error())
+			log.Error(errMsg.Error())
+			return nil, errMsg
 		}
-		// Return the list of bucket names as a slice of strings
+
+		// Extract and store bucket names associated with the account
+		var bucketNames []string
 		for _, bucket := range result.Buckets {
 			bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
 		}
 
-		S3Ctrl.Buckets = bucketNames
-		s3Controllers = append(s3Controllers, S3Ctrl)
+		// Configure the BlobHandler with AWS sessions and associated bucket information
+		config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames})
 	}
 
-	config.S3Controllers = s3Controllers
+	// Indicate that the BlobHandler can access multiple buckets under different AWS accounts
 	config.NamedBucketOnly = false
 
+	// Return the configured BlobHandler
 	return &config, nil
 }
 
+func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
+	log.Info("Using AWS S3")
+	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String(creds.AWS_REGION),
+		Credentials: credentials.NewStaticCredentials(creds.AWS_ACCESS_KEY_ID, creds.AWS_SECRET_ACCESS_KEY, ""),
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating s3 session: %s", err.Error())
+	}
+	return s3.New(sess), sess, nil
+}
+
+func minIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
+	sess, err := session.NewSession(&aws.Config{
+		Endpoint:         aws.String(mc.S3Endpoint),
+		Region:           aws.String(mc.S3Region),
+		Credentials:      credentials.NewStaticCredentials(mc.AccessKeyID, mc.SecretAccessKey, ""),
+		S3ForcePathStyle: aws.Bool(true),
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("error connecting to minio session: %s", err.Error())
+	}
+	log.Info("Using minio to mock s3")
+
+	// Check if the bucket exists
+	s3SVC := s3.New(sess)
+	_, err = s3SVC.HeadBucket(&s3.HeadBucketInput{
+		Bucket: aws.String(mc.Bucket),
+	})
+	if err != nil {
+		// Bucket does not exist, create it
+		_, err := s3SVC.CreateBucket(&s3.CreateBucketInput{
+			Bucket: aws.String(mc.Bucket),
+		})
+		if err != nil {
+			log.Errorf("Error creating bucket: %s", err.Error())
+			return nil, nil, nil
+		}
+		log.Info("Bucket created successfully")
+	} else {
+		log.Info("Bucket already exists")
+	}
+
+	return s3SVC, sess, nil
+}
+
 func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
+	if bucket == "" {
+		err := fmt.Errorf("parameter 'bucket' is required")
+		log.Error(err.Error())
+		return nil, err
+	}
 	var s3Ctrl S3Controller
 	for _, controller := range bh.S3Controllers {
 		for _, b := range controller.Buckets {
 			if b == bucket {
 				s3Ctrl = controller
+
+				// Detect the bucket's region
+				region, err := getBucketRegion(controller.S3Svc, b)
+				if err != nil {
+					log.Errorf("Failed to get region for bucket '%s': %s", b, err.Error())
+					continue
+				}
+				// Check if the region is the same. If not, update the session and client
+				currentRegion := *s3Ctrl.Sess.Config.Region
+				log.Debugf("current region: %s region of bucket: %s", currentRegion, region)
+				if currentRegion != region {
+					newSession, err := session.NewSession(&aws.Config{
+						Region:      aws.String(region),
+						Credentials: s3Ctrl.Sess.Config.Credentials,
+					})
+					if err != nil {
+						log.Errorf("Failed to create a new session for region '%s': %s", region, err.Error())
+						continue
+					}
+					s3Ctrl.Sess = newSession
+					s3Ctrl.S3Svc = s3.New(s3Ctrl.Sess)
+				}
+
 				return &s3Ctrl, nil
 			}
 		}
 	}
-	return &s3Ctrl, errors.New("bucket not fond")
+	return &s3Ctrl, fmt.Errorf("bucket '%s' not found", bucket)
+}
+
+func getBucketRegion(S3Svc *s3.S3, bucketName string) (string, error) {
+	req, output := S3Svc.GetBucketLocationRequest(&s3.GetBucketLocationInput{
+		Bucket: aws.String(bucketName),
+	})
+
+	err := req.Send()
+	if err != nil {
+		return "", err
+	}
+
+	if output.LocationConstraint == nil {
+		return "us-east-1", nil
+	}
+
+	return *output.LocationConstraint, nil
 }
 
 func (bh *BlobHandler) Ping(c echo.Context) error {
@@ -123,11 +247,10 @@ func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
 			})
 			if err != nil {
 				valid = "unhealthy"
-				log.Debugf("Ping operation preformed succesfully, connection to `%s` is unhealthy", b)
 			} else {
 				valid = "healthy"
-				log.Debugf("Ping operation preformed succesfully, connection to `%s` is healthy", b)
 			}
+			log.Debugf("Ping operation preformed succesfully, connection to `%s` is %s", b, valid)
 
 			bucketHealth[b] = valid
 			print(b, valid)
@@ -135,52 +258,4 @@ func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, bucketHealth)
-}
-
-func AWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
-	log.Info("Using AWS S3")
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(creds.AWS_REGION),
-		Credentials: credentials.NewStaticCredentials(creds.AWS_ACCESS_KEY_ID, creds.AWS_SECRET_ACCESS_KEY, ""),
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating s3 session: %s", err.Error())
-	}
-	return s3.New(sess), sess, nil
-}
-
-func MinIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
-	sess, err := session.NewSession(&aws.Config{
-		Endpoint:         aws.String(mc.S3Endpoint),
-		Region:           aws.String(mc.S3Region),
-		Credentials:      credentials.NewStaticCredentials(mc.AccessKeyID, mc.SecretAccessKey, ""),
-		S3ForcePathStyle: aws.Bool(true),
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("error connecting to minio session: %s", err.Error())
-	}
-	log.Info("Using minio to mock s3")
-
-	bucketName := os.Getenv("S3_BUCKET")
-
-	// Check if the bucket exists
-	s3SVC := s3.New(sess)
-	_, err = s3SVC.HeadBucket(&s3.HeadBucketInput{
-		Bucket: aws.String(bucketName),
-	})
-	if err != nil {
-		// Bucket does not exist, create it
-		_, err := s3SVC.CreateBucket(&s3.CreateBucketInput{
-			Bucket: aws.String(bucketName),
-		})
-		if err != nil {
-			log.Errorf("Error creating bucket:", err)
-			return nil, nil, nil
-		}
-		log.Info("Bucket created successfully")
-	} else {
-		log.Info("Bucket already exists")
-	}
-
-	return s3SVC, sess, nil
 }

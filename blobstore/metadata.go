@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	log "github.com/sirupsen/logrus"
 )
 
 func (bh *BlobHandler) GetSize(list *s3.ListObjectsV2Output) (uint64, uint32, error) {
@@ -41,17 +41,13 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		err := errors.New("parameter 'bucket' is required")
-		log.Error("HandleGetSize: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
-
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("bucket %s is not available", bucket)
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
+
 	// Check if the prefix points directly to an object
 	isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 	if err != nil {
@@ -103,16 +99,11 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		err := errors.New("parameter 'bucket' is required")
-		log.Error("HandleGetMetaData: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
-
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("bucket %s is not available", bucket)
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	result, err := s3Ctrl.GetMetaData(bucket, key)
@@ -139,16 +130,11 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		err := errors.New("parameter 'bucket' is required")
-		log.Error("HandleGetObjExist: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
-
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("bucket %s is not available", bucket)
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	result, err := s3Ctrl.KeyExists(bucket, key)

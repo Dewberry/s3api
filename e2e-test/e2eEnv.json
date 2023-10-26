@@ -67,6 +67,12 @@
 			"value": "false",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "bucket",
+			"value": "test-bucket",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",

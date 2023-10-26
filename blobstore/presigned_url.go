@@ -18,10 +18,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	log "github.com/sirupsen/logrus"
 )
 
-func (s3Ctrl *S3Controller) GetPresignedURL(bucket, key string, expDays int) (string, error) {
+func (s3Ctrl *S3Controller) GetDownloadPresignedURL(bucket, key string, expDays int) (string, error) {
 	duration := time.Duration(expDays) * 24 * time.Hour
 	req, _ := s3Ctrl.S3Svc.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),
@@ -115,23 +115,19 @@ func (s3Ctrl *S3Controller) tarS3Files(r *s3.ListObjectsV2Output, bucket string,
 	return nil
 }
 
-func (bh *BlobHandler) HandleGetPresignedURL(c echo.Context) error {
+func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		err := errors.New("parameter 'bucket' is required")
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	key := c.QueryParam("key")
 	if key == "" {
 		err := errors.New("parameter `key` is required")
 		log.Error("HandleGetPresignedURL: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
-
-	s3Ctrl, err := bh.GetController(bucket)
-	if err != nil {
-		log.Errorf("bucket %s is not available", bucket)
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
@@ -151,7 +147,7 @@ func (bh *BlobHandler) HandleGetPresignedURL(c echo.Context) error {
 		log.Error("HandleGetPresignedURL: Error getting `URL_EXP_DAYS` from env file:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
-	url, err := s3Ctrl.GetPresignedURL(bucket, key, expPeriod)
+	url, err := s3Ctrl.GetDownloadPresignedURL(bucket, key, expPeriod)
 	if err != nil {
 		log.Error("HandleGetPresignedURL: Error getting presigned URL:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -170,15 +166,11 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		err := errors.New("parameter 'bucket' is required")
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
-
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("bucket %s is not available", bucket)
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	if !strings.HasSuffix(prefix, "/") {
@@ -224,7 +216,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting `URL_EXP_DAYS` from env file:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
-	href, err := s3Ctrl.GetPresignedURL(bucket, outputFile, expPeriod)
+	href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, expPeriod)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting presigned URL:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())

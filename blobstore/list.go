@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	log "github.com/sirupsen/logrus"
 )
 
 // ListResult is the result struct for listing objects with additional details.
@@ -38,10 +38,11 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		err := errors.New("request must include a `bucket` parameter")
-		log.Error("HandleListByPrefix: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	fmt.Println(bucket)
@@ -66,12 +67,6 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		if !strings.HasSuffix(prefix, "/") {
 			prefix = prefix + "/"
 		}
-	}
-
-	s3Ctrl, err := bh.GetController(bucket)
-	if err != nil {
-		log.Errorf("bucket %s is not available", bucket)
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
 	isObject, err := s3Ctrl.KeyExists(bucket, prefix)
@@ -116,18 +111,14 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 
 	bucket := c.QueryParam("bucket")
-	if bucket == "" {
-		err := errors.New("parameter 'bucket' is required")
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
-
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		log.Errorf("bucket %s is not available", bucket)
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
-	if prefix != "" {
+	if prefix != "" && prefix != "./" && prefix != "/" {
 		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 		if err != nil {
 			log.Error("HandleListByPrefixWithDetail: " + err.Error())
@@ -228,7 +219,7 @@ func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool) (*s3.
 	}
 	// Retrieve the list of objects in the bucket with the specified prefix
 	var response *s3.ListObjectsV2Output
-	err := s3Ctrl.S3Svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, lastPage bool) bool {
+	err := s3Ctrl.S3Svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, _ bool) bool {
 		if response == nil {
 			response = page
 		} else {

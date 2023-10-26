@@ -1,19 +1,34 @@
 package main
 
 import (
+	"os"
+
 	"github.com/Dewberry/s3api/auth"
 	"github.com/Dewberry/s3api/config"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-
+	log.SetFormatter(&log.JSONFormatter{})
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "info"
+	}
+	level, err := log.ParseLevel(logLevel)
+	if err != nil {
+		log.WithError(err).Error("Invalid log level")
+		level = log.InfoLevel
+	}
+	log.SetLevel(level)
+	log.SetReportCaller(true)
+	log.Infof("level level set to: %s", level)
 	// administrator := []string{"administrator", "read", "write"}
-	admin := []string{"admin"}
-	allUsers := []string{"admin", "reader", "writer"}
-	writer := []string{"admin", "writer"}
+	admin := []string{"s3_admin"}
+	allUsers := []string{"s3_admin", "s3_reader", "s3_writer"}
+	writer := []string{"s3_admin", "s3_writer"}
 
 	apiConfig := config.Init(".env.json")
 	bh := apiConfig.BH
@@ -33,11 +48,11 @@ func main() {
 	e.GET("/object/metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
 	e.GET("/object/content", auth.Authorize(bh.HandleObjectContents, allUsers...))
 	e.PUT("/object/move", auth.Authorize(bh.HandleMoveObject, writer...))
-	e.GET("/object/download", auth.Authorize(bh.HandleGetPresignedURL, allUsers...))
+	e.GET("/object/download", auth.Authorize(bh.HandleGetPresignedDownloadURL, allUsers...))
 	e.POST("/object/upload", auth.Authorize(bh.HandleMultipartUpload, writer...))
 	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObject, admin...))
 	e.GET("/object/exists", auth.Authorize(bh.HandleGetObjExist, allUsers...))
-
+	e.GET("/object/presigned_upload", auth.Authorize(bh.HandleGetPresignedUploadURL, allUsers...))
 	// prefix
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefixWithDetail, allUsers...))
