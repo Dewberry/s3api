@@ -17,6 +17,7 @@ ENTRYPOINT CompileDaemon --build="go build main.go" --command="./main"
 
 FROM osgeo/gdal:alpine-small-3.6.2 AS prod
 
+WORKDIR /app
 COPY --from=dev /app/main .
 EXPOSE 5005
 CMD ["./main" ]
