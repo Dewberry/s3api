@@ -62,7 +62,10 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	// Load AWS credentials from the provided .env.json file
 	log.Debug("looking for .env.json")
 	awsConfig, err := newAWSConfig(envJson)
-
+	if os.Getenv("AWS_REGION") == "" {
+		errMsg := fmt.Errorf("no AWS_REGION variable found in env, variable required to initialize AWS sessions")
+		log.Fatal(errMsg.Error())
+	}
 	// Check if loading AWS credentials from .env.json failed
 	if err != nil {
 		log.Warnf("env.json credentials extraction failed, attmepting to retreive from environment, %s", err.Error())
@@ -105,9 +108,8 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		// Retrieve the list of buckets for each account
 		result, err := S3Ctrl.listBuckets()
 		if err != nil {
-			errMsg := fmt.Errorf("failed to retrieve list of buckets: %s", err.Error())
-			log.Error(errMsg.Error())
-			return nil, errMsg
+			errMsg := fmt.Errorf("failed to retrieve list of buckets with access key: %s, error: %s", creds.AWS_ACCESS_KEY_ID, err.Error())
+			log.Fatal(errMsg.Error())
 		}
 
 		// Extract and store bucket names associated with the account
