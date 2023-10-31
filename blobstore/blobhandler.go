@@ -62,10 +62,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	// Load AWS credentials from the provided .env.json file
 	log.Debug("looking for .env.json")
 	awsConfig, err := newAWSConfig(envJson)
-	if os.Getenv("AWS_REGION") == "" {
-		errMsg := fmt.Errorf("no AWS_REGION variable found in env, variable required to initialize AWS sessions")
-		log.Fatal(errMsg.Error())
-	}
+
 	// Check if loading AWS credentials from .env.json failed
 	if err != nil {
 		log.Warnf("env.json credentials extraction failed, attmepting to retreive from environment, %s", err.Error())
@@ -132,6 +129,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
 	log.Info("Using AWS S3")
 	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String("us-east-1"),
 		Credentials: credentials.NewStaticCredentials(creds.AWS_ACCESS_KEY_ID, creds.AWS_SECRET_ACCESS_KEY, ""),
 	})
 	if err != nil {
@@ -143,7 +141,7 @@ func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
 func minIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Endpoint:         aws.String(mc.S3Endpoint),
-		Region:           aws.String(mc.S3Region),
+		Region:           aws.String("us-east-1"),
 		Credentials:      credentials.NewStaticCredentials(mc.AccessKeyID, mc.SecretAccessKey, ""),
 		S3ForcePathStyle: aws.Bool(true),
 	})
