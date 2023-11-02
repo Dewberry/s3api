@@ -32,7 +32,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	config := BlobHandler{}
 
 	// Check if the S3_MOCK environment variable is set to "true"
-	if !(os.Getenv("S3_MOCK") == "true") {
+	if os.Getenv("S3_MOCK") == "true" {
 		log.Info("Using MinIO")
 
 		// Load MinIO credentials from environment
