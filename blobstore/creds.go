@@ -19,7 +19,6 @@ type AWSConfig struct {
 
 type MinioConfig struct {
 	S3Endpoint      string `json:"MINIO_S3_ENDPOINT"`
-	S3Region        string `json:"MINIO_S3_REGION"`
 	DisableSSL      string `json:"MINIO_S3_DISABLE_SSL"`
 	ForcePathStyle  string `json:"MINIO_S3_FORCE_PATH_STYLE"`
 	AccessKeyID     string `json:"MINIO_ACCESS_KEY_ID"`
@@ -47,9 +46,6 @@ func (creds MinioConfig) validateMinioConfig() error {
 	missingFields := []string{}
 	if creds.S3Endpoint == "" {
 		missingFields = append(missingFields, "S3Endpoint")
-	}
-	if creds.S3Region == "" {
-		missingFields = append(missingFields, "S3Region")
 	}
 	if creds.DisableSSL == "" {
 		missingFields = append(missingFields, "DisableSSL")
@@ -134,7 +130,6 @@ func awsFromENV() AWSCreds {
 func newMinioConfig() MinioConfig {
 	var mc MinioConfig
 	mc.S3Endpoint = os.Getenv("MINIO_S3_ENDPOINT")
-	mc.S3Region = os.Getenv("MINIO_S3_REGION")
 	mc.DisableSSL = os.Getenv("MINIO_S3_DISABLE_SSL")
 	mc.ForcePathStyle = os.Getenv("MINIO_S3_FORCE_PATH_STYLE")
 	mc.AccessKeyID = os.Getenv("MINIO_ACCESS_KEY_ID")
