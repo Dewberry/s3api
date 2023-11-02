@@ -105,9 +105,8 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		// Retrieve the list of buckets for each account
 		result, err := S3Ctrl.listBuckets()
 		if err != nil {
-			errMsg := fmt.Errorf("failed to retrieve list of buckets: %s", err.Error())
-			log.Error(errMsg.Error())
-			return nil, errMsg
+			errMsg := fmt.Errorf("failed to retrieve list of buckets with access key: %s, error: %s", creds.AWS_ACCESS_KEY_ID, err.Error())
+			log.Fatal(errMsg.Error())
 		}
 
 		// Extract and store bucket names associated with the account
@@ -130,6 +129,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
 	log.Info("Using AWS S3")
 	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String("us-east-1"),
 		Credentials: credentials.NewStaticCredentials(creds.AWS_ACCESS_KEY_ID, creds.AWS_SECRET_ACCESS_KEY, ""),
 	})
 	if err != nil {
@@ -141,7 +141,7 @@ func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
 func minIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Endpoint:         aws.String(mc.S3Endpoint),
-		Region:           aws.String(mc.S3Region),
+		Region:           aws.String("us-east-1"),
 		Credentials:      credentials.NewStaticCredentials(mc.AccessKeyID, mc.SecretAccessKey, ""),
 		S3ForcePathStyle: aws.Bool(true),
 	})
