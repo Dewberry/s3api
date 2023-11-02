@@ -32,7 +32,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	config := BlobHandler{}
 
 	// Check if the S3_MOCK environment variable is set to "true"
-	if os.Getenv("S3_MOCK") == "true" {
+	if !(os.Getenv("S3_MOCK") == "true") {
 		log.Info("Using MinIO")
 
 		// Load MinIO credentials from environment
@@ -122,7 +122,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	// Indicate that the BlobHandler can access multiple buckets under different AWS accounts
 	config.NamedBucketOnly = false
 	config.AllowedBuckets = awsConfig.BucketAllowList
-
+	fmt.Println(awsConfig.BucketAllowList)
 	// Return the configured BlobHandler
 
 	return &config, nil
@@ -207,11 +207,15 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 					s3Ctrl.Sess = newSession
 					s3Ctrl.S3Svc = s3.New(s3Ctrl.Sess)
 				}
-				if !(!bh.NamedBucketOnly && bh.isBucketAllowed(bucket)) {
-					errMsg := fmt.Errorf("bucket '%s' cannot be accessed. Ensure it exists, is spelled correctly, and that you have the necessary permissions", bucket)
-					log.Error(errMsg.Error())
-					return &s3Ctrl, errMsg
+
+				if bh.isBucketAllowed("*") {
+					if !bh.NamedBucketOnly && !bh.isBucketAllowed(bucket) {
+						errMsg := fmt.Errorf("bucket '%s' cannot be accessed. Ensure it exists, is spelled correctly, and that you have the necessary permissions", bucket)
+						log.Error(errMsg.Error())
+						return &s3Ctrl, errMsg
+					}
 				}
+
 				return &s3Ctrl, nil
 			}
 		}
