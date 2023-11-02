@@ -10,6 +10,7 @@ import (
 type AWSCreds struct {
 	AWS_ACCESS_KEY_ID     string `json:"AWS_ACCESS_KEY_ID"`
 	AWS_SECRET_ACCESS_KEY string `json:"AWS_SECRET_ACCESS_KEY"`
+	AWS_S3_BUCKET         string `json:"AWS_S3_BUCKET"`
 }
 
 type AWSConfig struct {
@@ -34,6 +35,10 @@ func (creds AWSCreds) validateAWSCreds() error {
 	}
 	if creds.AWS_SECRET_ACCESS_KEY == "" {
 		missingFields = append(missingFields, "AWS_SECRET_ACCESS_KEY")
+	}
+
+	if creds.AWS_S3_BUCKET == "" {
+		missingFields = append(missingFields, "AWS_S3_BUCKET")
 	}
 
 	if len(missingFields) > 0 {
@@ -124,6 +129,7 @@ func awsFromENV() AWSCreds {
 	var creds AWSCreds
 	creds.AWS_ACCESS_KEY_ID = os.Getenv("AWS_ACCESS_KEY_ID")
 	creds.AWS_SECRET_ACCESS_KEY = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	creds.AWS_S3_BUCKET = os.Getenv("S3_BUCKET")
 	return creds
 }
 
