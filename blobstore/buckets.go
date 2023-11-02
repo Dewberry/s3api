@@ -102,11 +102,14 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 
 			// Extract the bucket names from the response and append to allBuckets
 			for _, bucket := range response.Buckets {
-				allBuckets = append(allBuckets, BucketInfo{
-					ID:   currentID,
-					Name: aws.StringValue(bucket.Name),
-				})
-				currentID++ // Increment the ID for the next bucket
+				if bh.isBucketAllowed(aws.StringValue(bucket.Name)) {
+					allBuckets = append(allBuckets, BucketInfo{
+						ID:   currentID,
+						Name: aws.StringValue(bucket.Name),
+					})
+					currentID++ // Increment the ID for the next bucket
+				}
+
 			}
 		}
 

@@ -13,7 +13,8 @@ type AWSCreds struct {
 }
 
 type AWSConfig struct {
-	Accounts []AWSCreds `json:"accounts"`
+	Accounts        []AWSCreds `json:"accounts"`
+	BucketAllowList []string   `json:"bucket_allow_list"`
 }
 
 type MinioConfig struct {
