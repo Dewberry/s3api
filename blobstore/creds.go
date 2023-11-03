@@ -104,7 +104,7 @@ func validateEnvJSON(filePath string) error {
 		}
 	}
 	if len(awsConfig.BucketAllowList) == 0 {
-		return fmt.Errorf("no buckets in the allow list, please provide required buckets, or `*` for access to all buckets")
+		return fmt.Errorf("no buckets in the `bucket_allow_list`, please provide required buckets, or `*` for access to all buckets")
 	}
 	// If all checks pass, return nil (no error)
 	return nil
