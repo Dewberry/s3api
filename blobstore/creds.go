@@ -103,7 +103,9 @@ func validateEnvJSON(filePath string) error {
 			return fmt.Errorf("missing fields (%s) for AWS account %d in envJson file", strings.Join(missingFields, ", "), i+1)
 		}
 	}
-
+	if len(awsConfig.BucketAllowList) == 0 {
+		return fmt.Errorf("no buckets in the allow list, please provide required buckets, or `*` for access to all buckets")
+	}
 	// If all checks pass, return nil (no error)
 	return nil
 }
