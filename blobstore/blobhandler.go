@@ -175,10 +175,6 @@ func minIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
 
 func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 	if bucket == "" {
-		if bh.NamedBucketOnly {
-			log.Infof("named bucket only settings")
-			return &bh.S3Controllers[0], nil
-		}
 		err := fmt.Errorf("parameter 'bucket' is required")
 		log.Error(err.Error())
 		return nil, err
