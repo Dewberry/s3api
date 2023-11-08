@@ -24,7 +24,7 @@ type MinioConfig struct {
 	ForcePathStyle  string `json:"MINIO_S3_FORCE_PATH_STYLE"`
 	AccessKeyID     string `json:"MINIO_ACCESS_KEY_ID"`
 	SecretAccessKey string `json:"MINIO_SECRET_ACCESS_KEY"`
-	Bucket          string `json:"S3_BUCKET"`
+	Bucket          string `json:"AWS_S3_BUCKET"`
 	S3Mock          string `json:"S3_MOCK"`
 }
 
@@ -131,7 +131,7 @@ func awsFromENV() AWSCreds {
 	var creds AWSCreds
 	creds.AWS_ACCESS_KEY_ID = os.Getenv("AWS_ACCESS_KEY_ID")
 	creds.AWS_SECRET_ACCESS_KEY = os.Getenv("AWS_SECRET_ACCESS_KEY")
-	creds.AWS_S3_BUCKET = os.Getenv("S3_BUCKET")
+	creds.AWS_S3_BUCKET = os.Getenv("AWS_S3_BUCKET")
 	return creds
 }
 
@@ -141,7 +141,7 @@ func newMinioConfig() MinioConfig {
 	mc.DisableSSL = os.Getenv("MINIO_S3_DISABLE_SSL")
 	mc.ForcePathStyle = os.Getenv("MINIO_S3_FORCE_PATH_STYLE")
 	mc.AccessKeyID = os.Getenv("MINIO_ACCESS_KEY_ID")
-	mc.Bucket = os.Getenv("S3_BUCKET")
+	mc.Bucket = os.Getenv("AWS_S3_BUCKET")
 	mc.SecretAccessKey = os.Getenv("MINIO_SECRET_ACCESS_KEY")
 	return mc
 }

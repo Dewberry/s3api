@@ -82,7 +82,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		}
 
 		// Configure the BlobHandler with AWS session and bucket information
-		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{os.Getenv("S3_BUCKET")}}}
+		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{os.Getenv("AWS_S3_BUCKET")}}}
 		config.NamedBucketOnly = true
 
 		// Return the configured BlobHandler

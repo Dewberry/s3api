@@ -50,7 +50,7 @@ func (s3Ctrl *S3Controller) RecursivelyDeleteObjects(bucket, prefix string) erro
 }
 
 // HandleDeleteObject handles the API endpoint for deleting an object/s from an S3 bucket.
-// It expects the 'key' query parameter to specify the object key and the 'bucket' query parameter to specify the bucket name (optional, falls back to environment variable 'S3_BUCKET').
+// It expects the 'key' query parameter to specify the object key and the 'bucket' query parameter to specify the bucket name (optional, falls back to environment variable 'AWS_S3_BUCKET').
 // It returns an appropriate JSON response indicating the success or failure of the deletion.
 func (bh *BlobHandler) HandleDeleteObject(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
