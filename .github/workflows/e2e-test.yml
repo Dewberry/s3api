@@ -31,7 +31,7 @@ jobs:
           echo S3_MOCK='true' >> .env
           echo URL_EXP_DAYS='7' >> .env
           echo TEMP_PREFIX='downloads-temp' >> .env
-          echo S3_BUCKET='test-bucket' >> .env
+          echo AWS_S3_BUCKET='test-bucket' >> .env
       - name: Substitute secret variables in JSON
         env:
           auth_password: ${{ secrets.AUTH_PASSWORD }}

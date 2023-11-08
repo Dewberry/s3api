@@ -82,7 +82,6 @@ type BucketInfo struct {
 
 func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 	var allBuckets []BucketInfo
-
 	if bh.NamedBucketOnly {
 		bucketName := bh.S3Controllers[0].Buckets[0]
 		log.Infof("HandleListBuckets: Returning named bucket %s", bucketName)
@@ -102,11 +101,14 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 
 			// Extract the bucket names from the response and append to allBuckets
 			for _, bucket := range response.Buckets {
-				allBuckets = append(allBuckets, BucketInfo{
-					ID:   currentID,
-					Name: aws.StringValue(bucket.Name),
-				})
-				currentID++ // Increment the ID for the next bucket
+				if bh.isBucketAllowed("*") || bh.isBucketAllowed(aws.StringValue(bucket.Name)) {
+					allBuckets = append(allBuckets, BucketInfo{
+						ID:   currentID,
+						Name: aws.StringValue(bucket.Name),
+					})
+					currentID++ // Increment the ID for the next bucket
+				}
+
 			}
 		}
 

@@ -10,10 +10,12 @@ import (
 type AWSCreds struct {
 	AWS_ACCESS_KEY_ID     string `json:"AWS_ACCESS_KEY_ID"`
 	AWS_SECRET_ACCESS_KEY string `json:"AWS_SECRET_ACCESS_KEY"`
+	AWS_S3_BUCKET         string `json:"AWS_S3_BUCKET"`
 }
 
 type AWSConfig struct {
-	Accounts []AWSCreds `json:"accounts"`
+	Accounts        []AWSCreds `json:"accounts"`
+	BucketAllowList []string   `json:"bucket_allow_list"`
 }
 
 type MinioConfig struct {
@@ -22,7 +24,7 @@ type MinioConfig struct {
 	ForcePathStyle  string `json:"MINIO_S3_FORCE_PATH_STYLE"`
 	AccessKeyID     string `json:"MINIO_ACCESS_KEY_ID"`
 	SecretAccessKey string `json:"MINIO_SECRET_ACCESS_KEY"`
-	Bucket          string `json:"S3_BUCKET"`
+	Bucket          string `json:"AWS_S3_BUCKET"`
 	S3Mock          string `json:"S3_MOCK"`
 }
 
@@ -33,6 +35,10 @@ func (creds AWSCreds) validateAWSCreds() error {
 	}
 	if creds.AWS_SECRET_ACCESS_KEY == "" {
 		missingFields = append(missingFields, "AWS_SECRET_ACCESS_KEY")
+	}
+
+	if creds.AWS_S3_BUCKET == "" {
+		missingFields = append(missingFields, "AWS_S3_BUCKET")
 	}
 
 	if len(missingFields) > 0 {
@@ -97,7 +103,9 @@ func validateEnvJSON(filePath string) error {
 			return fmt.Errorf("missing fields (%s) for AWS account %d in envJson file", strings.Join(missingFields, ", "), i+1)
 		}
 	}
-
+	if len(awsConfig.BucketAllowList) == 0 {
+		return fmt.Errorf("no buckets in the `bucket_allow_list`, please provide required buckets, or `*` for access to all buckets")
+	}
 	// If all checks pass, return nil (no error)
 	return nil
 }
@@ -123,6 +131,7 @@ func awsFromENV() AWSCreds {
 	var creds AWSCreds
 	creds.AWS_ACCESS_KEY_ID = os.Getenv("AWS_ACCESS_KEY_ID")
 	creds.AWS_SECRET_ACCESS_KEY = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	creds.AWS_S3_BUCKET = os.Getenv("AWS_S3_BUCKET")
 	return creds
 }
 
@@ -132,7 +141,7 @@ func newMinioConfig() MinioConfig {
 	mc.DisableSSL = os.Getenv("MINIO_S3_DISABLE_SSL")
 	mc.ForcePathStyle = os.Getenv("MINIO_S3_FORCE_PATH_STYLE")
 	mc.AccessKeyID = os.Getenv("MINIO_ACCESS_KEY_ID")
-	mc.Bucket = os.Getenv("S3_BUCKET")
+	mc.Bucket = os.Getenv("AWS_S3_BUCKET")
 	mc.SecretAccessKey = os.Getenv("MINIO_SECRET_ACCESS_KEY")
 	return mc
 }

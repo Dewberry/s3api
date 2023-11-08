@@ -22,6 +22,7 @@ type S3Controller struct {
 // Store configuration for the handler
 type BlobHandler struct {
 	S3Controllers   []S3Controller
+	AllowedBuckets  []string
 	NamedBucketOnly bool
 }
 
@@ -81,7 +82,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		}
 
 		// Configure the BlobHandler with AWS session and bucket information
-		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{os.Getenv("S3_BUCKET")}}}
+		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{os.Getenv("AWS_S3_BUCKET")}}}
 		config.NamedBucketOnly = true
 
 		// Return the configured BlobHandler
@@ -101,7 +102,6 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		}
 
 		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
-
 		// Retrieve the list of buckets for each account
 		result, err := S3Ctrl.listBuckets()
 		if err != nil {
@@ -121,8 +121,9 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 
 	// Indicate that the BlobHandler can access multiple buckets under different AWS accounts
 	config.NamedBucketOnly = false
-
+	config.AllowedBuckets = awsConfig.BucketAllowList
 	// Return the configured BlobHandler
+
 	return &config, nil
 }
 
@@ -206,11 +207,29 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 					s3Ctrl.S3Svc = s3.New(s3Ctrl.Sess)
 				}
 
+				if !bh.isBucketAllowed("*") && (!bh.NamedBucketOnly && !bh.isBucketAllowed(bucket)) {
+					errMsg := fmt.Errorf("bucket '%s' cannot be accessed. Ensure it exists, is spelled correctly, and that you have the necessary permissions", bucket)
+					log.Error(errMsg.Error())
+					return &s3Ctrl, errMsg
+				}
+
 				return &s3Ctrl, nil
 			}
 		}
 	}
 	return &s3Ctrl, fmt.Errorf("bucket '%s' not found", bucket)
+}
+
+func (h *BlobHandler) isBucketAllowed(bucketName string) bool {
+	if len(h.AllowedBuckets) == 0 {
+		return false // No buckets are allowed if the list is empty
+	}
+	for _, b := range h.AllowedBuckets {
+		if b == bucketName {
+			return true // Bucket is allowed
+		}
+	}
+	return false // Bucket is not in the allowed list
 }
 
 func getBucketRegion(S3Svc *s3.S3, bucketName string) (string, error) {
