@@ -21,9 +21,7 @@ type S3Controller struct {
 
 // Store configuration for the handler
 type BlobHandler struct {
-	S3Controllers   []S3Controller
-	AllowedBuckets  []string
-	NamedBucketOnly bool
+	S3Controllers []S3Controller
 }
 
 // Initializes resources and return a new handler (errors are fatal)
@@ -52,8 +50,6 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 
 		// Configure the BlobHandler with MinIO session and bucket information
 		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{creds.Bucket}}}
-		config.NamedBucketOnly = true
-
 		// Return the configured BlobHandler
 		return &config, nil
 	}
@@ -66,30 +62,17 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 
 	// Check if loading AWS credentials from .env.json failed
 	if err != nil {
-		log.Warnf("env.json credentials extraction failed, attmepting to retreive from environment, %s", err.Error())
-		creds := awsFromENV()
-
-		// Validate AWS credentials, check if they are missing or incomplete
-		// if not then the s3api won't start
-		if err := creds.validateAWSCreds(); err != nil {
-			log.Fatalf("AWS credentials are either not provided or contain missing variables: %s", err.Error())
-		}
-
-		// Create an AWS session and S3 client
-		s3SVC, sess, err := aWSSessionManager(creds)
-		if err != nil {
-			log.Fatalf("failed to create AWS session: %s", err.Error())
-		}
-
-		// Configure the BlobHandler with AWS session and bucket information
-		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{os.Getenv("AWS_S3_BUCKET")}}}
-		config.NamedBucketOnly = true
-
-		// Return the configured BlobHandler
-		return &config, nil
+		return nil, fmt.Errorf("env.json credentials extraction failed, please check `.env.json.example` for reference on formatting, %s", err.Error())
 	}
 
-	// Using AWS S3 with multiple accounts
+	//does it contain "*"
+	allowAllBucket := contains("*", awsConfig.BucketAllowList)
+
+	// Convert allowed buckets to a map for efficient lookup
+	allowedBucketsMap := make(map[string]struct{})
+	for _, bucket := range awsConfig.BucketAllowList {
+		allowedBucketsMap[bucket] = struct{}{}
+	}
 
 	// Load AWS credentials for multiple accounts from .env.json
 	for _, creds := range awsConfig.Accounts {
@@ -106,24 +89,40 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		result, err := S3Ctrl.listBuckets()
 		if err != nil {
 			errMsg := fmt.Errorf("failed to retrieve list of buckets with access key: %s, error: %s", creds.AWS_ACCESS_KEY_ID, err.Error())
-			log.Fatal(errMsg.Error())
+			return nil, errMsg
 		}
 
-		// Extract and store bucket names associated with the account
 		var bucketNames []string
-		for _, bucket := range result.Buckets {
-			bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
+		if allowAllBucket {
+			// Directly add all bucket names if allowAllBucket is true
+			for _, bucket := range result.Buckets {
+				bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
+			}
+		} else {
+			// Filter and add only the allowed buckets
+			for _, bucket := range result.Buckets {
+				if _, exists := allowedBucketsMap[*bucket.Name]; exists {
+					bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
+					// Remove this bucket from the allowed list map
+					delete(allowedBucketsMap, *bucket.Name)
+				}
+			}
 		}
 
-		// Configure the BlobHandler with AWS sessions and associated bucket information
-		config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames})
+		if len(bucketNames) > 0 {
+			config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames})
+		}
 	}
 
-	// Indicate that the BlobHandler can access multiple buckets under different AWS accounts
-	config.NamedBucketOnly = false
-	config.AllowedBuckets = awsConfig.BucketAllowList
-	// Return the configured BlobHandler
+	if !allowAllBucket && len(allowedBucketsMap) > 0 {
+		missingBuckets := make([]string, 0, len(allowedBucketsMap))
+		for bucket := range allowedBucketsMap {
+			missingBuckets = append(missingBuckets, bucket)
+		}
+		return nil, fmt.Errorf("some buckets in the allow list were not found: %v", missingBuckets)
+	}
 
+	// Return the configured BlobHandler
 	return &config, nil
 }
 
@@ -207,29 +206,11 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 					s3Ctrl.S3Svc = s3.New(s3Ctrl.Sess)
 				}
 
-				if !bh.isBucketAllowed("*") && (!bh.NamedBucketOnly && !bh.isBucketAllowed(bucket)) {
-					errMsg := fmt.Errorf("bucket '%s' cannot be accessed. Ensure it exists, is spelled correctly, and that you have the necessary permissions", bucket)
-					log.Error(errMsg.Error())
-					return &s3Ctrl, errMsg
-				}
-
 				return &s3Ctrl, nil
 			}
 		}
 	}
 	return &s3Ctrl, fmt.Errorf("bucket '%s' not found", bucket)
-}
-
-func (h *BlobHandler) isBucketAllowed(bucketName string) bool {
-	if len(h.AllowedBuckets) == 0 {
-		return false // No buckets are allowed if the list is empty
-	}
-	for _, b := range h.AllowedBuckets {
-		if b == bucketName {
-			return true // Bucket is allowed
-		}
-	}
-	return false // Bucket is not in the allowed list
 }
 
 func getBucketRegion(S3Svc *s3.S3, bucketName string) (string, error) {

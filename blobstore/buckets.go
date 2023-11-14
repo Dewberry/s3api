@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
@@ -82,38 +81,22 @@ type BucketInfo struct {
 
 func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 	var allBuckets []BucketInfo
-	if bh.NamedBucketOnly {
-		bucketName := bh.S3Controllers[0].Buckets[0]
-		log.Infof("HandleListBuckets: Returning named bucket %s", bucketName)
+	currentID := 1 // Initialize ID counter
 
-		allBuckets = append(allBuckets, BucketInfo{
-			ID:   1,
-			Name: bucketName,
-		})
-	} else {
-		currentID := 1 // Initialize ID counter
+	for _, s3Ctrl := range bh.S3Controllers {
 
-		for _, s3Ctrl := range bh.S3Controllers {
-			response, err := s3Ctrl.listBuckets()
-			if err != nil {
-				return c.JSON(http.StatusInternalServerError, err.Error())
-			}
+		// Extract the bucket names from the response and append to allBuckets
+		for _, bucket := range s3Ctrl.Buckets {
+			allBuckets = append(allBuckets, BucketInfo{
+				ID:   currentID,
+				Name: bucket,
+			})
+			currentID++ // Increment the ID for the next bucket
 
-			// Extract the bucket names from the response and append to allBuckets
-			for _, bucket := range response.Buckets {
-				if bh.isBucketAllowed("*") || bh.isBucketAllowed(aws.StringValue(bucket.Name)) {
-					allBuckets = append(allBuckets, BucketInfo{
-						ID:   currentID,
-						Name: aws.StringValue(bucket.Name),
-					})
-					currentID++ // Increment the ID for the next bucket
-				}
-
-			}
 		}
-
-		log.Info("HandleListBuckets: Successfully retrieved list of buckets")
 	}
+
+	log.Info("HandleListBuckets: Successfully retrieved list of buckets")
 
 	return c.JSON(http.StatusOK, allBuckets)
 }

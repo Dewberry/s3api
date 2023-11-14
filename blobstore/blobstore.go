@@ -44,3 +44,12 @@ func generateRandomString() string {
 
 	return string(b)
 }
+
+func contains(a string, l []string) bool {
+	for _, b := range l {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
