@@ -45,11 +45,29 @@ func generateRandomString() string {
 	return string(b)
 }
 
-func contains(a string, l []string) bool {
+func DoesArrcontain(a string, l []string) bool {
 	for _, b := range l {
 		if b == a {
 			return true
 		}
 	}
 	return false
+}
+
+func arrayContainsAll(array1, array2 []string) bool {
+	set := make(map[string]bool)
+
+	// Convert array1 into a set
+	for _, str := range array1 {
+		set[str] = true
+	}
+
+	// Check if every string element in array2 exists in the set
+	for _, str := range array2 {
+		if !set[str] {
+			return false
+		}
+	}
+
+	return true
 }

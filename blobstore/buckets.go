@@ -12,7 +12,7 @@ import (
 )
 
 // listBuckets returns the list of all S3 buckets.
-func (s3Ctrl *S3Controller) listBuckets() (*s3.ListBucketsOutput, error) {
+func (s3Ctrl *S3Controller) ListBuckets() (*s3.ListBucketsOutput, error) {
 	// Set up input parameters for the ListBuckets API
 	var result *s3.ListBucketsOutput
 	var err error
@@ -82,11 +82,27 @@ type BucketInfo struct {
 func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 	var allBuckets []BucketInfo
 	currentID := 1 // Initialize ID counter
+	bh.Mu.Lock()
+	for i := 0; i < len(bh.S3Controllers); i++ {
+		if bh.AllowAllBuckets {
+			result, err := bh.S3Controllers[i].ListBuckets()
+			if err != nil {
+				errMsg := fmt.Errorf("error returning list of buckets, error: %s", err)
+				log.Error(errMsg)
+				return c.JSON(http.StatusInternalServerError, errMsg)
+			}
+			var mostRecentBucketList []string
+			for _, b := range result.Buckets {
+				mostRecentBucketList = append(mostRecentBucketList, *b.Name)
+			}
+			if !arrayContainsAll(bh.S3Controllers[i].Buckets, mostRecentBucketList) {
 
-	for _, s3Ctrl := range bh.S3Controllers {
+				bh.S3Controllers[i].Buckets = mostRecentBucketList
 
+			}
+		}
 		// Extract the bucket names from the response and append to allBuckets
-		for _, bucket := range s3Ctrl.Buckets {
+		for _, bucket := range bh.S3Controllers[i].Buckets {
 			allBuckets = append(allBuckets, BucketInfo{
 				ID:   currentID,
 				Name: bucket,
@@ -95,6 +111,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 
 		}
 	}
+	bh.Mu.Unlock()
 
 	log.Info("HandleListBuckets: Successfully retrieved list of buckets")
 

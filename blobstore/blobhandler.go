@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -21,7 +22,9 @@ type S3Controller struct {
 
 // Store configuration for the handler
 type BlobHandler struct {
-	S3Controllers []S3Controller
+	S3Controllers   []S3Controller
+	Mu              sync.Mutex
+	AllowAllBuckets bool
 }
 
 // Initializes resources and return a new handler (errors are fatal)
@@ -66,7 +69,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	}
 
 	//does it contain "*"
-	allowAllBucket := contains("*", awsConfig.BucketAllowList)
+	config.AllowAllBuckets = DoesArrcontain("*", awsConfig.BucketAllowList)
 
 	// Convert allowed buckets to a map for efficient lookup
 	allowedBucketsMap := make(map[string]struct{})
@@ -86,14 +89,14 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 
 		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
 		// Retrieve the list of buckets for each account
-		result, err := S3Ctrl.listBuckets()
+		result, err := S3Ctrl.ListBuckets()
 		if err != nil {
 			errMsg := fmt.Errorf("failed to retrieve list of buckets with access key: %s, error: %s", creds.AWS_ACCESS_KEY_ID, err.Error())
 			return nil, errMsg
 		}
 
 		var bucketNames []string
-		if allowAllBucket {
+		if config.AllowAllBuckets {
 			// Directly add all bucket names if allowAllBucket is true
 			for _, bucket := range result.Buckets {
 				bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
@@ -114,7 +117,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		}
 	}
 
-	if !allowAllBucket && len(allowedBucketsMap) > 0 {
+	if !config.AllowAllBuckets && len(allowedBucketsMap) > 0 {
 		missingBuckets := make([]string, 0, len(allowedBucketsMap))
 		for bucket := range allowedBucketsMap {
 			missingBuckets = append(missingBuckets, bucket)
