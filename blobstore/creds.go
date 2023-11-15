@@ -28,25 +28,6 @@ type MinioConfig struct {
 	S3Mock          string `json:"S3_MOCK"`
 }
 
-func (creds AWSCreds) validateAWSCreds() error {
-	missingFields := []string{}
-	if creds.AWS_ACCESS_KEY_ID == "" {
-		missingFields = append(missingFields, "AWS_ACCESS_KEY_ID")
-	}
-	if creds.AWS_SECRET_ACCESS_KEY == "" {
-		missingFields = append(missingFields, "AWS_SECRET_ACCESS_KEY")
-	}
-
-	if creds.AWS_S3_BUCKET == "" {
-		missingFields = append(missingFields, "AWS_S3_BUCKET")
-	}
-
-	if len(missingFields) > 0 {
-		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
-	}
-	return nil
-}
-
 func (creds MinioConfig) validateMinioConfig() error {
 	missingFields := []string{}
 	if creds.S3Endpoint == "" {
@@ -114,7 +95,7 @@ func newAWSConfig(envJson string) (AWSConfig, error) {
 	var awsConfig AWSConfig
 	err := validateEnvJSON(envJson)
 	if err != nil {
-		return awsConfig, fmt.Errorf("error validating the envJson will default to env AWS creditentials: %s", err.Error())
+		return awsConfig, fmt.Errorf(err.Error())
 	}
 	jsonData, err := os.ReadFile(envJson)
 	if err != nil {
@@ -125,14 +106,6 @@ func newAWSConfig(envJson string) (AWSConfig, error) {
 		return awsConfig, err
 	}
 	return awsConfig, nil
-}
-
-func awsFromENV() AWSCreds {
-	var creds AWSCreds
-	creds.AWS_ACCESS_KEY_ID = os.Getenv("AWS_ACCESS_KEY_ID")
-	creds.AWS_SECRET_ACCESS_KEY = os.Getenv("AWS_SECRET_ACCESS_KEY")
-	creds.AWS_S3_BUCKET = os.Getenv("AWS_S3_BUCKET")
-	return creds
 }
 
 func newMinioConfig() MinioConfig {

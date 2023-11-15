@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
 
 // listBuckets returns the list of all S3 buckets.
-func (s3Ctrl *S3Controller) listBuckets() (*s3.ListBucketsOutput, error) {
+func (s3Ctrl *S3Controller) ListBuckets() (*s3.ListBucketsOutput, error) {
 	// Set up input parameters for the ListBuckets API
 	var result *s3.ListBucketsOutput
 	var err error
@@ -82,38 +81,39 @@ type BucketInfo struct {
 
 func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 	var allBuckets []BucketInfo
-	if bh.NamedBucketOnly {
-		bucketName := bh.S3Controllers[0].Buckets[0]
-		log.Infof("HandleListBuckets: Returning named bucket %s", bucketName)
-
-		allBuckets = append(allBuckets, BucketInfo{
-			ID:   1,
-			Name: bucketName,
-		})
-	} else {
-		currentID := 1 // Initialize ID counter
-
-		for _, s3Ctrl := range bh.S3Controllers {
-			response, err := s3Ctrl.listBuckets()
+	currentID := 1 // Initialize ID counter
+	bh.Mu.Lock()
+	for i := 0; i < len(bh.S3Controllers); i++ {
+		if bh.AllowAllBuckets {
+			result, err := bh.S3Controllers[i].ListBuckets()
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, err.Error())
+				errMsg := fmt.Errorf("error returning list of buckets, error: %s", err)
+				log.Error(errMsg)
+				return c.JSON(http.StatusInternalServerError, errMsg)
 			}
+			var mostRecentBucketList []string
+			for _, b := range result.Buckets {
+				mostRecentBucketList = append(mostRecentBucketList, *b.Name)
+			}
+			if !isIdenticalArray(bh.S3Controllers[i].Buckets, mostRecentBucketList) {
 
-			// Extract the bucket names from the response and append to allBuckets
-			for _, bucket := range response.Buckets {
-				if bh.isBucketAllowed("*") || bh.isBucketAllowed(aws.StringValue(bucket.Name)) {
-					allBuckets = append(allBuckets, BucketInfo{
-						ID:   currentID,
-						Name: aws.StringValue(bucket.Name),
-					})
-					currentID++ // Increment the ID for the next bucket
-				}
+				bh.S3Controllers[i].Buckets = mostRecentBucketList
 
 			}
 		}
+		// Extract the bucket names from the response and append to allBuckets
+		for _, bucket := range bh.S3Controllers[i].Buckets {
+			allBuckets = append(allBuckets, BucketInfo{
+				ID:   currentID,
+				Name: bucket,
+			})
+			currentID++ // Increment the ID for the next bucket
 
-		log.Info("HandleListBuckets: Successfully retrieved list of buckets")
+		}
 	}
+	bh.Mu.Unlock()
+
+	log.Info("HandleListBuckets: Successfully retrieved list of buckets")
 
 	return c.JSON(http.StatusOK, allBuckets)
 }

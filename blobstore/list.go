@@ -45,8 +45,6 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
-	fmt.Println(bucket)
-
 	delimiterParam := c.QueryParam("delimiter")
 	var delimiter bool
 	if delimiterParam == "true" || delimiterParam == "false" {

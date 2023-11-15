@@ -4,7 +4,8 @@ import (
 	"os"
 
 	"github.com/Dewberry/s3api/auth"
-	"github.com/Dewberry/s3api/config"
+	"github.com/Dewberry/s3api/blobstore"
+	envcheck "github.com/Dewberry/s3api/env-checker"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -12,6 +13,9 @@ import (
 )
 
 func main() {
+	if err := envcheck.CheckEnvVariablesExist(envcheck.REQUIRED_ENV_VAR); err != nil {
+		log.Fatal(err)
+	}
 	log.SetFormatter(&log.JSONFormatter{})
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
@@ -29,9 +33,12 @@ func main() {
 	admin := []string{"s3_admin"}
 	allUsers := []string{"s3_admin", "s3_reader", "s3_writer"}
 	writer := []string{"s3_admin", "s3_writer"}
+	envJson := ".env.json"
 
-	apiConfig := config.Init(".env.json")
-	bh := apiConfig.BH
+	bh, err := blobstore.NewBlobHandler(envJson)
+	if err != nil {
+		log.Fatalf("error initializing a new blobhandler: %v", err)
+	}
 
 	e := echo.New()
 	e.Use(middleware.Logger())
@@ -41,8 +48,8 @@ func main() {
 		AllowOrigins:     []string{"*"},
 	}))
 
-	e.GET("/ping", bh.Ping)
 	e.GET("/ping_with_auth", auth.Authorize(bh.PingWithAuth, allUsers...))
+	e.GET("/ping", bh.Ping)
 
 	// object content
 	e.GET("/object/metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
@@ -70,5 +77,5 @@ func main() {
 	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writer...))
 	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writer...))
 
-	e.Logger.Fatal(e.Start(":" + apiConfig.Port))
+	e.Logger.Fatal(e.Start(":" + os.Getenv("S3API_SERVICE_PORT")))
 }
