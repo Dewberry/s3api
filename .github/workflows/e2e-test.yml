@@ -32,6 +32,7 @@ jobs:
           echo URL_EXP_DAYS='7' >> .env
           echo TEMP_PREFIX='downloads-temp' >> .env
           echo AWS_S3_BUCKET='test-bucket' >> .env
+          echo S3API_SERVICE_PORT='5005' >> .env
       - name: Substitute secret variables in JSON
         env:
           auth_password: ${{ secrets.AUTH_PASSWORD }}
