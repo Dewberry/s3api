@@ -182,21 +182,22 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 		return nil, err
 	}
 	var s3Ctrl S3Controller
-	for _, controller := range bh.S3Controllers {
-		for _, b := range controller.Buckets {
+	for i := 0; i < len(bh.S3Controllers); i++ {
+		for _, b := range bh.S3Controllers[i].Buckets {
 			if b == bucket {
-				s3Ctrl = controller
+				s3Ctrl = bh.S3Controllers[i]
 
 				// Detect the bucket's region
-				region, err := getBucketRegion(controller.S3Svc, b)
+				region, err := getBucketRegion(bh.S3Controllers[i].S3Svc, b)
 				if err != nil {
 					log.Errorf("Failed to get region for bucket '%s': %s", b, err.Error())
 					continue
 				}
 				// Check if the region is the same. If not, update the session and client
 				currentRegion := *s3Ctrl.Sess.Config.Region
-				log.Debugf("current region: %s region of bucket: %s", currentRegion, region)
 				if currentRegion != region {
+					log.Debugf("current region: %s region of bucket: %s, attempting to create a new controller", currentRegion, region)
+
 					newSession, err := session.NewSession(&aws.Config{
 						Region:      aws.String(region),
 						Credentials: s3Ctrl.Sess.Config.Credentials,
@@ -207,6 +208,9 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 					}
 					s3Ctrl.Sess = newSession
 					s3Ctrl.S3Svc = s3.New(s3Ctrl.Sess)
+					bh.Mu.Lock()
+					bh.S3Controllers[i] = s3Ctrl
+					bh.Mu.Unlock()
 				}
 
 				return &s3Ctrl, nil
