@@ -45,8 +45,8 @@ func generateRandomString() string {
 	return string(b)
 }
 
-func DoesArrcontain(a string, l []string) bool {
-	for _, b := range l {
+func arrayContains(a string, arr []string) bool {
+	for _, b := range arr {
 		if b == a {
 			return true
 		}

@@ -69,7 +69,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	}
 
 	//does it contain "*"
-	config.AllowAllBuckets = DoesArrcontain("*", awsConfig.BucketAllowList)
+	config.AllowAllBuckets = arrayContains("*", awsConfig.BucketAllowList)
 
 	// Convert allowed buckets to a map for efficient lookup
 	allowedBucketsMap := make(map[string]struct{})
