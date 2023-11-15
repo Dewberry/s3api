@@ -5,6 +5,7 @@ import (
 
 	"github.com/Dewberry/s3api/auth"
 	"github.com/Dewberry/s3api/blobstore"
+	envcheck "github.com/Dewberry/s3api/env-checker"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -12,6 +13,9 @@ import (
 )
 
 func main() {
+	if err := envcheck.CheckEnvVariablesExist(envcheck.REQUIRED_ENV_VAR); err != nil {
+		log.Fatal(err)
+	}
 	log.SetFormatter(&log.JSONFormatter{})
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
