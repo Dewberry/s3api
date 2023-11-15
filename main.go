@@ -77,5 +77,5 @@ func main() {
 	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writer...))
 	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writer...))
 
-	e.Logger.Fatal(e.Start(":5005"))
+	e.Logger.Fatal(e.Start(":" + os.Getenv("API_SERVICE_PORT")))
 }
