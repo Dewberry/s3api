@@ -54,15 +54,17 @@ func DoesArrcontain(a string, l []string) bool {
 	return false
 }
 
-func arrayContainsAll(array1, array2 []string) bool {
+func isIdenticalArray(array1, array2 []string) bool {
+	if len(array1) != len(array2) {
+		return false
+	}
+
 	set := make(map[string]bool)
 
-	// Convert array1 into a set
 	for _, str := range array1 {
 		set[str] = true
 	}
 
-	// Check if every string element in array2 exists in the set
 	for _, str := range array2 {
 		if !set[str] {
 			return false

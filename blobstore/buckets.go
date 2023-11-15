@@ -95,7 +95,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 			for _, b := range result.Buckets {
 				mostRecentBucketList = append(mostRecentBucketList, *b.Name)
 			}
-			if !arrayContainsAll(bh.S3Controllers[i].Buckets, mostRecentBucketList) {
+			if !isIdenticalArray(bh.S3Controllers[i].Buckets, mostRecentBucketList) {
 
 				bh.S3Controllers[i].Buckets = mostRecentBucketList
 
