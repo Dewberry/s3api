@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-var REQUIRED_ENV_VAR = []string{"API_SERVICE_PORT", "KEYCLOAK_ID", "KEYCLOAK_SECRET", "KEYCLOAK_ISSUER", "KEYCLOAK_PUBLIC_KEYS_URL", "URL_EXP_DAYS", "TEMP_PREFIX"}
+var REQUIRED_ENV_VAR = []string{"S3API_SERVICE_PORT", "KEYCLOAK_ID", "KEYCLOAK_SECRET", "KEYCLOAK_ISSUER", "KEYCLOAK_PUBLIC_KEYS_URL", "URL_EXP_DAYS", "TEMP_PREFIX"}
 
 func CheckEnvVariablesExist(envVars []string) error {
 	var missingVars []string
