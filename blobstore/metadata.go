@@ -12,7 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (bh *BlobHandler) GetSize(list *s3.ListObjectsV2Output) (uint64, uint32, error) {
+func (s3Ctrl *S3Controller) GetSize(list *s3.ListObjectsV2Output) (uint64, uint32, error) {
 	if list == nil {
 		return 0, 0, errors.New("getSize: input list is nil")
 	}
@@ -70,7 +70,7 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, "Prefix not found")
 	}
 
-	size, fileCount, err := bh.GetSize(list)
+	size, fileCount, err := s3Ctrl.GetSize(list)
 	if err != nil {
 		log.Error("HandleGetSize: Error getting size:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())

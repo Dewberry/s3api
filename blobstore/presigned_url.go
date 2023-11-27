@@ -188,7 +188,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, errMsg.Error())
 	}
 	//check if size is below 5GB
-	size, fileCount, err := bh.GetSize(response)
+	size, fileCount, err := s3Ctrl.GetSize(response)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting size:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
