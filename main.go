@@ -33,7 +33,7 @@ func main() {
 	admin := []string{"s3_admin"}
 	allUsers := []string{"s3_admin", "s3_reader", "s3_writer"}
 	writer := []string{"s3_admin", "s3_writer"}
-	envJson := ".env.json"
+	envJson := "/app/.env.json"
 
 	bh, err := blobstore.NewBlobHandler(envJson)
 	if err != nil {
