@@ -183,11 +183,13 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	return c.JSON(http.StatusOK, "Successfully uploaded file")
 }
 
-func (s3Ctrl *S3Controller) GetUploadPresignedURL(bucket string, key string, expMin int) (string, error) {
+func (s3Ctrl *S3Controller) GetUploadPresignedURL(bucket string, key string, contentType string, expMin int) (string, error) {
 	duration := time.Duration(expMin) * time.Minute
+
 	req, _ := s3Ctrl.S3Svc.PutObjectRequest(&s3.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(key),
+		ContentType: aws.String(contentType),
 	})
 
 	urlStr, err := req.Presign(duration)
@@ -214,8 +216,13 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-
-	presignedURL, err := s3Ctrl.GetUploadPresignedURL(bucket, key, 15)
+	contentType := c.QueryParam("content_type")
+	if contentType == "" {
+		errMsg := fmt.Errorf("content_type was not provided")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+	presignedURL, err := s3Ctrl.GetUploadPresignedURL(bucket, key, contentType, 15)
 	if err != nil {
 		log.Errorf("HandleGeneratePresignedURL: Error generating presigned URL: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
