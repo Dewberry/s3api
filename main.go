@@ -59,7 +59,7 @@ func main() {
 	e.POST("/object/upload", auth.Authorize(bh.HandleMultipartUpload, writer...))
 	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObject, admin...))
 	e.GET("/object/exists", auth.Authorize(bh.HandleGetObjExist, allUsers...))
-	e.GET("/object/presigned_upload", auth.Authorize(bh.HandleGetPresignedUploadURL, allUsers...))
+	e.GET("/object/presigned_upload", auth.Authorize(bh.HandleGetPresignedUploadURL, writer...))
 	// prefix
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefixWithDetail, allUsers...))
