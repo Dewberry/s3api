@@ -42,7 +42,6 @@ func (s3Ctrl *S3Controller) tarS3Files(r *s3.ListObjectsV2Output, bucket string,
 
 	go func() {
 		defer wg.Done()
-
 		log.Debug("start writing files to:", outputFile)
 		_, err := uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(bucket),
@@ -50,7 +49,7 @@ func (s3Ctrl *S3Controller) tarS3Files(r *s3.ListObjectsV2Output, bucket string,
 			Body:   pr,
 		})
 		if err != nil {
-			log.Error("Failed to upload tar.gz file to S3:", err)
+			log.Errorf("failed to upload tar.gz file to S3: %s", err)
 			return
 		}
 		log.Debug("completed writing files to:", outputFile)
@@ -59,14 +58,14 @@ func (s3Ctrl *S3Controller) tarS3Files(r *s3.ListObjectsV2Output, bucket string,
 	for _, item := range r.Contents {
 		filePath := filepath.Join(strings.TrimPrefix(aws.StringValue(item.Key), prefix))
 		copyObj := aws.StringValue(item.Key)
-		log.Debugf("Copying %s to %s", copyObj, outputFile)
+		log.Debugf("copying %s to %s", copyObj, outputFile)
 
 		getResp, err := s3Ctrl.S3Svc.GetObject(&s3.GetObjectInput{
 			Bucket: aws.String(bucket),
 			Key:    aws.String(copyObj),
 		})
 		if err != nil {
-			log.Error("Failed to download file:", copyObj)
+			log.Errorf("failed to download file: %s, error: %s", copyObj, err)
 			return err
 		}
 		defer getResp.Body.Close()
@@ -79,39 +78,39 @@ func (s3Ctrl *S3Controller) tarS3Files(r *s3.ListObjectsV2Output, bucket string,
 
 		err = tarWriter.WriteHeader(header)
 		if err != nil {
-			log.Error("Failed to write tar header for file:", copyObj)
+			log.Errorf("failed to write tar header for file: %s, error: %s", copyObj, err)
 			return err
 		}
 
 		_, err = io.Copy(tarWriter, getResp.Body)
 		if err != nil {
-			log.Error("Failed to write file content to tar:", copyObj)
+			log.Errorf("failed to write file content to tar for file: %s, error: %s", copyObj, err)
 			return err
 		}
-		log.Debug("Complete copying...", copyObj)
+		log.Debugf("completed copying: %s", copyObj)
 	}
 
 	err = tarWriter.Close()
 	if err != nil {
-		log.Error("tar close failure")
+		log.Error("tar close failure:", err)
 		return err
 	}
 
-	gzipWriter.Close()
+	err = gzipWriter.Close()
 	if err != nil {
-		log.Error("gzip close failure")
+		log.Error("gzip close failure:", err)
 		return err
 	}
 
-	pw.Close()
+	err = pw.Close()
 	if err != nil {
-		log.Error("pw close failure")
+		log.Error("pipe writer close failure:", err)
 		return err
 	}
 
 	wg.Wait()
 
-	log.Debugf("completed Tar of file succesfully")
+	log.Debug("completed tar of file successfully")
 	return nil
 }
 
@@ -215,7 +214,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 	}
 
 	if len(tarFileResponse.Contents) > 0 {
-		fmt.Println("folder already downloaded checking if it is most recent")
+		log.Debug("the prefix was once downloaded, checking if it is outdated")
 		// Tar.gz file exists, now compare modification dates
 		mostRecentModTime, err := s3Ctrl.getMostRecentModTime(bucket, prefix)
 		if err != nil {
@@ -224,7 +223,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		}
 
 		if tarFileResponse.Contents[0].LastModified.After(mostRecentModTime) {
-			fmt.Println("folder already downloaded and is recent senidng the presigned without zipping")
+			log.Debug("folder already downloaded and is current")
 
 			// Existing tar.gz file is up-to-date, return pre-signed URL
 			href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, expPeriod)
@@ -233,11 +232,8 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 				return c.JSON(http.StatusInternalServerError, err.Error())
 			}
 			return c.JSON(http.StatusOK, string(href))
-		} else {
-			fmt.Println("folder already downloaded but is outdatyed so ned to zip again")
-
 		}
-		// Tar.gz file exists but is outdated, proceed to create a new tar.gz file
+		log.Debug("folder already downloaded but is outdated starting the zip process")
 	}
 
 	err = s3Ctrl.tarS3Files(response, bucket, outputFile, prefix)
