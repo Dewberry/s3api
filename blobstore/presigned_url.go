@@ -200,22 +200,52 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		return c.JSON(http.StatusRequestEntityTooLarge, err.Error())
 	}
 
-	ext := filepath.Ext(prefix)
-	base := strings.TrimSuffix(prefix, ext)
-	uuid := generateRandomString()
-	filename := fmt.Sprintf("%s-%s.%s", filepath.Base(base), uuid, "tar.gz")
+	filename := fmt.Sprintf("%s.%s", strings.TrimSuffix(prefix, "/"), "tar.gz")
 	outputFile := filepath.Join(os.Getenv("TEMP_PREFIX"), filename)
+	expPeriod, err := strconv.Atoi(os.Getenv("URL_EXP_DAYS"))
+	if err != nil {
+		log.Error("HandleGetPresignedURLMultiObj: Error getting `URL_EXP_DAYS` from env file:", err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	// Check if the tar.gz file already exists in S3
+	tarFileResponse, err := s3Ctrl.GetList(bucket, outputFile, false)
+	if err != nil {
+		log.Error("Error checking if tar.gz file exists in S3:", err)
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	if len(tarFileResponse.Contents) > 0 {
+		fmt.Println("folder already downloaded checking if it is most recent")
+		// Tar.gz file exists, now compare modification dates
+		mostRecentModTime, err := s3Ctrl.getMostRecentModTime(bucket, prefix)
+		if err != nil {
+			log.Error("Error getting most recent modification time:", err)
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+
+		if tarFileResponse.Contents[0].LastModified.After(mostRecentModTime) {
+			fmt.Println("folder already downloaded and is recent senidng the presigned without zipping")
+
+			// Existing tar.gz file is up-to-date, return pre-signed URL
+			href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, expPeriod)
+			if err != nil {
+				log.Error("Error getting presigned:", err)
+				return c.JSON(http.StatusInternalServerError, err.Error())
+			}
+			return c.JSON(http.StatusOK, string(href))
+		} else {
+			fmt.Println("folder already downloaded but is outdatyed so ned to zip again")
+
+		}
+		// Tar.gz file exists but is outdated, proceed to create a new tar.gz file
+	}
 
 	err = s3Ctrl.tarS3Files(response, bucket, outputFile, prefix)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error tarring S3 files:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
-	expPeriod, err := strconv.Atoi(os.Getenv("URL_EXP_DAYS"))
-	if err != nil {
-		log.Error("HandleGetPresignedURLMultiObj: Error getting `URL_EXP_DAYS` from env file:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
+
 	href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, expPeriod)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting presigned URL:", err.Error())
