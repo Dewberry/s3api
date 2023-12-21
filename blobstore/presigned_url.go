@@ -194,7 +194,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 	}
 	limit := uint64(1024 * 1024 * 1024 * 5)
 	if size >= limit {
-		err := fmt.Errorf("HandleGetPresignedURLMultiObj: Request entity is larger than %v GB, current file size is: %d, and current file count is: %d", float64(limit)/(1024*1024*1024), size, fileCount)
+		err := fmt.Errorf("request entity is larger than %v GB, current file size is: %v GB, and current file count is: %d", float64(limit)/(1024*1024*1024), float64(size)/(1024*1024*1024), fileCount)
 		log.Error("HandleGetPresignedURLMultiObj: ", err.Error())
 		return c.JSON(http.StatusRequestEntityTooLarge, err.Error())
 	}
