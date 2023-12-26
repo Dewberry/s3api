@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/Dewberry/s3api/auth"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -20,17 +21,48 @@ type S3Controller struct {
 	Buckets []string
 }
 
+// Config holds the configuration settings for the REST API server.
+type Config struct {
+	// Only settings that are typically environment-specific and can be loaded from
+	// external sources like configuration files, environment variables should go here.
+
+	AllowAllBuckets bool
+
+	AuthLevel int
+
+	AdminRoleName          string
+	ServiceRoleName        string
+	SuperReaderRoleName    string
+	LimitedReaderRoleName  string
+	SuperWriterRoleName    string
+	LimitedWriterRoleName  string
+	SuperDeleterRoleName   string
+	LimitedDeleterRoleName string
+}
+
 // Store configuration for the handler
 type BlobHandler struct {
-	S3Controllers   []S3Controller
-	Mu              sync.Mutex
-	AllowAllBuckets bool
+	S3Controllers []S3Controller
+	Mu            sync.Mutex
+	DB            auth.Database
+	Config        *Config
 }
 
 // Initializes resources and return a new handler (errors are fatal)
 func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	// Create a new BlobHandler configuration
-	config := BlobHandler{}
+	bh := BlobHandler{
+		Config: &Config{
+			AdminRoleName:          os.Getenv("AUTH_ADMIN_ROLE"),
+			ServiceRoleName:        os.Getenv("AUTH_SERVICE_ROLE"),
+			SuperReaderRoleName:    os.Getenv("AUTH_SUPER_READER_ROLE"),
+			LimitedReaderRoleName:  os.Getenv("AUTH_LIMITED_READER_ROLE"),
+			SuperWriterRoleName:    os.Getenv("AUTH_SUPER_WRITER_ROLE"),
+			LimitedWriterRoleName:  os.Getenv("AUTH_LIMITED_WRITER_ROLE"),
+			SuperDeleterRoleName:   os.Getenv("AUTH_SUPER_DELETER_ROLE"),
+			LimitedDeleterRoleName: os.Getenv("AUTH_LIMITED_DELETER_ROLE"),
+		},
+	}
 
 	// Check if the S3_MOCK environment variable is set to "true"
 	if os.Getenv("S3_MOCK") == "true" {
@@ -52,9 +84,10 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		}
 
 		// Configure the BlobHandler with MinIO session and bucket information
-		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{creds.Bucket}}}
+		bh.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{creds.Bucket}}}
+
 		// Return the configured BlobHandler
-		return &config, nil
+		return &bh, nil
 	}
 
 	// Using AWS S3
@@ -69,7 +102,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 	}
 
 	//does it contain "*"
-	config.AllowAllBuckets = arrayContains("*", awsConfig.BucketAllowList)
+	bh.Config.AllowAllBuckets = arrayContains("*", awsConfig.BucketAllowList)
 
 	// Convert allowed buckets to a map for efficient lookup
 	allowedBucketsMap := make(map[string]struct{})
@@ -96,7 +129,7 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		}
 
 		var bucketNames []string
-		if config.AllowAllBuckets {
+		if bh.Config.AllowAllBuckets {
 			// Directly add all bucket names if allowAllBucket is true
 			for _, bucket := range result.Buckets {
 				bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
@@ -113,11 +146,11 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		}
 
 		if len(bucketNames) > 0 {
-			config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames})
+			bh.S3Controllers = append(bh.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames})
 		}
 	}
 
-	if !config.AllowAllBuckets && len(allowedBucketsMap) > 0 {
+	if !bh.Config.AllowAllBuckets && len(allowedBucketsMap) > 0 {
 		missingBuckets := make([]string, 0, len(allowedBucketsMap))
 		for bucket := range allowedBucketsMap {
 			missingBuckets = append(missingBuckets, bucket)
@@ -125,8 +158,14 @@ func NewBlobHandler(envJson string) (*BlobHandler, error) {
 		return nil, fmt.Errorf("some buckets in the allow list were not found: %v", missingBuckets)
 	}
 
+	db, err := auth.NewPostgresDB()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	bh.DB = db
+
 	// Return the configured BlobHandler
-	return &config, nil
+	return &bh, nil
 }
 
 func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {

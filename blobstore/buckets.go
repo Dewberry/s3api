@@ -84,7 +84,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 	currentID := 1 // Initialize ID counter
 	bh.Mu.Lock()
 	for i := 0; i < len(bh.S3Controllers); i++ {
-		if bh.AllowAllBuckets {
+		if bh.Config.AllowAllBuckets {
 			result, err := bh.S3Controllers[i].ListBuckets()
 			if err != nil {
 				errMsg := fmt.Errorf("error returning list of buckets, error: %s", err)
