@@ -7,8 +7,10 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/Dewberry/s3api/utils"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
@@ -122,6 +124,24 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
+
+	if bh.Config.AuthLevel > 0 {
+		roles := strings.Split(c.Request().Header.Get("X-S3API-User-Roles"), ",")
+		ue := c.Request().Header.Get("X-S3API-User-Email")
+
+		// Check for required roles
+		isAdmin := utils.StringInSlice(bh.Config.AdminRoleName, roles)
+		isSuperWriter := utils.StringInSlice(bh.Config.SuperWriterRoleName, roles)
+		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
+
+		// Determine if user is authorized
+		isAuthorized := isAdmin || isSuperWriter || (isLimitedWriter && bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)))
+
+		if !isAuthorized {
+			return c.JSON(http.StatusUnauthorized, "unauthorized")
+		}
+	}
+
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
 		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
