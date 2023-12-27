@@ -2,11 +2,13 @@ package blobstore
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -250,4 +252,93 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 
 	log.Info("HandleGetPresignedURLMultiObj: Successfully generated presigned URL for prefix:", prefix)
 	return c.JSON(http.StatusOK, string(href))
+}
+
+func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
+	prefix := c.QueryParam("prefix")
+	bucket := c.QueryParam("bucket")
+	if prefix == "" || bucket == "" {
+		errMsg := fmt.Errorf("`prefix` and `bucket` query params are required")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error getting controller for bucket %s: %s", bucket, err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+
+	//list objects within the prefix and test if empty
+	response, err := s3Ctrl.GetList(bucket, prefix, false)
+	if err != nil {
+		errMsg := fmt.Errorf("error listing objects in bucket %s with prefix %s: %s", bucket, prefix, err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if len(response.Contents) == 0 {
+		errMsg := fmt.Errorf("prefix %s is empty or does not exist", prefix)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	//expiration period from the env
+	expPeriod, err := strconv.Atoi(os.Getenv("URL_EXP_DAYS"))
+	if err != nil {
+		errMsg := fmt.Errorf("error getting `URL_EXP_DAYS` from env file: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+
+	var scriptBuilder strings.Builder
+	createdDirs := make(map[string]bool)
+	//iterate over every object and check if it has any sub-prefixes to maintain a directory structure
+	for _, item := range response.Contents {
+		dirPath := filepath.Dir(*item.Key)
+		if _, exists := createdDirs[dirPath]; !exists && dirPath != "." {
+			scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", dirPath))
+			createdDirs[dirPath] = true
+		}
+		presignedURL, err := s3Ctrl.GetDownloadPresignedURL(bucket, *item.Key, expPeriod)
+		if err != nil {
+			errMsg := fmt.Errorf("error generating presigned URL for %s: %s", *item.Key, err)
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusInternalServerError, errMsg.Error())
+		}
+		url, err := url.QueryUnescape(presignedURL) //to remove url encoding which causes errors when executed in terminal
+		if err != nil {
+			errMsg := fmt.Errorf("error Unescaping url encoding: %s", err.Error())
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusInternalServerError, errMsg.Error())
+		}
+		encodedURL := strings.ReplaceAll(url, " ", "%20")
+		scriptBuilder.WriteString(fmt.Sprintf("if exist \"%s\" (echo skipping existing file) else (curl -v -o \"%s\" \"%s\")\n", *item.Key, *item.Key, encodedURL))
+	}
+
+	txtBatFileName := fmt.Sprintf("%s_download_script.txt", strings.TrimSuffix(prefix, "/"))
+	outputFile := filepath.Join(os.Getenv("TEMP_PREFIX"), "download_scripts", txtBatFileName)
+
+	//upload script to s3
+	uploader := s3manager.NewUploader(s3Ctrl.Sess)
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(outputFile),
+		Body:        bytes.NewReader([]byte(scriptBuilder.String())),
+		ContentType: aws.String("binary/octet-stream"),
+	})
+	if err != nil {
+		errMsg := fmt.Errorf("error uploading %s to S3: %s", txtBatFileName, err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+
+	href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, 1)
+	if err != nil {
+		errMsg := fmt.Errorf("error generating presigned URL for %s: %s", txtBatFileName, err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+
+	log.Infof("Successfully generated download script for prefix %s in bucket %s", prefix, bucket)
+	return c.JSON(http.StatusOK, href)
 }
