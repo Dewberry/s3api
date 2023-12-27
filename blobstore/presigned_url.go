@@ -189,14 +189,21 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, errMsg.Error())
 	}
 	//check if size is below 5GB
-	size, fileCount, err := bh.GetSize(response)
+	size, _, err := bh.GetSize(response)
 	if err != nil {
-		log.Error("HandleGetPresignedURLMultiObj: Error getting size:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error getting size: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	limit := uint64(1024 * 1024 * 1024 * 5)
+	var downloadLimit int
+	downloadLimit, err = strconv.Atoi(os.Getenv("ZIP_DOWNLOAD_SIZE_LIMIT"))
+	if err != nil {
+		log.Debugf("size download limit defaulted to %v", DEFAULT_ZIP_DOWNLOAD_SIZE_LIMIT)
+		downloadLimit = DEFAULT_ZIP_DOWNLOAD_SIZE_LIMIT
+	}
+	limit := uint64(1024 * 1024 * 1024 * downloadLimit)
 	if size >= limit {
-		err := fmt.Errorf("request entity is larger than %v GB, current file size is: %v GB, and current file count is: %d", float64(limit)/(1024*1024*1024), float64(size)/(1024*1024*1024), fileCount)
+		err := fmt.Errorf("request entity is larger than %v GB, current prefix size is: %v GB", float64(limit)/(1024*1024*1024), float64(size)/(1024*1024*1024))
 		log.Error("HandleGetPresignedURLMultiObj: ", err.Error())
 		return c.JSON(http.StatusRequestEntityTooLarge, err.Error())
 	}
@@ -281,6 +288,24 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		errMsg := fmt.Errorf("prefix %s is empty or does not exist", prefix)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusBadRequest, errMsg.Error())
+	}
+	size, _, err := bh.GetSize(response)
+	if err != nil {
+		errMsg := fmt.Errorf("error retrieving size of prefix: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	var downloadLimit int
+	downloadLimit, err = strconv.Atoi(os.Getenv("SCRIPT_DOWNLOAD_SIZE_LIMIT"))
+	if err != nil {
+		log.Debugf("size download limit defaulted to %v", DEFAULT_SCRIPT_DOWNLOAD_SIZE_LIMIT)
+		downloadLimit = DEFAULT_SCRIPT_DOWNLOAD_SIZE_LIMIT
+	}
+	limit := uint64(1024 * 1024 * 1024 * downloadLimit)
+	if size > limit {
+		errMsg := fmt.Errorf("request entity is larger than %v GB, current prefix size is: %v GB", float64(limit)/(1024*1024*1024), float64(size)/(1024*1024*1024))
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusRequestEntityTooLarge, errMsg.Error())
 	}
 	//expiration period from the env
 	expPeriod, err := strconv.Atoi(os.Getenv("URL_EXP_DAYS"))
