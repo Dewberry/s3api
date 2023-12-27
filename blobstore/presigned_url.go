@@ -336,7 +336,6 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 
 		// Calculate the directory path for the relative path
 		dirPath := filepath.Dir(relativePath)
-		fmt.Println(dirPath)
 
 		// Create directory if it does not exist and is not the root
 		if _, exists := createdDirs[dirPath]; !exists && dirPath != "." && dirPath != basePrefix {
