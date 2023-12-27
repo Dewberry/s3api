@@ -269,7 +269,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-
+	prefix = strings.TrimSuffix(prefix, "/")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
 		errMsg := fmt.Errorf("error getting controller for bucket %s: %s", bucket, err)
@@ -307,6 +307,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusRequestEntityTooLarge, errMsg.Error())
 	}
+
 	//expiration period from the env
 	expPeriod, err := strconv.Atoi(os.Getenv("URL_EXP_DAYS"))
 	if err != nil {
@@ -326,9 +327,19 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	scriptBuilder.WriteString("REM 4. Initiate the Download: Double-click the renamed \".bat\" file to initiate the download process. Windows might display a warning message to protect your PC.\n")
 	scriptBuilder.WriteString("REM 5. Windows Defender SmartScreen (Optional): If you see a message like \"Windows Defender SmartScreen prevented an unrecognized app from starting,\" click \"More info\" and then click \"Run anyway\" to proceed with the download.\n\n")
 	//iterate over every object and check if it has any sub-prefixes to maintain a directory structure
+	//lastPrefixSegment := filepath.Base(prefix)
+	basePrefix := filepath.Base(prefix)
+
 	for _, item := range response.Contents {
-		dirPath := filepath.Dir(*item.Key)
-		if _, exists := createdDirs[dirPath]; !exists && dirPath != "." {
+		// Remove the prefix up to the base, keeping the structure under the base prefix
+		relativePath := strings.TrimPrefix(*item.Key, filepath.Dir(prefix)+"/")
+
+		// Calculate the directory path for the relative path
+		dirPath := filepath.Dir(relativePath)
+		fmt.Println(dirPath)
+
+		// Create directory if it does not exist and is not the root
+		if _, exists := createdDirs[dirPath]; !exists && dirPath != "." && dirPath != basePrefix {
 			scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", dirPath))
 			createdDirs[dirPath] = true
 		}
@@ -345,7 +356,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
 		encodedURL := strings.ReplaceAll(url, " ", "%20")
-		scriptBuilder.WriteString(fmt.Sprintf("if exist \"%s\" (echo skipping existing file) else (curl -v -o \"%s\" \"%s\")\n", *item.Key, *item.Key, encodedURL))
+		scriptBuilder.WriteString(fmt.Sprintf("if exist \"%s\" (echo skipping existing file) else (curl -v -o \"%s\" \"%s\")\n", relativePath, relativePath, encodedURL))
 	}
 
 	txtBatFileName := fmt.Sprintf("%s_download_script.txt", strings.TrimSuffix(prefix, "/"))
