@@ -329,7 +329,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	//iterate over every object and check if it has any sub-prefixes to maintain a directory structure
 	//lastPrefixSegment := filepath.Base(prefix)
 	basePrefix := filepath.Base(prefix)
-
+	scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", basePrefix))
 	for _, item := range response.Contents {
 		// Remove the prefix up to the base, keeping the structure under the base prefix
 		relativePath := strings.TrimPrefix(*item.Key, filepath.Dir(prefix)+"/")
