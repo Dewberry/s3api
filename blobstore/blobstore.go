@@ -46,3 +46,32 @@ func (s3Ctrl *S3Controller) getMostRecentModTime(bucket, prefix string) (time.Ti
 	}
 	return mostRecent, nil
 }
+
+func arrayContains(a string, arr []string) bool {
+	for _, b := range arr {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+func isIdenticalArray(array1, array2 []string) bool {
+	if len(array1) != len(array2) {
+		return false
+	}
+
+	set := make(map[string]bool)
+
+	for _, str := range array1 {
+		set[str] = true
+	}
+
+	for _, str := range array2 {
+		if !set[str] {
+			return false
+		}
+	}
+
+	return true
+}
