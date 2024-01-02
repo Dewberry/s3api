@@ -125,8 +125,6 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 
 	bucket := c.QueryParam("bucket")
 	if bh.Config.AuthLevel > 0 {
-		testClaims := c.Get("claims")
-		fmt.Println(testClaims)
 		claims, ok := c.Get("claims").(*auth.Claims)
 		if !ok {
 			return c.JSON(http.StatusInternalServerError, "Could not get claims from request context")
