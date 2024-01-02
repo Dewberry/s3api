@@ -324,12 +324,12 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	scriptBuilder.WriteString("REM Download Instructions\n")
 	scriptBuilder.WriteString("REM To download the selected directory or file, please follow these steps:\n\n")
 	scriptBuilder.WriteString("REM 1. Locate the Downloaded File: Find the file you just downloaded. It should have a .txt file extension.\n")
-	scriptBuilder.WriteString("REM 2. Script Location Adjustment: For flexibility in file uploads, relocate the script to the target directory where you want the files to be downloaded. This can be done by moving the script file to the desired directory in your file system.\n")
+	scriptBuilder.WriteString("REM 2. Script Location Adjustment: For flexibility in file downloads, relocate the script to the target directory where you want the files to be downloaded. This can be done by moving the script file to the desired directory in your file system.\n")
 	scriptBuilder.WriteString("REM 3. Rename the File: Right-click on the file, select \"Rename,\" and change the file extension from \".txt\" to \".bat.\" For example, if the file is named \"script.txt,\" rename it to \"script.bat.\"\n")
 	scriptBuilder.WriteString("REM 4. Initiate the Download: Double-click the renamed \".bat\" file to initiate the download process. Windows might display a warning message to protect your PC.\n")
 	scriptBuilder.WriteString("REM 5. Windows Defender SmartScreen (Optional): If you see a message like \"Windows Defender SmartScreen prevented an unrecognized app from starting,\" click \"More info\" and then click \"Run anyway\" to proceed with the download.\n\n")
 	//iterate over every object and check if it has any sub-prefixes to maintain a directory structure
-	//lastPrefixSegment := filepath.Base(prefix)
+
 	basePrefix := filepath.Base(strings.TrimSuffix(prefix, "/"))
 	scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", basePrefix))
 
