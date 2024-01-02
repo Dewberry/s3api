@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/Dewberry/s3api/auth"
 	"github.com/Dewberry/s3api/blobstore"
@@ -33,9 +34,21 @@ func main() {
 	admin := []string{"s3_admin"}
 	allUsers := []string{"s3_admin", "s3_reader", "s3_writer"}
 	writer := []string{"s3_admin", "s3_writer"}
+
+	var authLvl int
+	authLvlString := os.Getenv("AUTH_LEVEL")
+	if authLvlString == "" {
+		authLvl = 0
+	} else {
+		authLvl, err = strconv.Atoi(authLvlString)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	envJson := "/app/.env.json"
 
-	bh, err := blobstore.NewBlobHandler(envJson)
+	bh, err := blobstore.NewBlobHandler(envJson, authLvl)
 	if err != nil {
 		log.Fatalf("error initializing a new blobhandler: %v", err)
 	}

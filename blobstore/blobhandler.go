@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/Dewberry/s3api/auth"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -20,17 +21,48 @@ type S3Controller struct {
 	Buckets []string
 }
 
+// Config holds the configuration settings for the REST API server.
+type Config struct {
+	// Only settings that are typically environment-specific and can be loaded from
+	// external sources like configuration files, environment variables should go here.
+
+	AuthLevel int
+
+	AdminRoleName         string
+	ServiceRoleName       string
+	SuperWriterRoleName   string
+	LimitedWriterRoleName string
+}
+
 // Store configuration for the handler
 type BlobHandler struct {
 	S3Controllers   []S3Controller
 	Mu              sync.Mutex
 	AllowAllBuckets bool
+	DB              auth.Database
+	Config          *Config
 }
 
 // Initializes resources and return a new handler (errors are fatal)
-func NewBlobHandler(envJson string) (*BlobHandler, error) {
+func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	// Create a new BlobHandler configuration
-	config := BlobHandler{}
+	config := BlobHandler{
+		Config: &Config{
+			AdminRoleName:         os.Getenv("AUTH_ADMIN_ROLE"),
+			ServiceRoleName:       os.Getenv("AUTH_SERVICE_ROLE"),
+			SuperWriterRoleName:   os.Getenv("AUTH_SUPER_WRITER_ROLE"),
+			LimitedWriterRoleName: os.Getenv("AUTH_LIMITED_WRITER_ROLE"),
+		},
+	}
+
+	if authLvl > 0 {
+		config.Config.AuthLevel = authLvl
+		db, err := auth.NewPostgresDB()
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		config.DB = db
+	}
 
 	// Check if the S3_MOCK environment variable is set to "true"
 	if os.Getenv("S3_MOCK") == "true" {
