@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Dewberry/s3api/auth"
+	"github.com/Dewberry/s3api/utils"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
@@ -122,6 +124,29 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
+	if bh.Config.AuthLevel > 0 {
+		testClaims := c.Get("claims")
+		fmt.Println(testClaims)
+		claims, ok := c.Get("claims").(*auth.Claims)
+		if !ok {
+			return c.JSON(http.StatusInternalServerError, "Could not get claims from request context")
+		}
+		roles := claims.RealmAccess["roles"]
+		ue := claims.Email
+
+		// Check for required roles
+		isAdmin := utils.StringInSlice(bh.Config.AdminRoleName, roles)
+		isSuperWriter := utils.StringInSlice(bh.Config.SuperWriterRoleName, roles)
+		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
+
+		// Determine if user is authorized
+		isAuthorized := isAdmin || isSuperWriter || (isLimitedWriter && bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)))
+
+		if !isAuthorized {
+			return c.JSON(http.StatusForbidden, "Forbidden")
+		}
+	}
+
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
 		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
