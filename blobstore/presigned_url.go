@@ -269,7 +269,9 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	prefix = strings.TrimSuffix(prefix, "/")
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
 		errMsg := fmt.Errorf("error getting controller for bucket %s: %s", bucket, err)
@@ -328,20 +330,29 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	scriptBuilder.WriteString("REM 5. Windows Defender SmartScreen (Optional): If you see a message like \"Windows Defender SmartScreen prevented an unrecognized app from starting,\" click \"More info\" and then click \"Run anyway\" to proceed with the download.\n\n")
 	//iterate over every object and check if it has any sub-prefixes to maintain a directory structure
 	//lastPrefixSegment := filepath.Base(prefix)
-	basePrefix := filepath.Base(prefix)
+	basePrefix := filepath.Base(strings.TrimSuffix(prefix, "/"))
+	fmt.Println(basePrefix)
 	scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", basePrefix))
+
 	for _, item := range response.Contents {
 		// Remove the prefix up to the base, keeping the structure under the base prefix
 		relativePath := strings.TrimPrefix(*item.Key, filepath.Dir(prefix)+"/")
+		fmt.Println("relativePath", relativePath)
 
 		// Calculate the directory path for the relative path
-		dirPath := filepath.Dir(relativePath)
+		dirPath := filepath.Join(basePrefix, filepath.Dir(relativePath))
+		fmt.Println("dirPath:", dirPath)
 
 		// Create directory if it does not exist and is not the root
-		if _, exists := createdDirs[dirPath]; !exists && dirPath != "." && dirPath != basePrefix {
+		if _, exists := createdDirs[dirPath]; !exists && dirPath != basePrefix {
 			scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", dirPath))
 			createdDirs[dirPath] = true
 		}
+
+		// Create the full path for the object including the base prefix
+		fullPath := filepath.Join(basePrefix, relativePath)
+		fmt.Println("fullPath:", fullPath)
+
 		presignedURL, err := s3Ctrl.GetDownloadPresignedURL(bucket, *item.Key, expPeriod)
 		if err != nil {
 			errMsg := fmt.Errorf("error generating presigned URL for %s: %s", *item.Key, err)
@@ -355,7 +366,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
 		encodedURL := strings.ReplaceAll(url, " ", "%20")
-		scriptBuilder.WriteString(fmt.Sprintf("if exist \"%s\" (echo skipping existing file) else (curl -v -o \"%s\" \"%s\")\n", relativePath, relativePath, encodedURL))
+		scriptBuilder.WriteString(fmt.Sprintf("if exist \"%s\" (echo skipping existing file) else (curl -v -o \"%s\" \"%s\")\n", fullPath, fullPath, encodedURL))
 	}
 
 	txtBatFileName := fmt.Sprintf("%s_download_script.txt", strings.TrimSuffix(prefix, "/"))
