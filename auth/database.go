@@ -70,9 +70,13 @@ func (db *PostgresDB) CheckUserPermission(userEmail, operation, s3_prefix string
 	query := `
 	SELECT EXISTS (
 		SELECT 1
-		FROM permissions
-		WHERE user_email = $1 AND operation = $2 AND $3 = ANY(allowed_s3_prefixes)
-	);`
+		FROM permissions,
+			 UNNEST(allowed_s3_prefixes) AS allowed_prefix
+		WHERE user_email = $1
+		  AND operation = $2
+		  AND $3 LIKE allowed_prefix || '%'
+	);
+	`
 
 	var hasPermission bool
 	if err := db.Handle.QueryRow(query, userEmail, operation, s3_prefix).Scan(&hasPermission); err != nil {
@@ -88,10 +92,17 @@ func (db *PostgresDB) CheckUserPermissionMultiple(userEmail, operation string, s
 	query := `
 	SELECT EXISTS (
 		SELECT 1
-		FROM permissions
-		WHERE user_email = $1 AND operation = $2 AND
-		$3 <@ allowed_s3_prefixes
-	);`
+		FROM UNNEST($3) AS provided_path
+		WHERE EXISTS (
+			SELECT 1
+			FROM permissions
+			CROSS JOIN UNNEST(allowed_s3_prefixes) AS allowed_prefix
+			WHERE user_email = $1
+			  AND operation = $2
+			  AND provided_path LIKE allowed_prefix || '%'
+		)
+	);
+	`
 
 	var hasPermission bool
 	if err := db.Handle.QueryRow(query, userEmail, operation, pq.Array(s3_prefixes)).Scan(&hasPermission); err != nil {
