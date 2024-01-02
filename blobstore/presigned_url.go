@@ -322,7 +322,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	createdDirs := make(map[string]bool)
 	// Add download instructions at the beginning of the script
 	scriptBuilder.WriteString("REM Download Instructions\n")
-	scriptBuilder.WriteString("REM Thank you for downloading the script! To use it, follow these steps:\n\n")
+	scriptBuilder.WriteString("REM To download the selected directory or file, please follow these steps:\n\n")
 	scriptBuilder.WriteString("REM 1. Locate the Downloaded File: Find the file you just downloaded. It should have a .txt file extension.\n")
 	scriptBuilder.WriteString("REM 2. Script Location Adjustment: For flexibility in file uploads, relocate the script to the target directory where you want the files to be downloaded. This can be done by moving the script file to the desired directory in your file system.\n")
 	scriptBuilder.WriteString("REM 3. Rename the File: Right-click on the file, select \"Rename,\" and change the file extension from \".txt\" to \".bat.\" For example, if the file is named \"script.txt,\" rename it to \"script.bat.\"\n")
@@ -331,17 +331,14 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	//iterate over every object and check if it has any sub-prefixes to maintain a directory structure
 	//lastPrefixSegment := filepath.Base(prefix)
 	basePrefix := filepath.Base(strings.TrimSuffix(prefix, "/"))
-	fmt.Println(basePrefix)
 	scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", basePrefix))
 
 	for _, item := range response.Contents {
 		// Remove the prefix up to the base, keeping the structure under the base prefix
 		relativePath := strings.TrimPrefix(*item.Key, filepath.Dir(prefix)+"/")
-		fmt.Println("relativePath", relativePath)
 
 		// Calculate the directory path for the relative path
 		dirPath := filepath.Join(basePrefix, filepath.Dir(relativePath))
-		fmt.Println("dirPath:", dirPath)
 
 		// Create directory if it does not exist and is not the root
 		if _, exists := createdDirs[dirPath]; !exists && dirPath != basePrefix {
@@ -351,7 +348,6 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 
 		// Create the full path for the object including the base prefix
 		fullPath := filepath.Join(basePrefix, relativePath)
-		fmt.Println("fullPath:", fullPath)
 
 		presignedURL, err := s3Ctrl.GetDownloadPresignedURL(bucket, *item.Key, expPeriod)
 		if err != nil {
