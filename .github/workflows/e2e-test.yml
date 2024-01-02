@@ -53,3 +53,9 @@ jobs:
       - name: Run newman tests
         run: >
           docker run --network="host" -v /home/runner/work/s3api/s3api/e2e-test:/etc/newman postman/newman:5.3.1-alpine run /etc/newman/e2eCollection.json -e /etc/newman/e2eEnv.json --reporters cli --bail --color on
+
+      # Uncomment to print logs for debugging
+      - name: Display docker-compose logs
+        run: |
+          docker-compose logs
+        if: always()
