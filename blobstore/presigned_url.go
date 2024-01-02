@@ -198,8 +198,8 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 	var downloadLimit int
 	downloadLimit, err = strconv.Atoi(os.Getenv("ZIP_DOWNLOAD_SIZE_LIMIT"))
 	if err != nil {
-		log.Debugf("size download limit defaulted to %v", DEFAULT_ZIP_DOWNLOAD_SIZE_LIMIT)
-		downloadLimit = DEFAULT_ZIP_DOWNLOAD_SIZE_LIMIT
+		log.Debugf("size download limit defaulted to %v", defaultZipDownloadSizeLimit)
+		downloadLimit = defaultZipDownloadSizeLimit
 	}
 	limit := uint64(1024 * 1024 * 1024 * downloadLimit)
 	if size >= limit {
@@ -298,8 +298,8 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	var downloadLimit int
 	downloadLimit, err = strconv.Atoi(os.Getenv("SCRIPT_DOWNLOAD_SIZE_LIMIT"))
 	if err != nil {
-		log.Debugf("size download limit defaulted to %v", DEFAULT_SCRIPT_DOWNLOAD_SIZE_LIMIT)
-		downloadLimit = DEFAULT_SCRIPT_DOWNLOAD_SIZE_LIMIT
+		log.Debugf("size download limit defaulted to %v", defaultScriptDownloadSizeLimit)
+		downloadLimit = defaultScriptDownloadSizeLimit
 	}
 	limit := uint64(1024 * 1024 * 1024 * downloadLimit)
 	if size > limit {
