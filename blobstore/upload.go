@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Dewberry/s3api/auth"
+	"github.com/Dewberry/s3api/utils"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
@@ -122,6 +124,25 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
+	if bh.Config.AuthLevel > 0 {
+		claims, ok := c.Get("claims").(*auth.Claims)
+		if !ok {
+			return c.JSON(http.StatusInternalServerError, "Could not get claims from request context")
+		}
+		roles := claims.RealmAccess["roles"]
+		ue := claims.Email
+
+		// Check for required roles
+		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
+
+		// We assume if someone is limited_writer, they should never be admin or super_writer
+		if isLimitedWriter {
+			if !bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)) {
+				return c.JSON(http.StatusForbidden, "Forbidden")
+			}
+		}
+	}
+
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
 		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
