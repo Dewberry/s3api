@@ -133,15 +133,13 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 		ue := claims.Email
 
 		// Check for required roles
-		isAdmin := utils.StringInSlice(bh.Config.AdminRoleName, roles)
-		isSuperWriter := utils.StringInSlice(bh.Config.SuperWriterRoleName, roles)
 		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
 
-		// Determine if user is authorized
-		isAuthorized := isAdmin || isSuperWriter || (isLimitedWriter && bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)))
-
-		if !isAuthorized {
-			return c.JSON(http.StatusForbidden, "Forbidden")
+		// We assume if someone is limited_writer, they should never be admin or super_writer
+		if isLimitedWriter {
+			if !bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)) {
+				return c.JSON(http.StatusForbidden, "Forbidden")
+			}
 		}
 	}
 
