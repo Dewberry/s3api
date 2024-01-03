@@ -30,7 +30,6 @@ func main() {
 	log.SetLevel(level)
 	log.SetReportCaller(true)
 	log.Infof("level level set to: %s", level)
-	// administrator := []string{"administrator", "read", "write"}
 	admin := []string{"s3_admin"}
 	allUsers := []string{"s3_admin", "s3_reader", "s3_writer"}
 	writers := []string{"s3_admin", "s3_writer"}
@@ -95,8 +94,8 @@ func main() {
 	// multi-bucket
 	e.GET("/list_buckets", auth.Authorize(bh.HandleListBuckets, allUsers...))
 	// multi-bucket -- not implemented
-	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writer...))
-	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writer...))
+	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writers...))
+	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writers...))
 
 	e.Logger.Fatal(e.Start(":" + os.Getenv("S3API_SERVICE_PORT")))
 }
