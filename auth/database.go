@@ -6,13 +6,11 @@ import (
 	"os"
 
 	"github.com/labstack/gommon/log"
-	"github.com/lib/pq"
 )
 
 // Database interface abstracts database operations
 type Database interface {
 	CheckUserPermission(userEmail, operation, s3_prefix string) bool
-	CheckUserPermissionMultiple(userEmail, operation string, s3_prefixes []string) bool
 	Close() error
 }
 
@@ -79,32 +77,6 @@ func (db *PostgresDB) CheckUserPermission(userEmail, operation, s3_prefix string
 
 	var hasPermission bool
 	if err := db.Handle.QueryRow(query, userEmail, operation, s3_prefix).Scan(&hasPermission); err != nil {
-		log.Errorf("error querying user permissions: %v", err)
-		return false
-	}
-
-	return hasPermission
-}
-
-// CheckUserPermissionMultiple checks if a user has permission for a specific request with multiple S3 prefixes.
-func (db *PostgresDB) CheckUserPermissionMultiple(userEmail, operation string, s3_prefixes []string) bool {
-	query := `
-	SELECT EXISTS (
-		SELECT 1
-		FROM UNNEST($3) AS provided_path
-		WHERE EXISTS (
-			SELECT 1
-			FROM permissions
-			CROSS JOIN UNNEST(allowed_s3_prefixes) AS allowed_prefix
-			WHERE user_email = $1
-			  AND operation = $2
-			  AND provided_path LIKE allowed_prefix || '%'
-		)
-	);
-	`
-
-	var hasPermission bool
-	if err := db.Handle.QueryRow(query, userEmail, operation, pq.Array(s3_prefixes)).Scan(&hasPermission); err != nil {
 		log.Errorf("error querying user permissions: %v", err)
 		return false
 	}
