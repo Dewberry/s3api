@@ -42,7 +42,7 @@ func main() {
 	} else {
 		authLvl, err = strconv.Atoi(authLvlString)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("could not convert AUTH_LEVEL env variable to integer: %v", err)
 		}
 		s3LimitWriterRoleName, ok := os.LookupEnv("AUTH_LIMITED_WRITER_ROLE")
 		if !ok {
