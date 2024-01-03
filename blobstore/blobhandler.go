@@ -57,7 +57,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		config.Config.AuthLevel = authLvl
 		db, err := auth.NewPostgresDB()
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		config.DB = db
 	}

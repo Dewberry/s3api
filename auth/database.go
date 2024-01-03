@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/labstack/gommon/log"
+	_ "github.com/lib/pq"
 )
 
 // Database interface abstracts database operations
