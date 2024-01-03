@@ -36,7 +36,6 @@ func NewPostgresDB() (*PostgresDB, error) {
 
 	// Create tables
 	if err := pgDB.createTables(); err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
