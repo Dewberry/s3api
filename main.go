@@ -89,7 +89,7 @@ func main() {
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefixWithDetail, allUsers...))
 	e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	e.GET("/prefix/download/script", auth.Authorize(bh.HandleGenerateDownloadScript, allUsers...))
-	e.PUT("/prefix/move", auth.Authorize(bh.HandleMovePrefix, writers...))
+	e.PUT("/prefix/move", auth.Authorize(bh.HandleMovePrefix, admin...))
 	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeletePrefix, admin...))
 	e.GET("/prefix/size", auth.Authorize(bh.HandleGetSize, allUsers...))
 
