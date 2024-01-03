@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
+	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
+	"time"
 
 	"github.com/Dewberry/s3api/auth"
 	"github.com/Dewberry/s3api/blobstore"
@@ -97,5 +102,38 @@ func main() {
 	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writers...))
 	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writers...))
 
-	e.Logger.Fatal(e.Start(":" + os.Getenv("S3API_SERVICE_PORT")))
+	// Start server
+	go func() {
+		log.Info("server starting on port: ", os.Getenv("S3API_SERVICE_PORT"))
+		if err := e.Start(":" + os.Getenv("S3API_SERVICE_PORT")); err != nil && err != http.ErrServerClosed {
+			log.Error("server error : ", err.Error())
+			log.Fatal("shutting down the server")
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server.
+	// Use a buffered channel to avoid missing signals as recommended for signal.Notify
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+	<-quit
+	log.Info("gracefully shutting down the server")
+
+	// Shutdown the server
+	// By default, Docker provides a grace period of 10 seconds with the docker stop command.
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		defer cancel()
+		if err := e.Shutdown(ctx); err != nil {
+			log.Error(err)
+		}
+	}()
+
+	if bh.Config.AuthLevel > 0 {
+		if err := bh.DB.Close(); err != nil {
+			log.Error(err)
+		} else {
+			log.Info("closed connection to database")
+		}
+	}
+	log.Info("server gracefully shutdown")
 }
