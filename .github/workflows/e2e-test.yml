@@ -17,9 +17,7 @@ jobs:
       - name: Create env file
         run: |
           touch .env
-          echo KEYCLOAK_ID='s3api' >> .env
-          echo KEYCLOAK_SECRET='${{ secrets.KEYCLOAK_SECRET }}' >> .env
-          echo KEYCLOAK_ISSUER='https://auth.dewberryanalytics.com/auth/realms/testing' >> .env
+
           echo KEYCLOAK_PUBLIC_KEYS_URL='https://auth.dewberryanalytics.com/auth/realms/testing/protocol/openid-connect/certs' >> .env
           echo MINIO_S3_ENDPOINT='http://minio:9000' >> .env
           echo AWS_REGION='us-east-1' >> .env
