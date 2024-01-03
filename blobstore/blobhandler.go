@@ -30,7 +30,6 @@ type Config struct {
 	AuthLevel int
 
 	AdminRoleName         string
-	ServiceRoleName       string
 	SuperWriterRoleName   string
 	LimitedWriterRoleName string
 }
@@ -50,14 +49,13 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	config := BlobHandler{
 		Config: &Config{
 			AdminRoleName:         os.Getenv("AUTH_ADMIN_ROLE"),
-			ServiceRoleName:       os.Getenv("AUTH_SERVICE_ROLE"),
 			SuperWriterRoleName:   os.Getenv("AUTH_SUPER_WRITER_ROLE"),
 			LimitedWriterRoleName: os.Getenv("AUTH_LIMITED_WRITER_ROLE"),
 		},
 	}
 
 	if authLvl > 0 {
-		if err := envcheck.CheckEnvVariablesExist([]string{"AUTH_ADMIN_ROLE", "AUTH_SERVICE_ROLE", "AUTH_SUPER_WRITER_ROLE", "AUTH_LIMITED_WRITER_ROLE"}); err != nil {
+		if err := envcheck.CheckEnvVariablesExist([]string{"AUTH_ADMIN_ROLE", "AUTH_SUPER_WRITER_ROLE", "AUTH_LIMITED_WRITER_ROLE"}); err != nil {
 			log.Fatal(err)
 		}
 		config.Config.AuthLevel = authLvl
