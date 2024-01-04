@@ -124,6 +124,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
+	//TODO: refactor check to use method
 	if bh.Config.AuthLevel > 0 {
 		claims, ok := c.Get("claims").(*auth.Claims)
 		if !ok {
