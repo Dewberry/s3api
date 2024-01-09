@@ -226,9 +226,9 @@ func (s3Ctrl *S3Controller) GetUploadPartPresignedURL(bucket string, key string,
 func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		err := errors.New("`key` parameters are required")
-		log.Error("HandleGeneratePresignedURL: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("`key` parameters are required")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 	bucket := c.QueryParam("bucket")
 	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
@@ -293,9 +293,9 @@ func (s3Ctrl *S3Controller) GetMultiPartUploadID(bucket string, key string) (str
 func (bh *BlobHandler) HandleGetMultiPartUploadID(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		err := errors.New("`key` parameters are required")
-		log.Error("HandleGeneratePresignedURL: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("`key` parameters are required")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 	bucket := c.QueryParam("bucket")
 	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
@@ -340,9 +340,9 @@ func (s3Ctrl *S3Controller) CompleteMultipartUpload(bucket string, key string, u
 func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		err := errors.New("`key` parameters are required")
-		log.Error("HandleGeneratePresignedURL: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("`key` parameters are required")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
