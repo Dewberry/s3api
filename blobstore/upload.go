@@ -389,3 +389,54 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 	log.Infof("succesfully completed multipart upload for ey %s", key)
 	return c.JSON(http.StatusOK, "succesfully completed multipart upload")
 }
+
+func (s3Ctrl *S3Controller) AbortMultipartUpload(bucket string, key string, uploadID string) error {
+	input := &s3.AbortMultipartUploadInput{
+		Bucket:   aws.String(bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
+	}
+	_, err := s3Ctrl.S3Svc.AbortMultipartUpload(input)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (bh *BlobHandler) HandleAbortMultipartUpload(c echo.Context) error {
+	key := c.QueryParam("key")
+	if key == "" {
+		errMsg := fmt.Errorf("`key` parameter is required")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+	bucket := c.QueryParam("bucket")
+	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	if err != nil {
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(httpCode, errMsg.Error())
+	}
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+
+	uploadID := c.QueryParam("upload_id")
+	if uploadID == "" {
+		errMsg := fmt.Errorf("`upload_id` param is requires")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+
+	err = s3Ctrl.AbortMultipartUpload(bucket, key, uploadID)
+	if err != nil {
+		errMsg := fmt.Errorf("error aborting the multipart Upload for key %s, %s", key, err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	log.Infof("succesfully aborted multipart upload for ey %s", key)
+	return c.JSON(http.StatusOK, "succesfully aborted multipart upload")
+}
