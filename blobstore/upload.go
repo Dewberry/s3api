@@ -388,6 +388,24 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
+	if bh.Config.AuthLevel > 0 {
+		claims, ok := c.Get("claims").(*auth.Claims)
+		if !ok {
+			return c.JSON(http.StatusInternalServerError, "Could not get claims from request context")
+		}
+		roles := claims.RealmAccess["roles"]
+		ue := claims.Email
+
+		// Check for required roles
+		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
+
+		// We assume if someone is limited_writer, they should never be admin or super_writer
+		if isLimitedWriter {
+			if !bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)) {
+				return c.JSON(http.StatusForbidden, "Forbidden")
+			}
+		}
+	}
 	type Part struct {
 		PartNumber int    `json:"partNumber"`
 		ETag       string `json:"eTag"`
