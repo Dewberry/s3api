@@ -262,7 +262,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		}
 		log.Infof("successfully generated presigned part URL for key: %s", key)
 		return c.JSON(http.StatusOK, presignedURL)
-	} else if uploadID == "" || partNumberStr == "" {
+	} else if (uploadID == "" && partNumberStr != "") || (uploadID != "" && partNumberStr == "") {
 		errMsg := fmt.Errorf("both 'uploadID' and 'partNumber' must be provided together for a multipart upload, or neither for a standard upload")
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
