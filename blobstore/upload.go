@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -238,6 +237,13 @@ func (s3Ctrl *S3Controller) GetUploadPartPresignedURL(bucket string, key string,
 }
 
 func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
+	key := c.QueryParam("key")
+	if key == "" {
+		err := errors.New("`key` parameters are required")
+		log.Error("HandleGeneratePresignedURL: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+	bucket := c.QueryParam("bucket")
 	if bh.Config.AuthLevel > 0 {
 		claims, ok := c.Get("claims").(*auth.Claims)
 		if !ok {
@@ -256,14 +262,6 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 			}
 		}
 	}
-	//get query params
-	key := c.QueryParam("key")
-	if key == "" {
-		err := errors.New("`key` parameters are required")
-		log.Error("HandleGeneratePresignedURL: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
-	}
-	bucket := c.QueryParam("bucket")
 	uploadID := c.QueryParam("upload_id")
 	partNumberStr := c.QueryParam("part_number")
 	//get controller for bucket
@@ -274,12 +272,6 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 	//extract URL expiration from env or from default value
-	var uploadUrlExpirationLimit int
-	uploadUrlExpirationLimit, err = strconv.Atoi(os.Getenv("UPLOAD_URL_EXP_MIN"))
-	if err != nil {
-		log.Debugf("size download limit defaulted to %v", defaultZipDownloadSizeLimit)
-		uploadUrlExpirationLimit = defaultUploadPresignedUrlExpiration
-	}
 	if uploadID != "" && partNumberStr != "" {
 		//if the user provided both upload_id and part_number then we returned part presigned URL
 		partNumber, err := strconv.Atoi(partNumberStr)
@@ -288,7 +280,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 			log.Error(errMsg.Error())
 			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
-		presignedURL, err := s3Ctrl.GetUploadPartPresignedURL(bucket, key, uploadID, int64(partNumber), uploadUrlExpirationLimit)
+		presignedURL, err := s3Ctrl.GetUploadPartPresignedURL(bucket, key, uploadID, int64(partNumber), bh.Config.DefaultUploadPresignedUrlExpiration)
 		if err != nil {
 			log.Errorf("error generating presigned URL: %s", err.Error())
 			return c.JSON(http.StatusInternalServerError, err.Error())
@@ -301,7 +293,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 	//if the user did not provided both upload_id and part_number then we returned normal presigned URL
-	presignedURL, err := s3Ctrl.GetUploadPresignedURL(bucket, key, uploadUrlExpirationLimit)
+	presignedURL, err := s3Ctrl.GetUploadPresignedURL(bucket, key, bh.Config.DefaultUploadPresignedUrlExpiration)
 	if err != nil {
 		log.Errorf("error generating presigned URL: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())

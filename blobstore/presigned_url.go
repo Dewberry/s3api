@@ -9,9 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -143,12 +141,8 @@ func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, err.Error())
 	}
 	// Set the expiration time for the pre-signed URL
-	expPeriod, err := strconv.Atoi(os.Getenv("URL_EXP_DAYS"))
-	if err != nil {
-		log.Error("HandleGetPresignedURL: Error getting `URL_EXP_DAYS` from env file:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
-	url, err := s3Ctrl.GetDownloadPresignedURL(bucket, key, expPeriod)
+
+	url, err := s3Ctrl.GetDownloadPresignedURL(bucket, key, bh.Config.DefaultDownloadPresignedUrlExpiration)
 	if err != nil {
 		log.Error("HandleGetPresignedURL: Error getting presigned URL:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -195,26 +189,17 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	var downloadLimit int
-	downloadLimit, err = strconv.Atoi(os.Getenv("ZIP_DOWNLOAD_SIZE_LIMIT"))
-	if err != nil {
-		log.Debugf("size download limit defaulted to %v", defaultZipDownloadSizeLimit)
-		downloadLimit = defaultZipDownloadSizeLimit
-	}
-	limit := uint64(1024 * 1024 * 1024 * downloadLimit)
+
+	limit := uint64(1024 * 1024 * 1024 * bh.Config.DefaultZipDownloadSizeLimit)
 	if size >= limit {
-		err := fmt.Errorf("request entity is larger than %v GB, current prefix size is: %v GB", downloadLimit, float64(size)/(1024*1024*1024))
+		err := fmt.Errorf("request entity is larger than %v GB, current prefix size is: %v GB", bh.Config.DefaultZipDownloadSizeLimit, float64(size)/(1024*1024*1024))
 		log.Error("HandleGetPresignedURLMultiObj: ", err.Error())
 		return c.JSON(http.StatusRequestEntityTooLarge, err.Error())
 	}
 
 	filename := fmt.Sprintf("%s.%s", strings.TrimSuffix(prefix, "/"), "tar.gz")
-	outputFile := filepath.Join(os.Getenv("TEMP_PREFIX"), filename)
-	expPeriod, err := strconv.Atoi(os.Getenv("URL_EXP_DAYS"))
-	if err != nil {
-		log.Error("HandleGetPresignedURLMultiObj: Error getting `URL_EXP_DAYS` from env file:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
+	outputFile := filepath.Join(bh.Config.DefaultTempPrefix, filename)
+
 	// Check if the tar.gz file already exists in S3
 	tarFileResponse, err := s3Ctrl.GetList(bucket, outputFile, false)
 	if err != nil {
@@ -235,7 +220,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 			log.Debug("folder already downloaded and is current")
 
 			// Existing tar.gz file is up-to-date, return pre-signed URL
-			href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, expPeriod)
+			href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, bh.Config.DefaultDownloadPresignedUrlExpiration)
 			if err != nil {
 				log.Error("Error getting presigned:", err)
 				return c.JSON(http.StatusInternalServerError, err.Error())
@@ -251,7 +236,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, expPeriod)
+	href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, bh.Config.DefaultDownloadPresignedUrlExpiration)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting presigned URL:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -297,26 +282,15 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	var downloadLimit int
-	downloadLimit, err = strconv.Atoi(os.Getenv("SCRIPT_DOWNLOAD_SIZE_LIMIT"))
-	if err != nil {
-		log.Debugf("size download limit defaulted to %v", defaultScriptDownloadSizeLimit)
-		downloadLimit = defaultScriptDownloadSizeLimit
-	}
-	limit := uint64(1024 * 1024 * 1024 * downloadLimit)
+
+	limit := uint64(1024 * 1024 * 1024 * bh.Config.DefaultScriptDownloadSizeLimit)
 	if size > limit {
-		errMsg := fmt.Errorf("request entity is larger than %v GB, current prefix size is: %v GB", downloadLimit, float64(size)/(1024*1024*1024))
+		errMsg := fmt.Errorf("request entity is larger than %v GB, current prefix size is: %v GB", bh.Config.DefaultScriptDownloadSizeLimit, float64(size)/(1024*1024*1024))
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusRequestEntityTooLarge, errMsg.Error())
 	}
 
 	//expiration period from the env
-	expPeriod, err := strconv.Atoi(os.Getenv("URL_EXP_DAYS"))
-	if err != nil {
-		errMsg := fmt.Errorf("error getting `URL_EXP_DAYS` from env file: %s", err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusInternalServerError, errMsg.Error())
-	}
 
 	var scriptBuilder strings.Builder
 	createdDirs := make(map[string]bool)
@@ -349,7 +323,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		// Create the full path for the object including the base prefix
 		fullPath := filepath.Join(basePrefix, relativePath)
 
-		presignedURL, err := s3Ctrl.GetDownloadPresignedURL(bucket, *item.Key, expPeriod)
+		presignedURL, err := s3Ctrl.GetDownloadPresignedURL(bucket, *item.Key, bh.Config.DefaultDownloadPresignedUrlExpiration)
 		if err != nil {
 			errMsg := fmt.Errorf("error generating presigned URL for %s: %s", *item.Key, err)
 			log.Error(errMsg.Error())
@@ -366,7 +340,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	}
 
 	txtBatFileName := fmt.Sprintf("%s_download_script.txt", strings.TrimSuffix(prefix, "/"))
-	outputFile := filepath.Join(os.Getenv("TEMP_PREFIX"), "download_scripts", txtBatFileName)
+	outputFile := filepath.Join(bh.Config.DefaultTempPrefix, "download_scripts", txtBatFileName)
 
 	//upload script to s3
 	uploader := s3manager.NewUploader(s3Ctrl.Sess)
