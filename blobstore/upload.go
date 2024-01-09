@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Dewberry/s3api/auth"
-	"github.com/Dewberry/s3api/utils"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
@@ -124,23 +122,12 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
-	if bh.Config.AuthLevel > 0 {
-		claims, ok := c.Get("claims").(*auth.Claims)
-		if !ok {
-			return c.JSON(http.StatusInternalServerError, "Could not get claims from request context")
-		}
-		roles := claims.RealmAccess["roles"]
-		ue := claims.Email
 
-		// Check for required roles
-		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
-
-		// We assume if someone is limited_writer, they should never be admin or super_writer
-		if isLimitedWriter {
-			if !bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)) {
-				return c.JSON(http.StatusForbidden, "Forbidden")
-			}
-		}
+	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	if err != nil {
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(httpCode, errMsg.Error())
 	}
 
 	s3Ctrl, err := bh.GetController(bucket)
@@ -244,23 +231,11 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	bucket := c.QueryParam("bucket")
-	if bh.Config.AuthLevel > 0 {
-		claims, ok := c.Get("claims").(*auth.Claims)
-		if !ok {
-			return c.JSON(http.StatusInternalServerError, "Could not get claims from request context")
-		}
-		roles := claims.RealmAccess["roles"]
-		ue := claims.Email
-
-		// Check for required roles
-		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
-
-		// We assume if someone is limited_writer, they should never be admin or super_writer
-		if isLimitedWriter {
-			if !bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)) {
-				return c.JSON(http.StatusForbidden, "Forbidden")
-			}
-		}
+	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	if err != nil {
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(httpCode, errMsg.Error())
 	}
 	uploadID := c.QueryParam("upload_id")
 	partNumberStr := c.QueryParam("part_number")
@@ -323,23 +298,11 @@ func (bh *BlobHandler) HandleGetMultiPartUploadID(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	bucket := c.QueryParam("bucket")
-	if bh.Config.AuthLevel > 0 {
-		claims, ok := c.Get("claims").(*auth.Claims)
-		if !ok {
-			return c.JSON(http.StatusInternalServerError, "Could not get claims from request context")
-		}
-		roles := claims.RealmAccess["roles"]
-		ue := claims.Email
-
-		// Check for required roles
-		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
-
-		// We assume if someone is limited_writer, they should never be admin or super_writer
-		if isLimitedWriter {
-			if !bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)) {
-				return c.JSON(http.StatusForbidden, "Forbidden")
-			}
-		}
+	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	if err != nil {
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(httpCode, errMsg.Error())
 	}
 	//get controller for bucket
 	s3Ctrl, err := bh.GetController(bucket)
@@ -388,23 +351,11 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	if bh.Config.AuthLevel > 0 {
-		claims, ok := c.Get("claims").(*auth.Claims)
-		if !ok {
-			return c.JSON(http.StatusInternalServerError, "Could not get claims from request context")
-		}
-		roles := claims.RealmAccess["roles"]
-		ue := claims.Email
-
-		// Check for required roles
-		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
-
-		// We assume if someone is limited_writer, they should never be admin or super_writer
-		if isLimitedWriter {
-			if !bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)) {
-				return c.JSON(http.StatusForbidden, "Forbidden")
-			}
-		}
+	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	if err != nil {
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(httpCode, errMsg.Error())
 	}
 	type Part struct {
 		PartNumber int    `json:"partNumber"`
