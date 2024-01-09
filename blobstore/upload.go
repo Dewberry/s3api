@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -219,29 +220,93 @@ func (s3Ctrl *S3Controller) GetUploadPresignedURL(bucket string, key string, exp
 	return urlStr, nil
 }
 
-func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
+func (s3Ctrl *S3Controller) GetUploadPartPresignedURL(bucket string, key string, uploadID string, partNumber int64, expMin int) (string, error) {
+	duration := time.Duration(expMin) * time.Minute
+	req, _ := s3Ctrl.S3Svc.UploadPartRequest(&s3.UploadPartInput{
+		Bucket:     aws.String(bucket),
+		Key:        aws.String(key),
+		UploadId:   aws.String(uploadID),
+		PartNumber: aws.Int64(partNumber),
+	})
 
+	urlStr, err := req.Presign(duration)
+	if err != nil {
+		return "", err
+	}
+
+	return urlStr, nil
+}
+
+func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
+	if bh.Config.AuthLevel > 0 {
+		claims, ok := c.Get("claims").(*auth.Claims)
+		if !ok {
+			return c.JSON(http.StatusInternalServerError, "Could not get claims from request context")
+		}
+		roles := claims.RealmAccess["roles"]
+		ue := claims.Email
+
+		// Check for required roles
+		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
+
+		// We assume if someone is limited_writer, they should never be admin or super_writer
+		if isLimitedWriter {
+			if !bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)) {
+				return c.JSON(http.StatusForbidden, "Forbidden")
+			}
+		}
+	}
+	//get query params
 	key := c.QueryParam("key")
 	if key == "" {
 		err := errors.New("`key` parameters are required")
 		log.Error("HandleGeneratePresignedURL: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-
 	bucket := c.QueryParam("bucket")
+	uploadID := c.QueryParam("upload_id")
+	partNumberStr := c.QueryParam("part_number")
+	//get controller for bucket
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
 		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-
-	presignedURL, err := s3Ctrl.GetUploadPresignedURL(bucket, key, 15)
+	//extract URL expiration from env or from default value
+	var uploadUrlExpirationLimit int
+	uploadUrlExpirationLimit, err = strconv.Atoi(os.Getenv("UPLOAD_URL_EXP_MIN"))
 	if err != nil {
-		log.Errorf("HandleGeneratePresignedURL: Error generating presigned URL: %s", err.Error())
+		log.Debugf("size download limit defaulted to %v", defaultZipDownloadSizeLimit)
+		uploadUrlExpirationLimit = defaultUploadPresignedUrlExpiration
+	}
+	if uploadID != "" && partNumberStr != "" {
+		//if the user provided both upload_id and part_number then we returned part presigned URL
+		partNumber, err := strconv.Atoi(partNumberStr)
+		if err != nil {
+			errMsg := fmt.Errorf("error parsing int from `part_number`: %s", err.Error())
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusInternalServerError, errMsg.Error())
+		}
+		presignedURL, err := s3Ctrl.GetUploadPartPresignedURL(bucket, key, uploadID, int64(partNumber), uploadUrlExpirationLimit)
+		if err != nil {
+			log.Errorf("error generating presigned URL: %s", err.Error())
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		log.Infof("successfully generated presigned part URL for key: %s", key)
+		return c.JSON(http.StatusOK, presignedURL)
+	} else if uploadID == "" || partNumberStr == "" {
+		errMsg := fmt.Errorf("both 'uploadID' and 'partNumber' must be provided together for a multipart upload, or neither for a standard upload")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+	//if the user did not provided both upload_id and part_number then we returned normal presigned URL
+	presignedURL, err := s3Ctrl.GetUploadPresignedURL(bucket, key, uploadUrlExpirationLimit)
+	if err != nil {
+		log.Errorf("error generating presigned URL: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	log.Infof("HandleGeneratePresignedURL: Successfully generated presigned URL for key: %s", key)
+	log.Infof("successfully generated presigned URL for key: %s", key)
 	return c.JSON(http.StatusOK, presignedURL)
 }
