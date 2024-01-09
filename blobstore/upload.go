@@ -302,3 +302,121 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 	log.Infof("successfully generated presigned URL for key: %s", key)
 	return c.JSON(http.StatusOK, presignedURL)
 }
+
+func (s3Ctrl *S3Controller) GetMultiPartUploadID(bucket string, key string) (string, error) {
+	input := &s3.CreateMultipartUploadInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}
+	result, err := s3Ctrl.S3Svc.CreateMultipartUpload(input)
+	if err != nil {
+		return "", err
+	}
+	return *result.UploadId, nil
+}
+
+func (bh *BlobHandler) HandleGetMultiPartUploadID(c echo.Context) error {
+	key := c.QueryParam("key")
+	if key == "" {
+		err := errors.New("`key` parameters are required")
+		log.Error("HandleGeneratePresignedURL: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+	bucket := c.QueryParam("bucket")
+	if bh.Config.AuthLevel > 0 {
+		claims, ok := c.Get("claims").(*auth.Claims)
+		if !ok {
+			return c.JSON(http.StatusInternalServerError, "Could not get claims from request context")
+		}
+		roles := claims.RealmAccess["roles"]
+		ue := claims.Email
+
+		// Check for required roles
+		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
+
+		// We assume if someone is limited_writer, they should never be admin or super_writer
+		if isLimitedWriter {
+			if !bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)) {
+				return c.JSON(http.StatusForbidden, "Forbidden")
+			}
+		}
+	}
+	//get controller for bucket
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+	uploadID, err := s3Ctrl.GetMultiPartUploadID(bucket, key)
+	if err != nil {
+		errMsg := fmt.Errorf("error retrieving MultiPart Upload ID: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	log.Infof("successfully generated MultiPart Upload ID for key: %s", key)
+	return c.JSON(http.StatusOK, uploadID)
+}
+
+func (s3Ctrl *S3Controller) CompleteMultipartUpload(bucket string, key string, uploadID string, parts []*s3.CompletedPart) (*s3.CompleteMultipartUploadOutput, error) {
+	input := &s3.CompleteMultipartUploadInput{
+		Bucket:   aws.String(bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
+		MultipartUpload: &s3.CompletedMultipartUpload{
+			Parts: parts,
+		},
+	}
+	result, err := s3Ctrl.S3Svc.CompleteMultipartUpload(input)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
+	key := c.QueryParam("key")
+	if key == "" {
+		err := errors.New("`key` parameters are required")
+		log.Error("HandleGeneratePresignedURL: " + err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	}
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+	type Part struct {
+		PartNumber int    `json:"partNumber"`
+		ETag       string `json:"eTag"`
+	}
+	type CompleteUploadRequest struct {
+		UploadID string `json:"uploadId"`
+		Parts    []Part `json:"parts"`
+	}
+	var req CompleteUploadRequest
+	if err := c.Bind(&req); err != nil {
+		errMsg := fmt.Errorf("error parsing request body: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusBadRequest, errMsg.Error())
+	}
+
+	s3Parts := make([]*s3.CompletedPart, len(req.Parts))
+	for i, part := range req.Parts {
+		s3Parts[i] = &s3.CompletedPart{
+			PartNumber: aws.Int64(int64(part.PartNumber)),
+			ETag:       aws.String(part.ETag),
+		}
+	}
+
+	_, err = s3Ctrl.CompleteMultipartUpload(bucket, key, req.UploadID, s3Parts)
+	if err != nil {
+		errMsg := fmt.Errorf("error completing the multipart Upload for key %s, %s", key, err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	log.Infof("succesfully completed multipart upload for ey %s", key)
+	return c.JSON(http.StatusOK, "succesfully completed multipart upload")
+}
