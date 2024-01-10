@@ -80,7 +80,7 @@ func main() {
 	e.GET("/object/content", auth.Authorize(bh.HandleObjectContents, allUsers...))
 	e.PUT("/object/move", auth.Authorize(bh.HandleMoveObject, admin...))
 	e.GET("/object/download", auth.Authorize(bh.HandleGetPresignedDownloadURL, allUsers...))
-	e.POST("/object/upload", auth.Authorize(bh.HandleMultipartUpload, writers...))
+	e.POST("/object/upload", auth.Authorize(bh.HandleMultipartUpload, writers...)) //deprecated by presigned upload URL
 	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObject, admin...))
 	e.GET("/object/exists", auth.Authorize(bh.HandleGetObjExist, allUsers...))
 	e.GET("/object/presigned_upload", auth.Authorize(bh.HandleGetPresignedUploadURL, writers...))
