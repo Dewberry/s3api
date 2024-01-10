@@ -191,6 +191,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	return c.JSON(http.StatusOK, "Successfully uploaded file")
 }
 
+// function to retrieve presigned url for a normal one time upload. You can only upload 5GB files at a time.
 func (s3Ctrl *S3Controller) GetUploadPresignedURL(bucket string, key string, expMin int) (string, error) {
 	duration := time.Duration(expMin) * time.Minute
 	req, _ := s3Ctrl.S3Svc.PutObjectRequest(&s3.PutObjectInput{
@@ -206,6 +207,7 @@ func (s3Ctrl *S3Controller) GetUploadPresignedURL(bucket string, key string, exp
 	return urlStr, nil
 }
 
+// function to retrieve presigned url for a multipart upload part.
 func (s3Ctrl *S3Controller) GetUploadPartPresignedURL(bucket string, key string, uploadID string, partNumber int64, expMin int) (string, error) {
 	duration := time.Duration(expMin) * time.Minute
 	req, _ := s3Ctrl.S3Svc.UploadPartRequest(&s3.UploadPartInput{
@@ -223,6 +225,7 @@ func (s3Ctrl *S3Controller) GetUploadPartPresignedURL(bucket string, key string,
 	return urlStr, nil
 }
 
+// enpoint handler that will either return a one time presigned upload URL or multipart upload url
 func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
@@ -246,9 +249,8 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	//extract URL expiration from env or from default value
 	if uploadID != "" && partNumberStr != "" {
-		//if the user provided both upload_id and part_number then we returned part presigned URL
+		//if the user provided both upload_id and part_number then we return a part presigned URL
 		partNumber, err := strconv.Atoi(partNumberStr)
 		if err != nil {
 			errMsg := fmt.Errorf("error parsing int from `part_number`: %s", err.Error())
@@ -257,7 +259,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		}
 		presignedURL, err := s3Ctrl.GetUploadPartPresignedURL(bucket, key, uploadID, int64(partNumber), bh.Config.DefaultUploadPresignedUrlExpiration)
 		if err != nil {
-			log.Errorf("error generating presigned URL: %s", err.Error())
+			log.Errorf("error generating presigned part URL: %s", err.Error())
 			return c.JSON(http.StatusInternalServerError, err.Error())
 		}
 		log.Infof("successfully generated presigned part URL for key: %s", key)
@@ -278,6 +280,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 	return c.JSON(http.StatusOK, presignedURL)
 }
 
+// function that will return a Multipart upload ID
 func (s3Ctrl *S3Controller) GetMultiPartUploadID(bucket string, key string) (string, error) {
 	input := &s3.CreateMultipartUploadInput{
 		Bucket: aws.String(bucket),
@@ -290,6 +293,7 @@ func (s3Ctrl *S3Controller) GetMultiPartUploadID(bucket string, key string) (str
 	return *result.UploadId, nil
 }
 
+// endpoint handler that will return a MultiPart upload ID
 func (bh *BlobHandler) HandleGetMultiPartUploadID(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
@@ -321,6 +325,7 @@ func (bh *BlobHandler) HandleGetMultiPartUploadID(c echo.Context) error {
 	return c.JSON(http.StatusOK, uploadID)
 }
 
+// function that will complete a multipart upload ID when all parts are completely uploaded
 func (s3Ctrl *S3Controller) CompleteMultipartUpload(bucket string, key string, uploadID string, parts []*s3.CompletedPart) (*s3.CompleteMultipartUploadOutput, error) {
 	input := &s3.CompleteMultipartUploadInput{
 		Bucket:   aws.String(bucket),
@@ -337,6 +342,7 @@ func (s3Ctrl *S3Controller) CompleteMultipartUpload(bucket string, key string, u
 	return result, nil
 }
 
+// endpoint handler that will complete a multipart upload
 func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
@@ -390,6 +396,7 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 	return c.JSON(http.StatusOK, "succesfully completed multipart upload")
 }
 
+// function that will abort a multipart upload in progress
 func (s3Ctrl *S3Controller) AbortMultipartUpload(bucket string, key string, uploadID string) error {
 	input := &s3.AbortMultipartUploadInput{
 		Bucket:   aws.String(bucket),
@@ -403,6 +410,7 @@ func (s3Ctrl *S3Controller) AbortMultipartUpload(bucket string, key string, uplo
 	return nil
 }
 
+// endpoint handler that will abort a multipart upload in progress
 func (bh *BlobHandler) HandleAbortMultipartUpload(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
