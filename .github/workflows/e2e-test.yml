@@ -26,7 +26,7 @@ jobs:
           echo MINIO_ACCESS_KEY_ID=user >> .env
           echo MINIO_SECRET_ACCESS_KEY=password >> .env
           echo MINIO_S3_REGION='us-east-1' >> .env
-          echo S3_MOCK='true' >> .env
+          echo S3_MOCK=1 >> .env
           echo AWS_S3_BUCKET='test-bucket' >> .env
           echo S3API_SERVICE_PORT='5005' >> .env
 

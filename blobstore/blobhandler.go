@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/Dewberry/s3api/auth"
@@ -62,9 +63,17 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		}
 		config.DB = db
 	}
-
+	s3MockStr := os.Getenv("S3_MOCK")
+	var s3Mock int
+	if s3MockStr == "" {
+		s3Mock = 0
+	}
+	s3Mock, err := strconv.Atoi(s3MockStr)
+	if err != nil {
+		log.Fatalf("could not convert S3_MOCK env variable to integer: %v", err)
+	}
 	// Check if the S3_MOCK environment variable is set to "true"
-	if os.Getenv("S3_MOCK") == "true" {
+	if s3Mock == 1 {
 		log.Info("Using MinIO")
 
 		// Load MinIO credentials from environment

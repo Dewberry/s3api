@@ -49,12 +49,15 @@ func main() {
 		if err != nil {
 			log.Fatalf("could not convert AUTH_LEVEL env variable to integer: %v", err)
 		}
-		s3LimitWriterRoleName, ok := os.LookupEnv("AUTH_LIMITED_WRITER_ROLE")
-		if !ok {
-			log.Fatal("AUTH_S3_LIMITED_WRITER env variable not set")
+		if authLvl == 1 {
+			s3LimitWriterRoleName, ok := os.LookupEnv("AUTH_LIMITED_WRITER_ROLE")
+			if !ok {
+				log.Fatal("AUTH_S3_LIMITED_WRITER env variable not set")
+			}
+			allUsers = append(allUsers, s3LimitWriterRoleName)
+			writers = append(writers, s3LimitWriterRoleName)
 		}
-		allUsers = append(allUsers, s3LimitWriterRoleName)
-		writers = append(writers, s3LimitWriterRoleName)
+
 	}
 
 	envJson := "/app/.env.json"
