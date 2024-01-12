@@ -2,7 +2,6 @@ package blobstore
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -29,20 +28,23 @@ func (s3Ctrl *S3Controller) KeyExists(bucket string, key string) (bool, error) {
 	return true, nil
 }
 
-func generateRandomString() string {
-	const (
-		chars       = "abcdefghijklmnopqrstuvwxyz"
-		randomChars = 6
-	)
+// function that will get the most recently uploaded file in a prefix
+func (s3Ctrl *S3Controller) getMostRecentModTime(bucket, prefix string) (time.Time, error) {
+	// Initialize a time variable to store the most recent modification time
+	var mostRecent time.Time
 
-	rand.Seed(time.Now().UnixNano())
-
-	b := make([]byte, randomChars)
-	for i := range b {
-		b[i] = chars[rand.Intn(len(chars))]
+	// Call GetList to retrieve the list of objects with the specified prefix
+	response, err := s3Ctrl.GetList(bucket, prefix, false)
+	if err != nil {
+		return time.Time{}, err
 	}
-
-	return string(b)
+	// Iterate over the returned objects to find the most recent modification time
+	for _, item := range response.Contents {
+		if item.LastModified != nil && item.LastModified.After(mostRecent) {
+			mostRecent = *item.LastModified
+		}
+	}
+	return mostRecent, nil
 }
 
 func arrayContains(a string, arr []string) bool {

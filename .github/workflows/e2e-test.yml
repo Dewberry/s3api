@@ -17,9 +17,7 @@ jobs:
       - name: Create env file
         run: |
           touch .env
-          echo KEYCLOAK_ID='s3api' >> .env
-          echo KEYCLOAK_SECRET='${{ secrets.KEYCLOAK_SECRET }}' >> .env
-          echo KEYCLOAK_ISSUER='https://auth.dewberryanalytics.com/auth/realms/testing' >> .env
+
           echo KEYCLOAK_PUBLIC_KEYS_URL='https://auth.dewberryanalytics.com/auth/realms/testing/protocol/openid-connect/certs' >> .env
           echo MINIO_S3_ENDPOINT='http://minio:9000' >> .env
           echo AWS_REGION='us-east-1' >> .env
@@ -33,6 +31,13 @@ jobs:
           echo TEMP_PREFIX='downloads-temp' >> .env
           echo AWS_S3_BUCKET='test-bucket' >> .env
           echo S3API_SERVICE_PORT='5005' >> .env
+
+          echo POSTGRES_CONN_STRING='postgres://user:password@postgres:5432/db?sslmode=disable' >> .env
+          echo POSTGRES_PASSWORD='password' >> .env
+          echo POSTGRES_USER='user' >> .env
+          echo POSTGRES_DB='db' >> .env
+          echo PG_LOG_CHECKPOINTS='off' >> .env
+
       - name: Substitute secret variables in JSON
         env:
           auth_password: ${{ secrets.AUTH_PASSWORD }}
@@ -53,3 +58,9 @@ jobs:
       - name: Run newman tests
         run: >
           docker run --network="host" -v /home/runner/work/s3api/s3api/e2e-test:/etc/newman postman/newman:5.3.1-alpine run /etc/newman/e2eCollection.json -e /etc/newman/e2eEnv.json --reporters cli --bail --color on
+
+      # Uncomment to print logs for debugging
+      # - name: Display docker-compose logs
+      #   run: |
+      #     docker-compose logs
+      #   if: always()
