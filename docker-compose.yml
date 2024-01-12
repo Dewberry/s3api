@@ -27,6 +27,8 @@ services:
       - MINIO_ROOT_USER=user
       - MINIO_ROOT_PASSWORD=password
     command: server /data --console-address ":9001"
+    deploy:
+      replicas: $S3_MOCK
     ports:
       - '9000:9000'
       - '9001:9001'
@@ -38,12 +40,18 @@ services:
   postgres:
     container_name: s3api_postgres
     image: postgres:16.1-alpine3.18
+    deploy:
+      replicas: $AUTH_LEVEL
     env_file:
       - .env
     ports:
       - '5432:5432'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB'
+        ]
       interval: 10s
       timeout: 5s
       retries: 5

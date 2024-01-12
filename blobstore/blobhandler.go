@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/Dewberry/s3api/auth"
@@ -26,10 +27,13 @@ type S3Controller struct {
 type Config struct {
 	// Only settings that are typically environment-specific and can be loaded from
 	// external sources like configuration files, environment variables should go here.
-
-	AuthLevel int
-
-	LimitedWriterRoleName string
+	AuthLevel                             int
+	LimitedWriterRoleName                 string
+	DefaultTempPrefix                     string
+	DefaultDownloadPresignedUrlExpiration int
+	DefaultUploadPresignedUrlExpiration   int
+	DefaultScriptDownloadSizeLimit        int
+	DefaultZipDownloadSizeLimit           int
 }
 
 // Store configuration for the handler
@@ -45,9 +49,7 @@ type BlobHandler struct {
 func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	// Create a new BlobHandler configuration
 	config := BlobHandler{
-		Config: &Config{
-			LimitedWriterRoleName: os.Getenv("AUTH_LIMITED_WRITER_ROLE"),
-		},
+		Config: newConfig(authLvl),
 	}
 
 	if authLvl > 0 {
@@ -61,9 +63,17 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		}
 		config.DB = db
 	}
-
+	s3MockStr := os.Getenv("S3_MOCK")
+	var s3Mock int
+	if s3MockStr == "" {
+		s3Mock = 0
+	}
+	s3Mock, err := strconv.Atoi(s3MockStr)
+	if err != nil {
+		log.Fatalf("could not convert S3_MOCK env variable to integer: %v", err)
+	}
 	// Check if the S3_MOCK environment variable is set to "true"
-	if os.Getenv("S3_MOCK") == "true" {
+	if s3Mock == 1 {
 		log.Info("Using MinIO")
 
 		// Load MinIO credentials from environment
