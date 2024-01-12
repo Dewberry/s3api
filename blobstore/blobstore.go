@@ -2,11 +2,15 @@ package blobstore
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
+	"github.com/Dewberry/s3api/auth"
+	"github.com/Dewberry/s3api/utils"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/labstack/echo/v4"
 )
 
 func (s3Ctrl *S3Controller) KeyExists(bucket string, key string) (bool, error) {
@@ -74,4 +78,26 @@ func isIdenticalArray(array1, array2 []string) bool {
 	}
 
 	return true
+}
+
+func (bh *BlobHandler) CheckUserS3WritePermission(c echo.Context, bucket, key string) (int, error) {
+	if bh.Config.AuthLevel > 0 {
+		claims, ok := c.Get("claims").(*auth.Claims)
+		if !ok {
+			return http.StatusInternalServerError, fmt.Errorf("could not get claims from request context")
+		}
+		roles := claims.RealmAccess["roles"]
+		ue := claims.Email
+
+		// Check for required roles
+		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
+
+		// We assume if someone is limited_writer, they should never be admin or super_writer
+		if isLimitedWriter {
+			if !bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)) {
+				return http.StatusForbidden, fmt.Errorf("forbidden")
+			}
+		}
+	}
+	return 0, nil
 }

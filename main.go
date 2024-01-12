@@ -49,12 +49,15 @@ func main() {
 		if err != nil {
 			log.Fatalf("could not convert AUTH_LEVEL env variable to integer: %v", err)
 		}
-		s3LimitWriterRoleName, ok := os.LookupEnv("AUTH_LIMITED_WRITER_ROLE")
-		if !ok {
-			log.Fatal("AUTH_S3_LIMITED_WRITER env variable not set")
+		if authLvl == 1 {
+			s3LimitWriterRoleName, ok := os.LookupEnv("AUTH_LIMITED_WRITER_ROLE")
+			if !ok {
+				log.Fatal("AUTH_S3_LIMITED_WRITER env variable not set")
+			}
+			allUsers = append(allUsers, s3LimitWriterRoleName)
+			writers = append(writers, s3LimitWriterRoleName)
 		}
-		allUsers = append(allUsers, s3LimitWriterRoleName)
-		writers = append(writers, s3LimitWriterRoleName)
+
 	}
 
 	envJson := "/app/.env.json"
@@ -84,6 +87,9 @@ func main() {
 	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObject, admin...))
 	e.GET("/object/exists", auth.Authorize(bh.HandleGetObjExist, allUsers...))
 	e.GET("/object/presigned_upload", auth.Authorize(bh.HandleGetPresignedUploadURL, writers...))
+	e.GET("/object/multipart_upload_id", auth.Authorize(bh.HandleGetMultipartUploadID, writers...))
+	e.POST("/object/complete_multipart_upload", auth.Authorize(bh.HandleCompleteMultipartUpload, writers...))
+	e.POST("object/abort_multipart_upload", auth.Authorize(bh.HandleAbortMultipartUpload, writers...))
 	// prefix
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefixWithDetail, allUsers...))
