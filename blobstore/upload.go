@@ -294,7 +294,7 @@ func (s3Ctrl *S3Controller) GetMultiPartUploadID(bucket string, key string) (str
 }
 
 // endpoint handler that will return a MultiPart upload ID
-func (bh *BlobHandler) HandleGetMultiPartUploadID(c echo.Context) error {
+func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
 		errMsg := fmt.Errorf("`key` parameters are required")
