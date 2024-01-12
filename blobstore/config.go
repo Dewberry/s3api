@@ -1,9 +1,10 @@
 package blobstore
 
 import (
-	"log"
 	"os"
 	"strconv"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // these are the default values of limits if not predefined by user from env
@@ -44,7 +45,7 @@ func getIntEnvOrDefault(envKey string, defaultValue int) int {
 	}
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
-		log.Printf("Error parsing %s, defaulting to %v: %v", envKey, defaultValue, err)
+		log.Debugf("Error parsing %s, defaulting to %v: %v", envKey, defaultValue, err)
 		return defaultValue
 	}
 	return value
