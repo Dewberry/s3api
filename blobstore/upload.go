@@ -122,19 +122,18 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	}
 
 	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
 
 	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
 	if err != nil {
 		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
 		log.Error(errMsg.Error())
 		return c.JSON(httpCode, errMsg.Error())
-	}
-
-	s3Ctrl, err := bh.GetController(bucket)
-	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	overrideParam := c.QueryParam("override")
@@ -234,6 +233,13 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 	bucket := c.QueryParam("bucket")
+	//get controller for bucket
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
 	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
 	if err != nil {
 		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
@@ -242,13 +248,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 	}
 	uploadID := c.QueryParam("upload_id")
 	partNumberStr := c.QueryParam("part_number")
-	//get controller for bucket
-	s3Ctrl, err := bh.GetController(bucket)
-	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
+
 	if uploadID != "" && partNumberStr != "" {
 		//if the user provided both upload_id and part_number then we return a part presigned URL
 		partNumber, err := strconv.Atoi(partNumberStr)
@@ -280,7 +280,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 	return c.JSON(http.StatusOK, presignedURL)
 }
 
-// function that will return a multipart upload ID
+// function that will return a Multipart upload ID
 func (s3Ctrl *S3Controller) GetMultiPartUploadID(bucket string, key string) (string, error) {
 	input := &s3.CreateMultipartUploadInput{
 		Bucket: aws.String(bucket),
@@ -293,7 +293,7 @@ func (s3Ctrl *S3Controller) GetMultiPartUploadID(bucket string, key string) (str
 	return *result.UploadId, nil
 }
 
-// endpoint handler that will return a multipart upload ID
+// endpoint handler that will return a MultiPart upload ID
 func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
@@ -302,12 +302,6 @@ func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 	bucket := c.QueryParam("bucket")
-	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
-	if err != nil {
-		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
-		log.Error(errMsg.Error())
-		return c.JSON(httpCode, errMsg.Error())
-	}
 	//get controller for bucket
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
@@ -315,13 +309,20 @@ func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
+	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	if err != nil {
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(httpCode, errMsg.Error())
+	}
+
 	uploadID, err := s3Ctrl.GetMultiPartUploadID(bucket, key)
 	if err != nil {
-		errMsg := fmt.Errorf("error retrieving multipart Upload ID: %s", err.Error())
+		errMsg := fmt.Errorf("error retrieving MultiPart Upload ID: %s", err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	log.Infof("successfully generated multipart Upload ID for key: %s", key)
+	log.Infof("successfully generated MultiPart Upload ID for key: %s", key)
 	return c.JSON(http.StatusOK, uploadID)
 }
 
@@ -363,15 +364,15 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(httpCode, errMsg.Error())
 	}
-	type Part struct {
+	type part struct {
 		PartNumber int    `json:"partNumber"`
 		ETag       string `json:"eTag"`
 	}
-	type CompleteUploadRequest struct {
+	type completeUploadRequest struct {
 		UploadID string `json:"uploadId"`
-		Parts    []Part `json:"parts"`
+		Parts    []part `json:"parts"`
 	}
-	var req CompleteUploadRequest
+	var req completeUploadRequest
 	if err := c.Bind(&req); err != nil {
 		errMsg := fmt.Errorf("error parsing request body: %s", err.Error())
 		log.Error(errMsg.Error())
@@ -388,11 +389,11 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 
 	_, err = s3Ctrl.CompleteMultipartUpload(bucket, key, req.UploadID, s3Parts)
 	if err != nil {
-		errMsg := fmt.Errorf("error completing the multipart Upload for key %s, %s", key, err.Error())
+		errMsg := fmt.Errorf("error completing the multipart Upload for key %s, %s", key, err)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	log.Infof("succesfully completed multipart upload for key %s", key)
+	log.Infof("succesfully completed multipart upload for ey %s", key)
 	return c.JSON(http.StatusOK, "succesfully completed multipart upload")
 }
 
@@ -419,17 +420,17 @@ func (bh *BlobHandler) HandleAbortMultipartUpload(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 	bucket := c.QueryParam("bucket")
-	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
-	if err != nil {
-		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
-		log.Error(errMsg.Error())
-		return c.JSON(httpCode, errMsg.Error())
-	}
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
 		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	if err != nil {
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(httpCode, errMsg.Error())
 	}
 
 	uploadID := c.QueryParam("upload_id")
@@ -441,7 +442,7 @@ func (bh *BlobHandler) HandleAbortMultipartUpload(c echo.Context) error {
 
 	err = s3Ctrl.AbortMultipartUpload(bucket, key, uploadID)
 	if err != nil {
-		errMsg := fmt.Errorf("error aborting the multipart Upload for key %s, %s", key, err.Error())
+		errMsg := fmt.Errorf("error aborting the multipart Upload for key %s, %s", key, err)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
