@@ -280,7 +280,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 	return c.JSON(http.StatusOK, presignedURL)
 }
 
-// function that will return a Multipart upload ID
+// function that will return a multipart upload ID
 func (s3Ctrl *S3Controller) GetMultiPartUploadID(bucket string, key string) (string, error) {
 	input := &s3.CreateMultipartUploadInput{
 		Bucket: aws.String(bucket),
@@ -293,7 +293,7 @@ func (s3Ctrl *S3Controller) GetMultiPartUploadID(bucket string, key string) (str
 	return *result.UploadId, nil
 }
 
-// endpoint handler that will return a MultiPart upload ID
+// endpoint handler that will return a multipart upload ID
 func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
@@ -318,11 +318,11 @@ func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 
 	uploadID, err := s3Ctrl.GetMultiPartUploadID(bucket, key)
 	if err != nil {
-		errMsg := fmt.Errorf("error retrieving MultiPart Upload ID: %s", err.Error())
+		errMsg := fmt.Errorf("error retrieving multipart Upload ID: %s", err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	log.Infof("successfully generated MultiPart Upload ID for key: %s", key)
+	log.Infof("successfully generated multipart Upload ID for key: %s", key)
 	return c.JSON(http.StatusOK, uploadID)
 }
 
@@ -360,7 +360,7 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 	}
 	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
 	if err != nil {
-		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(httpCode, errMsg.Error())
 	}
@@ -393,7 +393,7 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	log.Infof("succesfully completed multipart upload for ey %s", key)
+	log.Infof("succesfully completed multipart upload for key %s", key)
 	return c.JSON(http.StatusOK, "succesfully completed multipart upload")
 }
 
@@ -442,10 +442,10 @@ func (bh *BlobHandler) HandleAbortMultipartUpload(c echo.Context) error {
 
 	err = s3Ctrl.AbortMultipartUpload(bucket, key, uploadID)
 	if err != nil {
-		errMsg := fmt.Errorf("error aborting the multipart Upload for key %s, %s", key, err)
+		errMsg := fmt.Errorf("error aborting the multipart Upload for key %s, %s", key, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	log.Infof("succesfully aborted multipart upload for ey %s", key)
+	log.Infof("succesfully aborted multipart upload for key %s", key)
 	return c.JSON(http.StatusOK, "succesfully aborted multipart upload")
 }
