@@ -12,25 +12,22 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (bh *BlobHandler) GetSize(list *s3.ListObjectsV2Output) (uint64, uint32, error) {
-	if list == nil {
-		return 0, 0, errors.New("getSize: input list is nil")
+func (bh *BlobHandler) GetSize(page *s3.ListObjectsV2Output, totalSize *uint64, fileCount *uint64) error {
+	if page == nil {
+		return errors.New("input page is nil")
 	}
 
-	var size uint64 = 0
-	fileCount := uint32(len(list.Contents))
-
-	for _, file := range list.Contents {
+	for _, file := range page.Contents {
 		if file.Size == nil {
-			return 0, 0, errors.New("getSize: file size is nil")
+			return errors.New("file size is nil")
 		}
-		size += uint64(*file.Size)
+		*totalSize += uint64(*file.Size)
+		*fileCount++
 	}
 
-	return size, fileCount, nil
+	return nil
 }
 
-// HandleGetSize retrieves the total size and the number of files in the specified S3 bucket with the given prefix.
 // HandleGetSize retrieves the total size and the number of files in the specified S3 bucket with the given prefix.
 func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
@@ -51,42 +48,44 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	// Check if the prefix points directly to an object
 	isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 	if err != nil {
-		log.Error("HandleGetSize: Error checking if prefix is an object:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error checking if prefix is an object: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
 	if isObject {
-		// Prefix points directly to an object instead of a collection of objects
-		return c.JSON(http.StatusTeapot, "The provided prefix points to a single object rather than a collection")
+		errMsg := fmt.Errorf("the provided prefix %s points to a single object rather than a collection", prefix)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusTeapot, errMsg.Error())
 	}
-	list, err := s3Ctrl.GetList(bucket, prefix, false)
+
+	var totalSize uint64
+	var fileCount uint64
+	err = s3Ctrl.GetListWithCallBack(bucket, prefix, false, func(page *s3.ListObjectsV2Output) error {
+		return bh.GetSize(page, &totalSize, &fileCount)
+	})
+
 	if err != nil {
-		log.Error("HandleGetSize: Error getting list:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error processing objects: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-
-	if len(list.Contents) == 0 {
-		// No objects found with the provided prefix
-		return c.JSON(http.StatusNotFound, "Prefix not found")
+	if totalSize == 0 {
+		errMsg := fmt.Errorf("prefix %s not found", prefix)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusNotFound, errMsg.Error())
 	}
-
-	size, fileCount, err := bh.GetSize(list)
-	if err != nil {
-		log.Error("HandleGetSize: Error getting size:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
-
 	response := struct {
 		Size      uint64 `json:"size"`
-		FileCount uint32 `json:"file_count"`
+		FileCount uint64 `json:"file_count"`
 		Prefix    string `json:"prefix"`
 	}{
-		Size:      size,
+		Size:      totalSize,
 		FileCount: fileCount,
 		Prefix:    prefix,
 	}
 
-	log.Info("HandleGetSize: Successfully retrieved size for prefix:", prefix)
+	log.Info("Successfully retrieved size for prefix:", prefix)
 	return c.JSON(http.StatusOK, response)
 }
 
