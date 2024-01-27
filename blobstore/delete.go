@@ -13,39 +13,37 @@ import (
 )
 
 func (s3Ctrl *S3Controller) RecursivelyDeleteObjects(bucket, prefix string) error {
-	prefixPath := strings.Trim(prefix, "/") + "/"
-	query := &s3.ListObjectsV2Input{
-		Bucket: aws.String(bucket),
-		Prefix: aws.String(prefixPath),
-	}
-	resp, err := s3Ctrl.S3Svc.ListObjectsV2(query)
-	if err != nil {
-		return fmt.Errorf("recursivelyDeleteObjects: error listing objects: %s", err)
-	}
-	if len(resp.Contents) > 0 {
+	processPage := func(page *s3.ListObjectsV2Output) error {
+		if len(page.Contents) == 0 {
+			return nil // No objects to delete in this page
+		}
+
 		var objectsToDelete []*s3.ObjectIdentifier
-
-		for _, obj := range resp.Contents {
-			objectsToDelete = append(objectsToDelete, &s3.ObjectIdentifier{
-				Key: obj.Key,
-			})
+		for _, obj := range page.Contents {
+			objectsToDelete = append(objectsToDelete, &s3.ObjectIdentifier{Key: obj.Key})
 		}
 
-		if len(objectsToDelete) > 0 {
-			_, err = s3Ctrl.S3Svc.DeleteObjects(&s3.DeleteObjectsInput{
-				Bucket: aws.String(bucket),
-				Delete: &s3.Delete{
-					Objects: objectsToDelete,
-				},
-			})
-
-			if err != nil {
-				return fmt.Errorf("recursivelyDeleteObjects: error Deleting objects %v: %s", objectsToDelete, err)
-			}
+		// Perform the delete operation for the current page
+		_, err := s3Ctrl.S3Svc.DeleteObjects(&s3.DeleteObjectsInput{
+			Bucket: aws.String(bucket),
+			Delete: &s3.Delete{
+				Objects: objectsToDelete,
+				Quiet:   aws.Bool(true),
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("error deleting objects: %v", err)
 		}
-	} else {
-		return fmt.Errorf("recursivelyDeleteObjects: object %s not found and no objects were deleted", prefixPath)
+
+		log.Infof("Successfully deleted %d objects", len(objectsToDelete))
+		return nil
 	}
+
+	err := s3Ctrl.GetListWithCallBack(bucket, prefix, false, processPage)
+	if err != nil {
+		return fmt.Errorf("error processing objects for deletion: %v", err)
+	}
+
 	return nil
 }
 
@@ -104,7 +102,6 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
 		err = errors.New("parameter 'prefix' is required")
@@ -114,27 +111,14 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 	if !strings.HasSuffix(prefix, "/") {
 		prefix = prefix + "/"
 	}
-	response, err := s3Ctrl.GetList(bucket, prefix, false)
-	if err != nil {
-		log.Errorf("HandleDeleteObjects:  Error getting list: %s", err.Error())
-		return c.JSON(http.StatusInternalServerError, err)
-	}
-	if *response.KeyCount == 0 {
-		err := fmt.Errorf("the specified prefix %s does not exist in S3", prefix)
-		log.Errorf("HandleDeleteObjects: %s", err.Error())
-		return c.JSON(http.StatusNotFound, err.Error())
-	}
-	// This will recursively delete all objects with the specified prefix
 	err = s3Ctrl.RecursivelyDeleteObjects(bucket, prefix)
 	if err != nil {
-		msg := fmt.Sprintf("error deleting objects. %s", err.Error())
-		log.Errorf("HandleDeleteObjects: %s", msg)
-		return c.JSON(http.StatusInternalServerError, msg)
+		errMsg := fmt.Errorf("error deleting objects: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-
 	log.Info("HandleDeleteObjects: Successfully deleted prefix and its contents for prefix:", prefix)
 	return c.JSON(http.StatusOK, "Successfully deleted prefix and its contents")
-
 }
 
 func (s3Ctrl *S3Controller) DeleteKeys(bucket string, key []string) error {
