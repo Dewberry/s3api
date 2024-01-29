@@ -12,34 +12,37 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (s3Ctrl *S3Controller) RecursivelyDeleteObjects(bucket, prefix string) error {
-	processPage := func(page *s3.ListObjectsV2Output) error {
-		if len(page.Contents) == 0 {
-			return nil // No objects to delete in this page
-		}
-
-		var objectsToDelete []*s3.ObjectIdentifier
-		for _, obj := range page.Contents {
-			objectsToDelete = append(objectsToDelete, &s3.ObjectIdentifier{Key: obj.Key})
-		}
-
-		// Perform the delete operation for the current page
-		_, err := s3Ctrl.S3Svc.DeleteObjects(&s3.DeleteObjectsInput{
-			Bucket: aws.String(bucket),
-			Delete: &s3.Delete{
-				Objects: objectsToDelete,
-				Quiet:   aws.Bool(true),
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("error deleting objects: %v", err)
-		}
-
-		log.Infof("Successfully deleted %d objects", len(objectsToDelete))
-		return nil
+func (s3Ctrl *S3Controller) DeleteList(page *s3.ListObjectsV2Output, bucket string) error {
+	if len(page.Contents) == 0 {
+		return nil // No objects to delete in this page
 	}
 
-	err := s3Ctrl.GetListWithCallBack(bucket, prefix, false, processPage)
+	var objectsToDelete []*s3.ObjectIdentifier
+	for _, obj := range page.Contents {
+		objectsToDelete = append(objectsToDelete, &s3.ObjectIdentifier{Key: obj.Key})
+	}
+
+	// Perform the delete operation for the current page
+	_, err := s3Ctrl.S3Svc.DeleteObjects(&s3.DeleteObjectsInput{
+		Bucket: aws.String(bucket),
+		Delete: &s3.Delete{
+			Objects: objectsToDelete,
+			Quiet:   aws.Bool(true),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("error deleting objects: %v", err)
+	}
+
+	log.Infof("Successfully deleted %d objects", len(objectsToDelete))
+	return nil
+}
+
+func (s3Ctrl *S3Controller) RecursivelyDeleteObjects(bucket, prefix string) error {
+
+	err := s3Ctrl.GetListWithCallBack(bucket, prefix, false, func(page *s3.ListObjectsV2Output) error {
+		return s3Ctrl.DeleteList(page, bucket)
+	})
 	if err != nil {
 		return fmt.Errorf("error processing objects for deletion: %v", err)
 	}
