@@ -47,27 +47,36 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 }
 
 func (s3Ctrl *S3Controller) CopyPrefix(bucket, srcPrefix, destPrefix string) error {
-	// List objects within the source prefix
-	listOutput, err := s3Ctrl.GetList(bucket, srcPrefix, true)
-	if err != nil {
-		return errors.New("error listing objects with prefix " + srcPrefix + " in bucket " + bucket + ", " + err.Error())
-	}
+	processPage := func(page *s3.ListObjectsV2Output) error {
+		for _, object := range page.Contents {
+			srcObjectKey := aws.StringValue(object.Key)
+			destObjectKey := strings.Replace(srcObjectKey, srcPrefix, destPrefix, 1)
 
-	if len(listOutput.Contents) == 0 {
-		return errors.New("source prefix " + srcPrefix + " does not exist")
-	}
+			// Copy the object to the new location
+			copyInput := &s3.CopyObjectInput{
+				Bucket:     aws.String(bucket),
+				CopySource: aws.String(bucket + "/" + srcObjectKey),
+				Key:        aws.String(destObjectKey),
+			}
+			_, err := s3Ctrl.S3Svc.CopyObject(copyInput)
+			if err != nil {
+				return fmt.Errorf("error copying object %s to %s: %v", srcObjectKey, destObjectKey, err)
+			}
 
-	// Copy each object to the destination prefix
-	for _, object := range listOutput.Contents {
-		srcObjectKey := aws.StringValue(object.Key)
-		destObjectKey := strings.Replace(srcObjectKey, srcPrefix, destPrefix, 1)
-
-		copyErr := s3Ctrl.CopyObject(bucket, srcObjectKey, destObjectKey)
-		if copyErr != nil {
-			// If an error occurs during copying, return immediately
-			return copyErr
 		}
+		err := s3Ctrl.DeleteList(page, bucket)
+		if err != nil {
+			errMsg := fmt.Errorf("error deleting from source prefix %s: %v", srcPrefix, err)
+			return errMsg
+		}
+		return nil
 	}
+
+	err := s3Ctrl.GetListWithCallBack(bucket, srcPrefix, false, processPage)
+	if err != nil {
+		return fmt.Errorf("error processing objects for move: %v", err)
+	}
+
 	return nil
 }
 
