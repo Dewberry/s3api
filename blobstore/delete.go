@@ -34,7 +34,6 @@ func (s3Ctrl *S3Controller) DeleteList(page *s3.ListObjectsV2Output, bucket stri
 		return fmt.Errorf("error deleting objects: %v", err)
 	}
 
-	log.Infof("Successfully deleted %d objects", len(objectsToDelete))
 	return nil
 }
 
@@ -107,14 +106,14 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("parameter `bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
-		err = errors.New("parameter 'prefix' is required")
-		log.Errorf("HandleDeleteObjects: %s", err.Error())
+		err = errors.New("parameter `prefix` is required")
+		log.Error(err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 	if !strings.HasSuffix(prefix, "/") {
@@ -130,7 +129,7 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	log.Info("HandleDeleteObjects: Successfully deleted prefix and its contents for prefix:", prefix)
+	log.Info("Successfully deleted prefix and its contents for prefix:", prefix)
 	return c.JSON(http.StatusOK, "Successfully deleted prefix and its contents")
 }
 

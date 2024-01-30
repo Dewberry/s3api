@@ -192,31 +192,6 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 // if delimiter is set to true then it is going to search for any objects within the prefix provided, if no object sare found it will
 // return null even if there was prefixes within the user provided prefix. If delimiter is set to false then it will look for all prefixes
 // that start with the user provided prefix.
-func (s3Ctrl *S3Controller) GetListWithCallBack(bucket, prefix string, delimiter bool, processPage func(*s3.ListObjectsV2Output) error) error {
-	input := &s3.ListObjectsV2Input{
-		Bucket:  aws.String(bucket),
-		Prefix:  aws.String(prefix),
-		MaxKeys: aws.Int64(1000), // Adjust the MaxKeys as needed
-	}
-
-	if delimiter {
-		input.SetDelimiter("/")
-	}
-
-	var lastError error // Variable to capture the last error
-
-	// Iterate over the pages of results
-	err := s3Ctrl.S3Svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, _ bool) bool {
-		lastError = processPage(page)
-		return lastError == nil && *page.IsTruncated // Continue if no error and more pages are available
-	})
-
-	if lastError != nil {
-		return lastError // Return the last error encountered in the processPage function
-	}
-	return err // Return any errors encountered in the pagination process
-}
-
 func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool) (*s3.ListObjectsV2Output, error) {
 	// Set up input parameters for the ListObjectsV2 API
 	input := &s3.ListObjectsV2Input{
@@ -250,4 +225,31 @@ func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool) (*s3.
 	}
 
 	return response, nil
+}
+
+// GetListWithCallBack is the same as GetList, except instead of returning the entire list at once, it gives you the option of processing page by page
+// this method is safer than GetList as it avoid memory overload for large datasets since it does not store the entire list in memory but rather processes it on the go.
+func (s3Ctrl *S3Controller) GetListWithCallBack(bucket, prefix string, delimiter bool, processPage func(*s3.ListObjectsV2Output) error) error {
+	input := &s3.ListObjectsV2Input{
+		Bucket:  aws.String(bucket),
+		Prefix:  aws.String(prefix),
+		MaxKeys: aws.Int64(1000), // Adjust the MaxKeys as needed
+	}
+
+	if delimiter {
+		input.SetDelimiter("/")
+	}
+
+	var lastError error // Variable to capture the last error
+
+	// Iterate over the pages of results
+	err := s3Ctrl.S3Svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, _ bool) bool {
+		lastError = processPage(page)
+		return lastError == nil && *page.IsTruncated // Continue if no error and more pages are available
+	})
+
+	if lastError != nil {
+		return lastError // Return the last error encountered in the processPage function
+	}
+	return err // Return any errors encountered in the pagination process
 }

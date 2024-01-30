@@ -250,12 +250,16 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
-		return c.JSON(http.StatusBadRequest, "Prefix parameter is required")
+		errMsg := fmt.Errorf("`prefix` and `bucket` query params are required")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error getting controller for bucket %s: %v", bucket, err))
+		errMsg := fmt.Errorf("error getting controller for bucket %s: %s", bucket, err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	var totalSize uint64
@@ -274,12 +278,9 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 
 	// Define the processPage function
 	processPage := func(page *s3.ListObjectsV2Output) error {
-		fmt.Println("getting here?")
 		for _, item := range page.Contents {
-			fmt.Println("getting here 2?  ", item)
 			// Size checking
 			if item.Size != nil {
-				fmt.Println("getting here 3?  ")
 				totalSize += uint64(*item.Size)
 				if totalSize > uint64(bh.Config.DefaultScriptDownloadSizeLimit*1024*1024*1024) {
 					return fmt.Errorf("size limit of %d GB exceeded", bh.Config.DefaultScriptDownloadSizeLimit)
@@ -287,7 +288,6 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 
 			}
 
-			fmt.Println(totalSize)
 			// Script generation logic (replicating your directory creation and URL logic)
 			relativePath := strings.TrimPrefix(*item.Key, filepath.Dir(prefix)+"/")
 			dirPath := filepath.Join(basePrefix, filepath.Dir(relativePath))
@@ -306,7 +306,6 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 				return fmt.Errorf("error unescaping URL encoding: %v", err)
 			}
 			encodedURL := strings.ReplaceAll(url, " ", "%20")
-			fmt.Println(presignedURL)
 			scriptBuilder.WriteString(fmt.Sprintf("if exist \"%s\" (echo skipping existing file) else (curl -v -o \"%s\" \"%s\")\n", fullPath, fullPath, encodedURL))
 		}
 		return nil
@@ -314,10 +313,10 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 
 	// Call GetList with the processPage function
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, false, processPage)
-	fmt.Println(err)
 	if err != nil {
-		// Handle errors, including size limit exceeded
-		return c.JSON(http.StatusInternalServerError, fmt.Errorf("error processing objects: %v", err).Error())
+		errMsg := fmt.Errorf("error processing objects: %v", err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
 	txtBatFileName := fmt.Sprintf("%s_download_script.txt", strings.TrimSuffix(prefix, "/"))
