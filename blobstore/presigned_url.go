@@ -183,7 +183,8 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, errMsg.Error())
 	}
 	//check if size is below 5GB
-	size, _, err := bh.GetSize(response)
+	var size, fileCount uint64
+	err = bh.GetSize(response, &size, &fileCount)
 	if err != nil {
 		errMsg := fmt.Errorf("error getting size: %s", err.Error())
 		log.Error(errMsg.Error())
@@ -248,53 +249,20 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 
 func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
+	if prefix == "" {
+		return c.JSON(http.StatusBadRequest, "Prefix parameter is required")
+	}
 	bucket := c.QueryParam("bucket")
-	if prefix == "" || bucket == "" {
-		errMsg := fmt.Errorf("`prefix` and `bucket` query params are required")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
-	if !strings.HasSuffix(prefix, "/") {
-		prefix += "/"
-	}
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("error getting controller for bucket %s: %s", bucket, err)
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error getting controller for bucket %s: %v", bucket, err))
 	}
 
-	//list objects within the prefix and test if empty
-	response, err := s3Ctrl.GetList(bucket, prefix, false)
-	if err != nil {
-		errMsg := fmt.Errorf("error listing objects in bucket %s with prefix %s: %s", bucket, prefix, err)
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusInternalServerError, errMsg.Error())
-	}
-	if len(response.Contents) == 0 {
-		errMsg := fmt.Errorf("prefix %s is empty or does not exist", prefix)
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusBadRequest, errMsg.Error())
-	}
-	size, _, err := bh.GetSize(response)
-	if err != nil {
-		errMsg := fmt.Errorf("error retrieving size of prefix: %s", err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusInternalServerError, errMsg.Error())
-	}
-
-	limit := uint64(1024 * 1024 * 1024 * bh.Config.DefaultScriptDownloadSizeLimit)
-	if size > limit {
-		errMsg := fmt.Errorf("request entity is larger than %v GB, current prefix size is: %v GB", bh.Config.DefaultScriptDownloadSizeLimit, float64(size)/(1024*1024*1024))
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusRequestEntityTooLarge, errMsg.Error())
-	}
-
-	//expiration period from the env
-
+	var totalSize uint64
 	var scriptBuilder strings.Builder
 	createdDirs := make(map[string]bool)
-	// Add download instructions at the beginning of the script
+	basePrefix := filepath.Base(strings.TrimSuffix(prefix, "/"))
+	scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", basePrefix))
 	scriptBuilder.WriteString("REM Download Instructions\n")
 	scriptBuilder.WriteString("REM To download the selected directory or file, please follow these steps:\n\n")
 	scriptBuilder.WriteString("REM 1. Locate the Downloaded File: Find the file you just downloaded. It should have a .txt file extension.\n")
@@ -302,41 +270,54 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	scriptBuilder.WriteString("REM 3. Rename the File: Right-click on the file, select \"Rename,\" and change the file extension from \".txt\" to \".bat.\" For example, if the file is named \"script.txt,\" rename it to \"script.bat.\"\n")
 	scriptBuilder.WriteString("REM 4. Initiate the Download: Double-click the renamed \".bat\" file to initiate the download process. Windows might display a warning message to protect your PC.\n")
 	scriptBuilder.WriteString("REM 5. Windows Defender SmartScreen (Optional): If you see a message like \"Windows Defender SmartScreen prevented an unrecognized app from starting,\" click \"More info\" and then click \"Run anyway\" to proceed with the download.\n\n")
-	//iterate over every object and check if it has any sub-prefixes to maintain a directory structure
-
-	basePrefix := filepath.Base(strings.TrimSuffix(prefix, "/"))
 	scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", basePrefix))
 
-	for _, item := range response.Contents {
-		// Remove the prefix up to the base, keeping the structure under the base prefix
-		relativePath := strings.TrimPrefix(*item.Key, filepath.Dir(prefix)+"/")
+	// Define the processPage function
+	processPage := func(page *s3.ListObjectsV2Output) error {
+		fmt.Println("getting here?")
+		for _, item := range page.Contents {
+			fmt.Println("getting here 2?  ", item)
+			// Size checking
+			if item.Size != nil {
+				fmt.Println("getting here 3?  ")
+				totalSize += uint64(*item.Size)
+				if totalSize > uint64(bh.Config.DefaultScriptDownloadSizeLimit*1024*1024*1024) {
+					return fmt.Errorf("size limit of %d GB exceeded", bh.Config.DefaultScriptDownloadSizeLimit)
+				}
 
-		// Calculate the directory path for the relative path
-		dirPath := filepath.Join(basePrefix, filepath.Dir(relativePath))
+			}
 
-		// Create directory if it does not exist and is not the root
-		if _, exists := createdDirs[dirPath]; !exists && dirPath != basePrefix {
-			scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", dirPath))
-			createdDirs[dirPath] = true
+			fmt.Println(totalSize)
+			// Script generation logic (replicating your directory creation and URL logic)
+			relativePath := strings.TrimPrefix(*item.Key, filepath.Dir(prefix)+"/")
+			dirPath := filepath.Join(basePrefix, filepath.Dir(relativePath))
+			if _, exists := createdDirs[dirPath]; !exists && dirPath != basePrefix {
+				scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", dirPath))
+				createdDirs[dirPath] = true
+			}
+
+			fullPath := filepath.Join(basePrefix, relativePath)
+			presignedURL, err := s3Ctrl.GetDownloadPresignedURL(bucket, *item.Key, bh.Config.DefaultDownloadPresignedUrlExpiration)
+			if err != nil {
+				return fmt.Errorf("error generating presigned URL for object %s: %v", *item.Key, err)
+			}
+			url, err := url.QueryUnescape(presignedURL)
+			if err != nil {
+				return fmt.Errorf("error unescaping URL encoding: %v", err)
+			}
+			encodedURL := strings.ReplaceAll(url, " ", "%20")
+			fmt.Println(presignedURL)
+			scriptBuilder.WriteString(fmt.Sprintf("if exist \"%s\" (echo skipping existing file) else (curl -v -o \"%s\" \"%s\")\n", fullPath, fullPath, encodedURL))
 		}
+		return nil
+	}
 
-		// Create the full path for the object including the base prefix
-		fullPath := filepath.Join(basePrefix, relativePath)
-
-		presignedURL, err := s3Ctrl.GetDownloadPresignedURL(bucket, *item.Key, bh.Config.DefaultDownloadPresignedUrlExpiration)
-		if err != nil {
-			errMsg := fmt.Errorf("error generating presigned URL for %s: %s", *item.Key, err)
-			log.Error(errMsg.Error())
-			return c.JSON(http.StatusInternalServerError, errMsg.Error())
-		}
-		url, err := url.QueryUnescape(presignedURL) //to remove url encoding which causes errors when executed in terminal
-		if err != nil {
-			errMsg := fmt.Errorf("error Unescaping url encoding: %s", err.Error())
-			log.Error(errMsg.Error())
-			return c.JSON(http.StatusInternalServerError, errMsg.Error())
-		}
-		encodedURL := strings.ReplaceAll(url, " ", "%20")
-		scriptBuilder.WriteString(fmt.Sprintf("if exist \"%s\" (echo skipping existing file) else (curl -v -o \"%s\" \"%s\")\n", fullPath, fullPath, encodedURL))
+	// Call GetList with the processPage function
+	err = s3Ctrl.GetListWithCallBack(bucket, prefix, false, processPage)
+	fmt.Println(err)
+	if err != nil {
+		// Handle errors, including size limit exceeded
+		return c.JSON(http.StatusInternalServerError, fmt.Errorf("error processing objects: %v", err).Error())
 	}
 
 	txtBatFileName := fmt.Sprintf("%s_download_script.txt", strings.TrimSuffix(prefix, "/"))
