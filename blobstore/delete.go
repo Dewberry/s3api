@@ -39,14 +39,20 @@ func (s3Ctrl *S3Controller) DeleteList(page *s3.ListObjectsV2Output, bucket stri
 }
 
 func (s3Ctrl *S3Controller) RecursivelyDeleteObjects(bucket, prefix string) error {
-
+	var objectsFound bool
 	err := s3Ctrl.GetListWithCallBack(bucket, prefix, false, func(page *s3.ListObjectsV2Output) error {
+		if len(page.Contents) > 0 {
+			objectsFound = true
+		}
 		return s3Ctrl.DeleteList(page, bucket)
 	})
 	if err != nil {
 		return fmt.Errorf("error processing objects for deletion: %v", err)
 	}
 
+	if !objectsFound {
+		return fmt.Errorf("prefix not found")
+	}
 	return nil
 }
 
@@ -116,6 +122,10 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 	}
 	err = s3Ctrl.RecursivelyDeleteObjects(bucket, prefix)
 	if err != nil {
+		if strings.Contains(err.Error(), "prefix not found") {
+			log.Infof("No objects found with prefix: %s", prefix)
+			return c.JSON(http.StatusNotFound, "Prefix not found")
+		}
 		errMsg := fmt.Errorf("error deleting objects: %s", err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
