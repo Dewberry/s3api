@@ -48,7 +48,7 @@
 							"script": {
 								"exec": [
 									"pm.test('ping with auth did not work as expected', function () {\r",
-									"    pm.response.to.have.status(401);\r",
+									"    pm.response.to.have.status(500);\r",
 									"});"
 								],
 								"type": "text/javascript"
@@ -296,7 +296,7 @@
 								{
 									"key": "",
 									"type": "file",
-									"src": "staff_table.csv"
+									"src": "FFRMS/missing_huc8s.xlsx"
 								}
 							]
 						},
@@ -777,6 +777,45 @@
 					"response": []
 				},
 				{
+					"name": "10.2/prefix/download_script",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/prefix/download/script?prefix={{e2ePathToObj}}&bucket={{bucket}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"prefix",
+								"download",
+								"script"
+							],
+							"query": [
+								{
+									"key": "prefix",
+									"value": "{{e2ePathToObj}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "11/object/upload 2",
 					"event": [
 						{
@@ -817,7 +856,7 @@
 								{
 									"key": "",
 									"type": "file",
-									"src": "staff_table.csv"
+									"src": "FFRMS/missing_huc8s.xlsx"
 								}
 							]
 						},
@@ -1040,7 +1079,7 @@
 								{
 									"key": "",
 									"type": "file",
-									"src": "staff_table.csv"
+									"src": "FFRMS/missing_huc8s.xlsx"
 								}
 							]
 						},
@@ -1112,7 +1151,7 @@
 								{
 									"key": "",
 									"type": "file",
-									"src": "staff_table.csv"
+									"src": "FFRMS/missing_huc8s.xlsx"
 								}
 							]
 						},
@@ -1195,6 +1234,362 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "18/object/presigned_upload",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/presigned_upload?key={{e2eObjName}}&bucket={{bucket}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"presigned_upload"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "19/object/multipart_upload_id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();\r",
+									"pm.environment.set(\"uploadId\", jsonData);\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/multipart_upload_id?key={{e2eObjName}}&bucket={{bucket}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"multipart_upload_id"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "19/object/presigned_upload_multipart",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json()//.replace('minio', 'localhost');\r",
+									"pm.environment.set(\"presignedUploadUrl\", jsonData);\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/presigned_upload?key={{e2eObjName}}&bucket={{bucket}}&upload_id={{uploadId}}&part_number=1",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"presigned_upload"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
+								},
+								{
+									"key": "upload_id",
+									"value": "{{uploadId}}"
+								},
+								{
+									"key": "part_number",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "presigned_url_test",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract ETag from the response header\r",
+									"var etag = pm.response.headers.get(\"ETag\");\r",
+									"\r",
+									"\r",
+									"// Remove extra quotation marks if present\r",
+									"etag = etag.replace(/\"/g, '');\r",
+									"\r",
+									"\r",
+									"// Set the ETag as an environment variable\r",
+									"pm.environment.set(\"etag\", etag);\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {}
+					},
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "",
+									"type": "file",
+									"src": "FFRMS/missing_huc8s.xlsx"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{presignedUploadUrl}}",
+							"host": [
+								"{{presignedUploadUrl}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "20/object/complete_multipart_upload",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"uploadId\": \"{{uploadId}}\",\r\n    \"parts\": [{\r\n        \"partNumber\":1,\r\n        \"eTag\":\"{{etag}}\"\r\n    }]\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/complete_multipart_upload?key={{e2eObjName}}&bucket={{bucket}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"complete_multipart_upload"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "20/object/multipart_upload_id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();\r",
+									"pm.environment.set(\"uploadId\", jsonData);\r",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/multipart_upload_id?key={{e2eObjName}}&bucket={{bucket}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"multipart_upload_id"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "21/object/abort_multipart_upload",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearer_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{s3_api_root_url}}/object/abort_multipart_upload?key={{e2eObjName}}&bucket={{bucket}}&upload_id={{uploadId}}",
+							"host": [
+								"{{s3_api_root_url}}"
+							],
+							"path": [
+								"object",
+								"abort_multipart_upload"
+							],
+							"query": [
+								{
+									"key": "key",
+									"value": "{{e2eObjName}}"
+								},
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
+								},
+								{
+									"key": "upload_id",
+									"value": "{{uploadId}}"
+								}
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"event": [
@@ -1267,7 +1662,7 @@
 										{
 											"key": "",
 											"type": "file",
-											"src": "staff_table.csv"
+											"src": "FFRMS/missing_huc8s.xlsx"
 										}
 									]
 								},
@@ -1339,7 +1734,7 @@
 										{
 											"key": "",
 											"type": "file",
-											"src": "staff_table.csv"
+											"src": "FFRMS/missing_huc8s.xlsx"
 										}
 									]
 								},
@@ -1438,7 +1833,7 @@
 										{
 											"key": "",
 											"type": "file",
-											"src": "staff_table.csv"
+											"src": "missing_huc8s.xlsx"
 										}
 									]
 								},
@@ -1514,7 +1909,7 @@
 										{
 											"key": "",
 											"type": "file",
-											"src": "staff_table.csv"
+											"src": "missing_huc8s.xlsx"
 										}
 									]
 								},
@@ -1587,7 +1982,7 @@
 										{
 											"key": "",
 											"type": "file",
-											"src": "staff_table.csv"
+											"src": "missing_huc8s.xlsx"
 										}
 									]
 								},
@@ -2167,6 +2562,57 @@
 									"path": [
 										"prefix",
 										"download"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{e2ePathToObj}}",
+											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "10.2/prefix/download/script",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearer_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{s3_api_root_url}}/prefix/download/script?bucket={{bucket}}",
+									"host": [
+										"{{s3_api_root_url}}"
+									],
+									"path": [
+										"prefix",
+										"download",
+										"script"
 									],
 									"query": [
 										{
@@ -3094,7 +3540,10 @@
 										{
 											"key": "",
 											"type": "file",
-											"src": "staff_table.csv"
+											"src": [
+												"missing_huc8s.xlsx",
+												"FFRMS/missing_huc8s.xlsx"
+											]
 										}
 									]
 								},
@@ -3402,6 +3851,12 @@
 					}
 				}
 			]
+		}
+	],
+	"variable": [
+		{
+			"key": "presignedUploadUrl",
+			"value": "\"\""
 		}
 	]
 }

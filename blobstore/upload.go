@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -211,16 +213,43 @@ func (s3Ctrl *S3Controller) GetUploadPresignedURL(bucket string, key string, exp
 // function to retrieve presigned url for a multipart upload part.
 func (s3Ctrl *S3Controller) GetUploadPartPresignedURL(bucket string, key string, uploadID string, partNumber int64, expMin int) (string, error) {
 	duration := time.Duration(expMin) * time.Minute
-	req, _ := s3Ctrl.S3Svc.UploadPartRequest(&s3.UploadPartInput{
-		Bucket:     aws.String(bucket),
-		Key:        aws.String(key),
-		UploadId:   aws.String(uploadID),
-		PartNumber: aws.Int64(partNumber),
-	})
+	var urlStr string
+	var err error
+	if s3Ctrl.S3Mock {
+		// Create a temporary S3 client with the modified endpoint
+		tempS3Svc, err := session.NewSession(&aws.Config{
+			Endpoint:         aws.String("http://localhost:9000"),
+			Region:           s3Ctrl.S3Svc.Config.Region,
+			Credentials:      s3Ctrl.S3Svc.Config.Credentials,
+			S3ForcePathStyle: aws.Bool(true),
+		})
+		if err != nil {
+			return "", fmt.Errorf("error creating temporary s3 session: %s", err.Error())
+		}
 
-	urlStr, err := req.Presign(duration)
-	if err != nil {
-		return "", err
+		// Generate the request using the temporary client
+		req, _ := s3.New(tempS3Svc).UploadPartRequest(&s3.UploadPartInput{
+			Bucket:     aws.String(bucket),
+			Key:        aws.String(key),
+			UploadId:   aws.String(uploadID),
+			PartNumber: aws.Int64(partNumber),
+		})
+		urlStr, err = req.Presign(duration)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		// Generate the request using the original client
+		req, _ := s3Ctrl.S3Svc.UploadPartRequest(&s3.UploadPartInput{
+			Bucket:     aws.String(bucket),
+			Key:        aws.String(key),
+			UploadId:   aws.String(uploadID),
+			PartNumber: aws.Int64(partNumber),
+		})
+		urlStr, err = req.Presign(duration)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return urlStr, nil
