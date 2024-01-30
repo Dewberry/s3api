@@ -51,7 +51,7 @@ func (s3Ctrl *S3Controller) CopyPrefix(bucket, srcPrefix, destPrefix string) err
 
 	processPage := func(page *s3.ListObjectsV2Output) error {
 		if len(page.Contents) == 0 {
-			return nil
+			return nil // No objects to process in this page
 		}
 		objectsFound = true // Objects found, set the flag
 
@@ -69,23 +69,26 @@ func (s3Ctrl *S3Controller) CopyPrefix(bucket, srcPrefix, destPrefix string) err
 			if err != nil {
 				return fmt.Errorf("error copying object %s to %s: %v", srcObjectKey, destObjectKey, err)
 			}
-
 		}
+
+		// Deleting the source objects should be handled carefully
+		// Ensure that your application logic requires this before proceeding
 		err := s3Ctrl.DeleteList(page, bucket)
 		if err != nil {
 			errMsg := fmt.Errorf("error deleting from source prefix %s: %v", srcPrefix, err)
 			return errMsg
 		}
-		if !objectsFound {
-			return fmt.Errorf("source prefix not found")
-		}
-
 		return nil
 	}
 
 	err := s3Ctrl.GetListWithCallBack(bucket, srcPrefix, false, processPage)
 	if err != nil {
 		return fmt.Errorf("error processing objects for move: %v", err)
+	}
+
+	// Check if objects were found after processing all pages
+	if !objectsFound {
+		return fmt.Errorf("source prefix not found")
 	}
 
 	return nil
