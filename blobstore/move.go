@@ -34,11 +34,11 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-
 	err = s3Ctrl.CopyPrefix(bucket, srcPrefix, destPrefix)
 	if err != nil {
-		if strings.Contains(err.Error(), "does not exist") {
-			return c.JSON(http.StatusNotFound, err.Error())
+		if strings.Contains(err.Error(), "source prefix not found") {
+			log.Infof("No objects found with source prefix: %s", srcPrefix)
+			return c.JSON(http.StatusNotFound, "Source prefix not found")
 		}
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
@@ -47,7 +47,14 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 }
 
 func (s3Ctrl *S3Controller) CopyPrefix(bucket, srcPrefix, destPrefix string) error {
+	var objectsFound bool
+
 	processPage := func(page *s3.ListObjectsV2Output) error {
+		if len(page.Contents) == 0 {
+			return nil
+		}
+		objectsFound = true // Objects found, set the flag
+
 		for _, object := range page.Contents {
 			srcObjectKey := aws.StringValue(object.Key)
 			destObjectKey := strings.Replace(srcObjectKey, srcPrefix, destPrefix, 1)
@@ -69,6 +76,10 @@ func (s3Ctrl *S3Controller) CopyPrefix(bucket, srcPrefix, destPrefix string) err
 			errMsg := fmt.Errorf("error deleting from source prefix %s: %v", srcPrefix, err)
 			return errMsg
 		}
+		if !objectsFound {
+			return fmt.Errorf("source prefix not found")
+		}
+
 		return nil
 	}
 
