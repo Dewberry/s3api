@@ -48,7 +48,7 @@
 							"script": {
 								"exec": [
 									"pm.test('ping with auth did not work as expected', function () {\r",
-									"    pm.response.to.have.status(500);\r",
+									"    pm.response.to.have.status(401);\r",
 									"});"
 								],
 								"type": "text/javascript"
