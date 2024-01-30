@@ -32,15 +32,15 @@ func (bh *BlobHandler) GetSize(page *s3.ListObjectsV2Output, totalSize *uint64, 
 func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
-		err := errors.New("request must include a `prefix` parameter")
-		log.Error("HandleGetSize: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := errors.New("request must include a `prefix` parameter")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -92,15 +92,15 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		err := errors.New("request must include a `key` parameter")
-		log.Error("HandleGetMetaData: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("request must include a `key` parameter")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -108,40 +108,42 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	result, err := s3Ctrl.GetMetaData(bucket, key)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == "NotFound" {
-			err := fmt.Errorf("object %s not found", key)
-			log.Error("HandleGetMetaData: " + err.Error())
-			return c.JSON(http.StatusNotFound, err.Error())
+			errMsg := fmt.Errorf("object %s not found", key)
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusNotFound, errMsg.Error())
 		}
-		log.Error("HandleGetMetaData: Error getting metadata:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error getting metadata: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
-	log.Info("HandleGetMetaData: Successfully retrieved metadata for key:", key)
+	log.Info("successfully retrieved metadata for key:", key)
 	return c.JSON(http.StatusOK, result)
 }
 
 func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		err := errors.New("request must include a `key` parameter")
-		log.Error("HandleGetObjExist: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("request must include a `key` parameter")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	result, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
-		log.Error("HandleGetObjExist: " + err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error checking if key exists: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	log.Info("HandleGetObjExist: Successfully retrieved metadata for key:", key)
+	log.Info("successfully retrieved metadata for key:", key)
 	return c.JSON(http.StatusOK, result)
 }
 

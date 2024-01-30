@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -118,52 +117,54 @@ func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	key := c.QueryParam("key")
 	if key == "" {
-		err := errors.New("parameter `key` is required")
-		log.Error("HandleGetPresignedURL: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("parameter `key` is required")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
-		log.Error("HandleGetPresignedURL: Error checking if key exists:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("checking if key exists: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 	if !keyExist {
-		err := fmt.Errorf("object %s not found", key)
-		log.Error("HandleGetPresignedURL: " + err.Error())
-		return c.JSON(http.StatusNotFound, err.Error())
+		errMsg := fmt.Errorf("object %s not found", key)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusNotFound, errMsg.Error())
 	}
 	// Set the expiration time for the pre-signed URL
 
 	url, err := s3Ctrl.GetDownloadPresignedURL(bucket, key, bh.Config.DefaultDownloadPresignedUrlExpiration)
 	if err != nil {
-		log.Error("HandleGetPresignedURL: Error getting presigned URL:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error getting presigned URL: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
-	log.Info("HandleGetPresignedURL: Successfully generated presigned URL for key:", key)
+	log.Info("successfully generated presigned URL for key:", key)
 	return c.JSON(http.StatusOK, url)
 }
 
 func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
-		err := errors.New("request must include a `prefix` parameter")
-		log.Error("HandleGetPresignedURLMultiObj: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("request must include a `prefix` parameter")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -174,12 +175,13 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 
 	response, err := s3Ctrl.GetList(bucket, prefix, false)
 	if err != nil {
-		log.Error("HandleGetPresignedURLMultiObj: Error getting list:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error getting list: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 	if *response.KeyCount == 0 {
 		errMsg := fmt.Errorf("the specified prefix %s does not exist in S3", prefix)
-		log.Error("HandleGetPresignedURLMultiObj: " + errMsg.Error())
+		log.Error(errMsg.Error())
 		return c.JSON(http.StatusNotFound, errMsg.Error())
 	}
 	//check if size is below 5GB
@@ -193,9 +195,9 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 
 	limit := uint64(1024 * 1024 * 1024 * bh.Config.DefaultZipDownloadSizeLimit)
 	if size >= limit {
-		err := fmt.Errorf("request entity is larger than %v GB, current prefix size is: %v GB", bh.Config.DefaultZipDownloadSizeLimit, float64(size)/(1024*1024*1024))
-		log.Error("HandleGetPresignedURLMultiObj: ", err.Error())
-		return c.JSON(http.StatusRequestEntityTooLarge, err.Error())
+		errMsg := fmt.Errorf("request entity is larger than %v GB, current prefix size is: %v GB", bh.Config.DefaultZipDownloadSizeLimit, float64(size)/(1024*1024*1024))
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusRequestEntityTooLarge, errMsg.Error())
 	}
 
 	filename := fmt.Sprintf("%s.%s", strings.TrimSuffix(prefix, "/"), "tar.gz")
@@ -204,8 +206,9 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 	// Check if the tar.gz file already exists in S3
 	tarFileResponse, err := s3Ctrl.GetList(bucket, outputFile, false)
 	if err != nil {
-		log.Error("Error checking if tar.gz file exists in S3:", err)
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error checking if tar.gz file exists in S3: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
 	if len(tarFileResponse.Contents) > 0 {
@@ -213,8 +216,9 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		// Tar.gz file exists, now compare modification dates
 		mostRecentModTime, err := s3Ctrl.getMostRecentModTime(bucket, prefix)
 		if err != nil {
-			log.Error("Error getting most recent modification time:", err)
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			errMsg := fmt.Errorf("error getting most recent modification time: %s", err)
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
 
 		if tarFileResponse.Contents[0].LastModified.After(mostRecentModTime) {
@@ -223,8 +227,9 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 			// Existing tar.gz file is up-to-date, return pre-signed URL
 			href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, bh.Config.DefaultDownloadPresignedUrlExpiration)
 			if err != nil {
-				log.Error("Error getting presigned:", err)
-				return c.JSON(http.StatusInternalServerError, err.Error())
+				errMsg := fmt.Errorf("error getting presigned: %s", err)
+				log.Error(errMsg.Error())
+				return c.JSON(http.StatusInternalServerError, errMsg.Error())
 			}
 			return c.JSON(http.StatusOK, string(href))
 		}
@@ -233,17 +238,19 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 
 	err = s3Ctrl.tarS3Files(response, bucket, outputFile, prefix)
 	if err != nil {
-		log.Error("HandleGetPresignedURLMultiObj: Error tarring S3 files:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error tarring S3 files: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
 	href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, bh.Config.DefaultDownloadPresignedUrlExpiration)
 	if err != nil {
-		log.Error("HandleGetPresignedURLMultiObj: Error getting presigned URL:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error getting presigned URL: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
-	log.Info("HandleGetPresignedURLMultiObj: Successfully generated presigned URL for prefix:", prefix)
+	log.Info("successfully generated presigned URL for prefix:", prefix)
 	return c.JSON(http.StatusOK, string(href))
 }
 
@@ -314,7 +321,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	// Call GetList with the processPage function
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, false, processPage)
 	if err != nil {
-		errMsg := fmt.Errorf("error processing objects: %v", err)
+		errMsg := fmt.Errorf("error processing objects: %s", err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
@@ -331,7 +338,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		ContentType: aws.String("binary/octet-stream"),
 	})
 	if err != nil {
-		errMsg := fmt.Errorf("error uploading %s to S3: %s", txtBatFileName, err)
+		errMsg := fmt.Errorf("error uploading %s to S3: %s", txtBatFileName, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
@@ -343,6 +350,6 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
-	log.Infof("Successfully generated download script for prefix %s in bucket %s", prefix, bucket)
+	log.Infof("successfully generated download script for prefix %s in bucket %s", prefix, bucket)
 	return c.JSON(http.StatusOK, href)
 }

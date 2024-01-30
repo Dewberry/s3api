@@ -112,9 +112,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 		}
 	}
 	bh.Mu.Unlock()
-
-	log.Info("HandleListBuckets: Successfully retrieved list of buckets")
-
+	log.Info("Successfully retrieved list of buckets")
 	return c.JSON(http.StatusOK, allBuckets)
 }
 

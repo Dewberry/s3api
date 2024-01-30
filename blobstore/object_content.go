@@ -1,7 +1,6 @@
 package blobstore
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -41,30 +40,31 @@ func (s3Ctrl *S3Controller) FetchObjectContent(bucket string, key string) ([]byt
 func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		err := errors.New("parameter 'key' is required")
-		log.Error("HandleObjectContents: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("parameter 'key' is required")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	body, err := s3Ctrl.FetchObjectContent(bucket, key)
 	if err != nil {
-		log.Error("HandleObjectContents: " + err.Error())
+		errMsg := fmt.Errorf("error fetching object's content: %s", err.Error())
+		log.Error(errMsg.Error())
 		if strings.Contains(err.Error(), "object") {
-			return c.JSON(http.StatusNotFound, err.Error())
+			return c.JSON(http.StatusNotFound, errMsg.Error())
 		} else {
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
 	}
 
-	log.Info("HandleObjectContents: Successfully fetched object data for key:", key)
+	log.Info("successfully fetched object data for key:", key)
 	//TODO: add contentType
 	return c.Blob(http.StatusOK, "", body)
 }

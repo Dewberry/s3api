@@ -2,7 +2,6 @@ package blobstore
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -24,7 +23,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 
 	resp, err := s3Ctrl.S3Svc.CreateMultipartUpload(params)
 	if err != nil {
-		return fmt.Errorf("uploadS3Obj: error initializing multipart upload. %s", err.Error())
+		return fmt.Errorf("error initializing multipart upload. %s", err.Error())
 	}
 
 	// Create the variables that will track upload progress
@@ -41,7 +40,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 
 		// This would be a true error while reading
 		if err != nil && err != io.EOF {
-			return fmt.Errorf("uploadS3Obj: error copying POST body to S3. %s", err.Error())
+			return fmt.Errorf("error copying POST body to S3. %s", err.Error())
 		}
 
 		// Add the buffer data to the buffer
@@ -59,7 +58,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 
 			result, err := s3Ctrl.S3Svc.UploadPart(params)
 			if err != nil {
-				return fmt.Errorf("uploadS3Obj: error streaming POST body to S3. %s, %+v", err.Error(), result)
+				return fmt.Errorf("error streaming POST body to S3. %s, %+v", err.Error(), result)
 			}
 
 			totalBytes += int64(buffer.Len())
@@ -88,7 +87,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 
 	result, err := s3Ctrl.S3Svc.UploadPart(params2)
 	if err != nil {
-		return fmt.Errorf("uploadS3Obj: error streaming POST body to S3. %s, %+v", err.Error(), result)
+		return fmt.Errorf("error streaming POST body to S3. %s, %+v", err.Error(), result)
 	}
 
 	totalBytes += int64(buffer.Len())
@@ -106,7 +105,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 	}
 	_, err = s3Ctrl.S3Svc.CompleteMultipartUpload(completeParams)
 	if err != nil {
-		return fmt.Errorf("uploadS3Obj: error completing multipart upload. %s", err.Error())
+		return fmt.Errorf("error completing multipart upload. %s", err.Error())
 	}
 
 	return nil
@@ -116,15 +115,15 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	// Add overwrite check and parameter
 	key := c.QueryParam("key")
 	if key == "" {
-		err := errors.New("parameter 'key' is required")
-		log.Error("HandleMultipartUpload: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("parameter 'key' is required")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -144,23 +143,24 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 		var err error
 		override, err = strconv.ParseBool(c.QueryParam("override"))
 		if err != nil {
-			log.Errorf("HandleMultipartUpload: Error parsing 'override' parameter: %s", err.Error())
-			return c.JSON(http.StatusUnprocessableEntity, err.Error())
+			errMsg := fmt.Errorf("error parsing 'override' parameter: %s", err.Error())
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 		}
 
 	} else {
-		err := errors.New("request must include a `override`, options are `true` or `false`")
-		log.Errorf("HandleMultipartUpload: %s", err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("request must include a `override`, options are `true` or `false`")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	// Check if the request body is empty
 	buf := make([]byte, 1)
 	_, err = c.Request().Body.Read(buf)
 	if err == io.EOF {
-		err := errors.New("no file provided in the request body")
-		log.Error("HandleMultipartUpload: " + err.Error())
-		return c.JSON(http.StatusBadRequest, err.Error()) // Return 400 Bad Request
+		errMsg := fmt.Errorf("no file provided in the request body")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusBadRequest, errMsg.Error()) // Return 400 Bad Request
 	}
 
 	// Reset the request body to its original state
@@ -168,13 +168,14 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 
 	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
-		log.Errorf("HandleMultipartUpload: Error checking if key exists: %s", err.Error())
-		return c.JSON(http.StatusInternalServerError, err)
+		errMsg := fmt.Errorf("error checking if key exists: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 	if keyExist && !override {
-		err := fmt.Errorf("object %s already exists and override is set to %t", key, override)
-		log.Errorf("HandleMultipartUpload: %s" + err.Error())
-		return c.JSON(http.StatusConflict, err.Error())
+		errMsg := fmt.Errorf("object %s already exists and override is set to %t", key, override)
+		log.Errorf(errMsg.Error())
+		return c.JSON(http.StatusConflict, errMsg.Error())
 	}
 
 	body := c.Request().Body
@@ -182,11 +183,12 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 
 	err = s3Ctrl.UploadS3Obj(bucket, key, body)
 	if err != nil {
-		log.Errorf("HandleMultipartUpload: Error uploading S3 object: %s", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error uploading S3 object: %s", err.Error())
+		log.Errorf(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
-	log.Infof("HandleMultipartUpload: Successfully uploaded file with key: %s", key)
+	log.Infof("Successfully uploaded file with key: %s", key)
 	return c.JSON(http.StatusOK, "Successfully uploaded file")
 }
 
@@ -236,7 +238,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 	//get controller for bucket
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -259,8 +261,9 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		}
 		presignedURL, err := s3Ctrl.GetUploadPartPresignedURL(bucket, key, uploadID, int64(partNumber), bh.Config.DefaultUploadPresignedUrlExpiration)
 		if err != nil {
-			log.Errorf("error generating presigned part URL: %s", err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			errMsg := fmt.Errorf("error generating presigned part URL: %s", err.Error())
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
 		log.Infof("successfully generated presigned part URL for key: %s", key)
 		return c.JSON(http.StatusOK, presignedURL)
@@ -305,7 +308,7 @@ func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 	//get controller for bucket
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -354,7 +357,7 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -422,7 +425,7 @@ func (bh *BlobHandler) HandleAbortMultipartUpload(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}

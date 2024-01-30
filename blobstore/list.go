@@ -1,7 +1,6 @@
 package blobstore
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -32,15 +31,15 @@ type ListResult struct {
 func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
-		err := errors.New("request must include a `prefix` parameter")
-		log.Error("HandleListByPrefix: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("request must include a `prefix` parameter")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -51,14 +50,15 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		var err error
 		delimiter, err = strconv.ParseBool(delimiterParam)
 		if err != nil {
-			log.Error("HandleListByPrefix: Error parsing `delimiter` param:", err.Error())
-			return c.JSON(http.StatusUnprocessableEntity, err.Error())
+			errMsg := fmt.Errorf("error parsing `delimiter` param: %s", err.Error())
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 		}
 
 	} else {
-		err := errors.New("request must include a `delimiter`, options are `true` or `false`")
-		log.Error("HandleListByPrefix: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("request must include a `delimiter`, options are `true` or `false`")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 
 	}
 	if delimiter {
@@ -69,22 +69,24 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 
 	isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 	if err != nil {
-		log.Error("HandleListByPrefix: can't find bucket or object " + err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("can't find bucket or object %s" + err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
 	if isObject {
 		objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
 		if err != nil {
-			log.Error("HandleListByPrefix: " + err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			errMsg := fmt.Errorf("error getting metadata: %s" + err.Error())
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
 		if *objMeta.ContentLength == 0 {
-			log.Infof("HandleListByPrefix: Detected a zero byte directory marker within prefix: %s", prefix)
+			log.Infof("Detected a zero byte directory marker within prefix: %s", prefix)
 		} else {
-			err = fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
-			log.Error("HandleListByPrefix: " + err.Error())
-			return c.JSON(http.StatusTeapot, err.Error())
+			errMsg := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusTeapot, errMsg.Error())
 		}
 	}
 
@@ -101,7 +103,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error processing objects: %v", err))
 	}
 
-	log.Info("HandleListByPrefix: Successfully retrieved list by prefix:", prefix)
+	log.Info("Successfully retrieved list by prefix:", prefix)
 	return c.JSON(http.StatusOK, objectKeys)
 }
 
@@ -112,7 +114,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -120,21 +122,23 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	if prefix != "" && prefix != "./" && prefix != "/" {
 		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 		if err != nil {
-			log.Error("HandleListByPrefixWithDetail: " + err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			errMsg := fmt.Errorf("error checking if key exists: %s", err.Error())
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
 		if isObject {
 			objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
 			if err != nil {
-				log.Error("HandleListByPrefixWithDetail: " + err.Error())
-				return c.JSON(http.StatusInternalServerError, err.Error())
+				errMsg := fmt.Errorf("error checking for object's metadata: %s", err.Error())
+				log.Error(errMsg.Error())
+				return c.JSON(http.StatusInternalServerError, errMsg.Error())
 			}
 			if *objMeta.ContentLength == 0 {
-				log.Infof("HandleListByPrefixWithDetail: Detected a zero byte directory marker within prefix: %s", prefix)
+				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
 			} else {
-				err = fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
-				log.Error("HandleListByPrefixWithDetail: " + err.Error())
-				return c.JSON(http.StatusTeapot, err.Error())
+				errMsg := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
+				log.Error(errMsg.Error())
+				return c.JSON(http.StatusTeapot, errMsg.Error())
 			}
 		}
 		prefix = strings.Trim(prefix, "/") + "/"
@@ -180,11 +184,12 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, true, processPage)
 	if err != nil {
-		log.Error("HandleListByPrefixWithDetail: Error processing objects:", err)
-		return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error processing objects: %v", err))
+		errMsg := fmt.Errorf("error processing objects: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
-	log.Info("HandleListByPrefixWithDetail: Successfully retrieved detailed list by prefix:", prefix)
+	log.Info("successfully retrieved detailed list by prefix:", prefix)
 	return c.JSON(http.StatusOK, results)
 }
 
