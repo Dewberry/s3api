@@ -21,6 +21,7 @@ type S3Controller struct {
 	Sess    *session.Session
 	S3Svc   *s3.S3
 	Buckets []string
+	S3Mock  bool
 }
 
 // Config holds the configuration settings for the REST API server.
@@ -92,13 +93,12 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		}
 
 		// Configure the BlobHandler with MinIO session and bucket information
-		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{creds.Bucket}}}
+		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{creds.Bucket}, S3Mock: true}}
 		// Return the configured BlobHandler
 		return &config, nil
 	}
 
 	// Using AWS S3
-
 	// Load AWS credentials from the provided .env.json file
 	log.Debug("looking for .env.json")
 	awsConfig, err := newAWSConfig(envJson)
@@ -127,7 +127,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 			return nil, errMsg
 		}
 
-		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
+		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC, S3Mock: false}
 		// Retrieve the list of buckets for each account
 		result, err := S3Ctrl.ListBuckets()
 		if err != nil {
@@ -153,7 +153,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		}
 
 		if len(bucketNames) > 0 {
-			config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames})
+			config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames, S3Mock: false})
 		}
 	}
 
