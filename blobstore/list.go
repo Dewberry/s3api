@@ -152,12 +152,12 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 			// Handle directories (common prefixes)
 			dir := ListResult{
 				ID:         count,
-				Bucket:     bucket,
-				Name:       filepath.Base(strings.TrimSuffix(*cp.Prefix, "/")),
+				Name:       filepath.Base(*cp.Prefix),
+				Size:       "",
 				Path:       *cp.Prefix,
+				Type:       "",
 				IsDir:      true,
-				Modified:   time.Time{}, // Directory might not have a modified time
-				ModifiedBy: "",          // Information might not be available
+				ModifiedBy: "",
 			}
 			results = append(results, dir)
 			count++
@@ -167,14 +167,13 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 			// Handle files
 			file := ListResult{
 				ID:         count,
-				Bucket:     bucket,
 				Name:       filepath.Base(*object.Key),
 				Size:       strconv.FormatInt(*object.Size, 10),
-				Path:       *object.Key,
+				Path:       filepath.Dir(*object.Key),
 				Type:       filepath.Ext(*object.Key),
 				IsDir:      false,
 				Modified:   *object.LastModified,
-				ModifiedBy: "", // Information might not be available
+				ModifiedBy: "",
 			}
 			results = append(results, file)
 			count++
