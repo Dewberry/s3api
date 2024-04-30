@@ -305,3 +305,22 @@ func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, bucketHealth)
 }
+
+func (bh *BlobHandler) HandleCheckS3UserPermission(c echo.Context) error {
+	if bh.Config.AuthLevel == 0 {
+		log.Info("Checked user permissions successfully")
+		return c.JSON(http.StatusOK, true)
+	}
+	userEmail := c.QueryParam("user_email")
+	s3Prefix := c.QueryParam("s3_prefix")
+	operation := c.QueryParam("operation")
+	if userEmail == "" && s3Prefix == "" {
+		errMsg := fmt.Errorf("`user_email`, `s3_prefix` and `operation` are required")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+	isAllowed := bh.DB.CheckUserPermission(userEmail, operation, s3Prefix)
+	log.Info("Checked user permissions successfully")
+	return c.JSON(http.StatusOK, isAllowed)
+
+}

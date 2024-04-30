@@ -108,6 +108,9 @@ func main() {
 	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writers...))
 	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writers...))
 
+	//auth
+	e.GET("/check_user_permission", auth.Authorize(bh.HandleCheckS3UserPermission, allUsers...))
+
 	// Start server
 	go func() {
 		log.Info("server starting on port: ", os.Getenv("S3API_SERVICE_PORT"))
