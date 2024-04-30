@@ -109,7 +109,7 @@ func main() {
 	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writers...))
 
 	//auth
-	e.GET("/check_user_permission", auth.Authorize(bh.HandleCheckS3UserPermission, allUsers...))
+	e.GET("/check_user_permission", auth.Authorize(bh.HandleCheckS3UserPermission, writers...))
 
 	// Start server
 	go func() {
