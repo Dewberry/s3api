@@ -5,6 +5,7 @@ package blobstore
 import (
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
@@ -112,6 +113,11 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 		}
 	}
 	bh.Mu.Unlock()
+
+	// Sorting allBuckets slice by Name field alphabetically
+	sort.Slice(allBuckets, func(i, j int) bool {
+		return allBuckets[i].Name < allBuckets[j].Name
+	})
 
 	log.Info("HandleListBuckets: Successfully retrieved list of buckets")
 
