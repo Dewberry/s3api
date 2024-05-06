@@ -29,6 +29,7 @@ type Config struct {
 	// external sources like configuration files, environment variables should go here.
 	AuthLevel                             int
 	LimitedWriterRoleName                 string
+	LimitedReaderRoleName                 string
 	DefaultTempPrefix                     string
 	DefaultDownloadPresignedUrlExpiration int
 	DefaultUploadPresignedUrlExpiration   int

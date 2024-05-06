@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/labstack/gommon/log"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
@@ -13,6 +14,7 @@ import (
 type Database interface {
 	CheckUserPermission(userEmail, operation, s3_prefix string) bool
 	Close() error
+	GetUserAccessiblePrefixes(userEmail, bucket string, operations []string) ([]string, error)
 }
 
 type PostgresDB struct {
@@ -61,6 +63,40 @@ func (db *PostgresDB) createTables() error {
 	}
 
 	return nil
+}
+
+func (db *PostgresDB) GetUserAccessiblePrefixes(userEmail, bucket string, operations []string) ([]string, error) {
+	query := `
+        WITH unnested_permissions AS (
+            SELECT DISTINCT unnest(allowed_s3_prefixes) AS allowed_prefix
+            FROM permissions
+            WHERE user_email = $1 AND operation = ANY($3)
+        )
+        SELECT allowed_prefix
+        FROM unnested_permissions
+        WHERE allowed_prefix LIKE $2 || '/%'
+        ORDER BY allowed_prefix;
+    `
+
+	rows, err := db.Handle.Query(query, userEmail, "/"+bucket, pq.Array(operations))
+	if err != nil {
+		return nil, fmt.Errorf("database error: %s", err)
+	}
+	defer rows.Close()
+
+	var prefixes []string
+	var prefix string
+	for rows.Next() {
+		if err := rows.Scan(&prefix); err != nil {
+			return nil, fmt.Errorf("scan error: %s", err)
+		}
+		prefixes = append(prefixes, prefix)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("row error: %s", err)
+	}
+
+	return prefixes, nil
 }
 
 // CheckUserPermission checks if a user has permission for a specific request.

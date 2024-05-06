@@ -101,3 +101,36 @@ func (bh *BlobHandler) CheckUserS3WritePermission(c echo.Context, bucket, key st
 	}
 	return 0, nil
 }
+
+func (bh *BlobHandler) GetUserS3ReadListPermission(c echo.Context, bucket string) ([]string, bool, error) {
+	permissions := make([]string, 0)
+	fullAccess := false // Flag to indicate if the user has full access
+
+	if bh.Config.AuthLevel > 0 {
+		claims, ok := c.Get("claims").(*auth.Claims)
+		if !ok {
+			return permissions, fullAccess, fmt.Errorf("could not get claims from request context")
+		}
+		roles := claims.RealmAccess["roles"]
+
+		// Check if user has the limited reader role
+		isLimitedReader := utils.StringInSlice(bh.Config.LimitedReaderRoleName, roles)
+
+		// If user is not a limited reader, assume they have full read access
+		if !isLimitedReader {
+			fullAccess = true // Indicating full access
+			return permissions, fullAccess, nil
+		}
+
+		// If user is a limited reader, fetch specific permissions
+		ue := claims.Email
+		permissions, err := bh.DB.GetUserAccessiblePrefixes(ue, bucket, []string{"read", "write"})
+		if err != nil {
+			return permissions, fullAccess, err
+		}
+		return permissions, fullAccess, nil
+	}
+
+	// If auth level is not greater than 0, return no permissions
+	return permissions, fullAccess, nil
+}

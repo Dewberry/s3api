@@ -109,6 +109,20 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 
 	bucket := c.QueryParam("bucket")
+
+	// Fetch user permissions and full access status
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
+
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
 		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
@@ -158,38 +172,61 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
 
-		for _, cp := range resp.CommonPrefixes {
-			w := ListResult{
-				ID:         count,
-				Name:       filepath.Base(*cp.Prefix),
-				Size:       "",
-				Path:       *cp.Prefix,
-				Type:       "",
-				IsDir:      true,
-				ModifiedBy: "",
-			}
-			count++
-			result = append(result, w)
-		}
-
-		for _, object := range resp.Contents {
-			parts := strings.Split(filepath.Dir(*object.Key), "/")
-			isSelf := filepath.Base(*object.Key) == parts[len(parts)-1]
-
-			if !isSelf {
+		if fullAccess {
+			// Append all results directly if user has full access
+			for _, cp := range resp.CommonPrefixes {
 				w := ListResult{
-					ID:         count,
-					Name:       filepath.Base(*object.Key),
-					Size:       strconv.FormatInt(*object.Size, 10),
-					Path:       filepath.Dir(*object.Key),
-					Type:       filepath.Ext(*object.Key),
-					IsDir:      false,
-					Modified:   *object.LastModified,
-					ModifiedBy: "",
+					ID:    count,
+					Name:  filepath.Base(*cp.Prefix),
+					Path:  *cp.Prefix,
+					IsDir: true,
 				}
-
 				count++
 				result = append(result, w)
+			}
+
+			for _, object := range resp.Contents {
+				w := ListResult{
+					ID:       count,
+					Name:     filepath.Base(*object.Key),
+					Size:     strconv.FormatInt(*object.Size, 10),
+					Path:     filepath.Dir(*object.Key),
+					Type:     filepath.Ext(*object.Key),
+					IsDir:    false,
+					Modified: *object.LastModified,
+				}
+				count++
+				result = append(result, w)
+			}
+		} else {
+			// Filter results based on permissions
+			for _, cp := range resp.CommonPrefixes {
+				if isPermittedPrefix(bucket, *cp.Prefix, permissions) {
+					w := ListResult{
+						ID:    count,
+						Name:  filepath.Base(*cp.Prefix),
+						Path:  *cp.Prefix,
+						IsDir: true,
+					}
+					count++
+					result = append(result, w)
+				}
+			}
+
+			for _, object := range resp.Contents {
+				if isPermittedPrefix(bucket, *object.Key, permissions) {
+					w := ListResult{
+						ID:       count,
+						Name:     filepath.Base(*object.Key),
+						Size:     strconv.FormatInt(*object.Size, 10),
+						Path:     filepath.Dir(*object.Key),
+						Type:     filepath.Ext(*object.Key),
+						IsDir:    false,
+						Modified: *object.LastModified,
+					}
+					count++
+					result = append(result, w)
+				}
 			}
 		}
 
@@ -199,6 +236,40 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 	log.Info("HandleListByPrefix: Successfully retrieved list by prefix with detail:", prefix)
 	return c.JSON(http.StatusOK, result)
+}
+
+func isPermittedPrefix(bucket, prefix string, permissions []string) bool {
+	prefixForChecking := fmt.Sprintf("/%s/%s", bucket, prefix)
+
+	// Check if any of the permissions indicate the prefixForChecking is a parent directory
+	for _, perm := range permissions {
+		// Add a trailing slash to permission if it represents a directory
+		if !strings.HasSuffix(perm, "/") {
+			perm += "/"
+		}
+		// Split the paths into components
+		prefixComponents := strings.Split(prefixForChecking, "/")
+		permComponents := strings.Split(perm, "/")
+
+		// Compare each component
+		match := true
+		for i := 1; i < len(prefixComponents) && i < len(permComponents); i++ {
+			if permComponents[i] == "" || prefixComponents[i] == "" {
+				break
+			}
+			if prefixComponents[i] != permComponents[i] {
+				match = false
+				break
+			}
+		}
+
+		// If all components match up to the length of the permission path,
+		// and the permission path has no additional components, return true
+		if match {
+			return true
+		}
+	}
+	return false
 }
 
 // GetList retrieves a list of objects in the specified S3 bucket with the given prefix.
