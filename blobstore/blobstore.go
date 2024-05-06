@@ -104,9 +104,9 @@ func (bh *BlobHandler) CheckUserS3WritePermission(c echo.Context, bucket, key st
 
 func (bh *BlobHandler) GetUserS3ReadListPermission(c echo.Context, bucket string) ([]string, bool, error) {
 	permissions := make([]string, 0)
-	fullAccess := false // Flag to indicate if the user has full access
 
 	if bh.Config.AuthLevel > 0 {
+		fullAccess := false
 		claims, ok := c.Get("claims").(*auth.Claims)
 		if !ok {
 			return permissions, fullAccess, fmt.Errorf("could not get claims from request context")
@@ -131,6 +131,5 @@ func (bh *BlobHandler) GetUserS3ReadListPermission(c echo.Context, bucket string
 		return permissions, fullAccess, nil
 	}
 
-	// If auth level is not greater than 0, return no permissions
-	return permissions, fullAccess, nil
+	return permissions, true, nil
 }
