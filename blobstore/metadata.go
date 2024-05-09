@@ -59,7 +59,19 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		// Prefix points directly to an object instead of a collection of objects
 		return c.JSON(http.StatusTeapot, "The provided prefix points to a single object rather than a collection")
 	}
-	list, err := s3Ctrl.GetList(bucket, prefix, false)
+	// Fetch user permissions and full access status
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
+	list, err := s3Ctrl.GetList(bucket, prefix, false, permissions, fullAccess)
 	if err != nil {
 		log.Error("HandleGetSize: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())

@@ -172,7 +172,19 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		prefix = prefix + "/"
 	}
 
-	response, err := s3Ctrl.GetList(bucket, prefix, false)
+	// Fetch user permissions and full access status
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
+	response, err := s3Ctrl.GetList(bucket, prefix, false, permissions, fullAccess)
 	if err != nil {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -201,7 +213,9 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 	outputFile := filepath.Join(bh.Config.DefaultTempPrefix, filename)
 
 	// Check if the tar.gz file already exists in S3
-	tarFileResponse, err := s3Ctrl.GetList(bucket, outputFile, false)
+	// Fetch user permissions and full access status
+
+	tarFileResponse, err := s3Ctrl.GetList(bucket, prefix, false, permissions, fullAccess)
 	if err != nil {
 		log.Error("Error checking if tar.gz file exists in S3:", err)
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -210,7 +224,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 	if len(tarFileResponse.Contents) > 0 {
 		log.Debug("the prefix was once downloaded, checking if it is outdated")
 		// Tar.gz file exists, now compare modification dates
-		mostRecentModTime, err := s3Ctrl.getMostRecentModTime(bucket, prefix)
+		mostRecentModTime, err := s3Ctrl.getMostRecentModTime(bucket, prefix, permissions, fullAccess)
 		if err != nil {
 			log.Error("Error getting most recent modification time:", err)
 			return c.JSON(http.StatusInternalServerError, err.Error())
@@ -264,8 +278,18 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
-	//list objects within the prefix and test if empty
-	response, err := s3Ctrl.GetList(bucket, prefix, false)
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
+	response, err := s3Ctrl.GetList(bucket, prefix, false, permissions, fullAccess)
 	if err != nil {
 		errMsg := fmt.Errorf("error listing objects in bucket %s with prefix %s: %s", bucket, prefix, err)
 		log.Error(errMsg.Error())

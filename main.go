@@ -54,7 +54,11 @@ func main() {
 			if !ok {
 				log.Fatal("AUTH_S3_LIMITED_WRITER env variable not set")
 			}
-			allUsers = append(allUsers, s3LimitWriterRoleName)
+			s3LimitedReaderRoleName, ok := os.LookupEnv("AUTH_LIMITED_READER_ROLE")
+			if !ok {
+				log.Fatal("AUTH_LIMITED_READER_ROLE env variable not set")
+			}
+			allUsers = append(allUsers, s3LimitWriterRoleName, s3LimitedReaderRoleName)
 			writers = append(writers, s3LimitWriterRoleName)
 		}
 

@@ -326,7 +326,7 @@ func (bh *BlobHandler) HandleCheckS3UserPermission(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	isAllowed := bh.DB.CheckUserPermission(userEmail, operation, s3Prefix)
+	isAllowed := bh.DB.CheckUserPermission(userEmail, s3Prefix, []string{"write"})
 	log.Info("Checked user permissions successfully")
 	return c.JSON(http.StatusOK, isAllowed)
 }

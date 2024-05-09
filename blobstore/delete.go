@@ -114,7 +114,18 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 	if !strings.HasSuffix(prefix, "/") {
 		prefix = prefix + "/"
 	}
-	response, err := s3Ctrl.GetList(bucket, prefix, false)
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
+	response, err := s3Ctrl.GetList(bucket, prefix, false, permissions, fullAccess)
 	if err != nil {
 		log.Errorf("HandleDeleteObjects:  Error getting list: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err)

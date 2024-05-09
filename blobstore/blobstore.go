@@ -14,6 +14,7 @@ import (
 )
 
 func (s3Ctrl *S3Controller) KeyExists(bucket string, key string) (bool, error) {
+
 	_, err := s3Ctrl.S3Svc.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
@@ -33,12 +34,12 @@ func (s3Ctrl *S3Controller) KeyExists(bucket string, key string) (bool, error) {
 }
 
 // function that will get the most recently uploaded file in a prefix
-func (s3Ctrl *S3Controller) getMostRecentModTime(bucket, prefix string) (time.Time, error) {
+func (s3Ctrl *S3Controller) getMostRecentModTime(bucket, prefix string, permissions []string, fullAccess bool) (time.Time, error) {
 	// Initialize a time variable to store the most recent modification time
 	var mostRecent time.Time
 
 	// Call GetList to retrieve the list of objects with the specified prefix
-	response, err := s3Ctrl.GetList(bucket, prefix, false)
+	response, err := s3Ctrl.GetList(bucket, prefix, false, permissions, fullAccess)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -94,7 +95,7 @@ func (bh *BlobHandler) CheckUserS3WritePermission(c echo.Context, bucket, key st
 
 		// We assume if someone is limited_writer, they should never be admin or super_writer
 		if isLimitedWriter {
-			if !bh.DB.CheckUserPermission(ue, "write", fmt.Sprintf("/%s/%s", bucket, key)) {
+			if !bh.DB.CheckUserPermission(ue, fmt.Sprintf("/%s/%s", bucket, key), []string{"write"}) {
 				return http.StatusForbidden, fmt.Errorf("forbidden")
 			}
 		}

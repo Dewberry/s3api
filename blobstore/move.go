@@ -34,8 +34,18 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-
-	err = s3Ctrl.CopyPrefix(bucket, srcPrefix, destPrefix)
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
+	err = s3Ctrl.CopyPrefix(bucket, srcPrefix, destPrefix, permissions, fullAccess)
 	if err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
 			return c.JSON(http.StatusNotFound, err.Error())
@@ -46,9 +56,9 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 	return c.JSON(http.StatusOK, fmt.Sprintf("Successfully moved prefix from %s to %s", srcPrefix, destPrefix))
 }
 
-func (s3Ctrl *S3Controller) CopyPrefix(bucket, srcPrefix, destPrefix string) error {
+func (s3Ctrl *S3Controller) CopyPrefix(bucket, srcPrefix, destPrefix string, permissions []string, fullAccess bool) error {
 	// List objects within the source prefix
-	listOutput, err := s3Ctrl.GetList(bucket, srcPrefix, true)
+	listOutput, err := s3Ctrl.GetList(bucket, srcPrefix, true, permissions, fullAccess)
 	if err != nil {
 		return errors.New("error listing objects with prefix " + srcPrefix + " in bucket " + bucket + ", " + err.Error())
 	}

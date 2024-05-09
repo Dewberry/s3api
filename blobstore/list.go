@@ -87,8 +87,19 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 			return c.JSON(http.StatusTeapot, err.Error())
 		}
 	}
-
-	listOutput, err := s3Ctrl.GetList(bucket, prefix, delimiter)
+	// Fetch user permissions and full access status
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
+	listOutput, err := s3Ctrl.GetList(bucket, prefix, delimiter, permissions, fullAccess)
 	if err != nil {
 		log.Error("HandleListByPrefix: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -107,7 +118,6 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 // HandleListByPrefixWithDetail retrieves a detailed list of objects in the specified S3 bucket with the given prefix.
 func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
-
 	bucket := c.QueryParam("bucket")
 
 	// Fetch user permissions and full access status
@@ -145,7 +155,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 			if *objMeta.ContentLength == 0 {
 				log.Infof("HandleListByPrefixWithDetail: Detected a zero byte directory marker within prefix: %s", prefix)
 			} else {
-				err = fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
+				err = fmt.Errorf("`%s` is an object, not a prefix. Please see options for keys or pass a prefix", prefix)
 				log.Error("HandleListByPrefixWithDetail: " + err.Error())
 				return c.JSON(http.StatusTeapot, err.Error())
 			}
@@ -153,88 +163,39 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		prefix = strings.Trim(prefix, "/") + "/"
 	}
 
-	query := &s3.ListObjectsV2Input{
-		Bucket:    aws.String(bucket),
-		Prefix:    aws.String(prefix),
-		Delimiter: aws.String("/"),
-		MaxKeys:   aws.Int64(1000),
+	resp, err := s3Ctrl.GetList(bucket, prefix, true, permissions, fullAccess)
+	if err != nil {
+		log.Error("HandleListByPrefixWithDetail: error retrieving list, %s", err)
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	result := []ListResult{}
-	truncatedListing := true
-	var count int
-	for truncatedListing {
+	result := make([]ListResult, 0)
+	count := 0
 
-		resp, err := s3Ctrl.S3Svc.ListObjectsV2(query)
-		if err != nil {
-			log.Error("HandleListByPrefixWithDetail: error retrieving list with the following query ", err)
-			errMsg := fmt.Errorf("HandleListByPrefixWithDetail: error retrieving list, %s", err.Error())
-			return c.JSON(http.StatusInternalServerError, errMsg.Error())
-		}
-
-		if fullAccess {
-			// Append all results directly if user has full access
-			for _, cp := range resp.CommonPrefixes {
-				w := ListResult{
-					ID:    count,
-					Name:  filepath.Base(*cp.Prefix),
-					Path:  *cp.Prefix,
-					IsDir: true,
-				}
-				count++
-				result = append(result, w)
-			}
-
-			for _, object := range resp.Contents {
-				w := ListResult{
-					ID:       count,
-					Name:     filepath.Base(*object.Key),
-					Size:     strconv.FormatInt(*object.Size, 10),
-					Path:     filepath.Dir(*object.Key),
-					Type:     filepath.Ext(*object.Key),
-					IsDir:    false,
-					Modified: *object.LastModified,
-				}
-				count++
-				result = append(result, w)
-			}
-		} else {
-			// Filter results based on permissions
-			for _, cp := range resp.CommonPrefixes {
-				if isPermittedPrefix(bucket, *cp.Prefix, permissions) {
-					w := ListResult{
-						ID:    count,
-						Name:  filepath.Base(*cp.Prefix),
-						Path:  *cp.Prefix,
-						IsDir: true,
-					}
-					count++
-					result = append(result, w)
-				}
-			}
-
-			for _, object := range resp.Contents {
-				if isPermittedPrefix(bucket, *object.Key, permissions) {
-					w := ListResult{
-						ID:       count,
-						Name:     filepath.Base(*object.Key),
-						Size:     strconv.FormatInt(*object.Size, 10),
-						Path:     filepath.Dir(*object.Key),
-						Type:     filepath.Ext(*object.Key),
-						IsDir:    false,
-						Modified: *object.LastModified,
-					}
-					count++
-					result = append(result, w)
-				}
-			}
-		}
-
-		query.ContinuationToken = resp.NextContinuationToken
-		truncatedListing = *resp.IsTruncated
+	for _, cp := range resp.CommonPrefixes {
+		result = append(result, ListResult{
+			ID:    count,
+			Name:  filepath.Base(*cp.Prefix),
+			Path:  *cp.Prefix,
+			IsDir: true,
+		})
+		count++
 	}
 
-	log.Info("HandleListByPrefix: Successfully retrieved list by prefix with detail:", prefix)
+	for _, object := range resp.Contents {
+		result = append(result, ListResult{
+			ID:       count,
+			Name:     filepath.Base(*object.Key),
+			Size:     strconv.FormatInt(*object.Size, 10),
+			Path:     filepath.Dir(*object.Key),
+			Type:     filepath.Ext(*object.Key),
+			IsDir:    false,
+			Modified: *object.LastModified,
+		})
+		count++
+	}
+
+	log.Info("HandleListByPrefixWithDetail: Successfully retrieved list by prefix with detail:", prefix)
 	return c.JSON(http.StatusOK, result)
 }
 
@@ -276,7 +237,7 @@ func isPermittedPrefix(bucket, prefix string, permissions []string) bool {
 // if delimiter is set to true then it is going to search for any objects within the prefix provided, if no object sare found it will
 // return null even if there was prefixes within the user provided prefix. If delimiter is set to false then it will look for all prefixes
 // that start with the user provided prefix.
-func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool) (*s3.ListObjectsV2Output, error) {
+func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool, permissions []string, fullAccess bool) (*s3.ListObjectsV2Output, error) {
 	// Set up input parameters for the ListObjectsV2 API
 	input := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucket),
@@ -286,22 +247,33 @@ func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool) (*s3.
 	if delimiter {
 		input.SetDelimiter("/")
 	}
-	// Retrieve the list of objects in the bucket with the specified prefix
+
 	var response *s3.ListObjectsV2Output
+
 	err := s3Ctrl.S3Svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, _ bool) bool {
 		if response == nil {
-			response = page
-		} else {
-			response.Contents = append(response.Contents, page.Contents...)
+			response = &s3.ListObjectsV2Output{
+				CommonPrefixes: []*s3.CommonPrefix{},
+				Contents:       []*s3.Object{},
+			}
+		}
+		// Filter CommonPrefixes based on permissions
+		for _, prefix := range page.CommonPrefixes {
+			if fullAccess || isPermittedPrefix(bucket, *prefix.Prefix, permissions) {
+				response.CommonPrefixes = append(response.CommonPrefixes, prefix)
+			}
+		}
+		// Filter Contents based on permissions
+		for _, content := range page.Contents {
+			if fullAccess || isPermittedPrefix(bucket, *content.Key, permissions) {
+				response.Contents = append(response.Contents, content)
+			}
 		}
 
-		// Check if there are more pages to retrieve
 		if *page.IsTruncated {
-			// Set the continuation token for the next request
 			input.ContinuationToken = page.NextContinuationToken
 			return true // Continue to the next page
 		}
-
 		return false // Stop pagination
 	})
 	if err != nil {
