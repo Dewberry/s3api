@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Dewberry/s3api/auth"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
@@ -53,7 +54,15 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-
+	claims, ok := c.Get("claims").(*auth.Claims)
+	if !ok {
+		return c.JSON(http.StatusInternalServerError, fmt.Errorf("could not get claims from request context"))
+	}
+	ue := claims.Email
+	canRead := bh.DB.CheckUserPermission(ue, key, bucket, []string{"read", "write"})
+	if !canRead {
+		return c.JSON(http.StatusForbidden, fmt.Errorf("user is not autherized").Error())
+	}
 	body, err := s3Ctrl.FetchObjectContent(bucket, key)
 	if err != nil {
 		log.Error("HandleObjectContents: " + err.Error())

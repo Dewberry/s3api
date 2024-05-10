@@ -312,7 +312,8 @@ func (bh *BlobHandler) HandleCheckS3UserPermission(c echo.Context) error {
 		log.Info("Checked user permissions successfully")
 		return c.JSON(http.StatusOK, true)
 	}
-	s3Prefix := c.QueryParam("s3_prefix")
+	prefix := c.QueryParam("prefix")
+	bucket := c.QueryParam("bucket")
 	operation := c.QueryParam("operation")
 	claims, ok := c.Get("claims").(*auth.Claims)
 	if !ok {
@@ -321,12 +322,12 @@ func (bh *BlobHandler) HandleCheckS3UserPermission(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 	userEmail := claims.Email
-	if operation == "" || s3Prefix == "" {
-		errMsg := fmt.Errorf("`s3_prefix` and `operation` are required")
+	if operation == "" || prefix == "" || bucket == "" {
+		errMsg := fmt.Errorf("`prefix`,  `operation` and 'bucket are required params")
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	isAllowed := bh.DB.CheckUserPermission(userEmail, s3Prefix, []string{"write"})
+	isAllowed := bh.DB.CheckUserPermission(userEmail, prefix, bucket, []string{"write"})
 	log.Info("Checked user permissions successfully")
 	return c.JSON(http.StatusOK, isAllowed)
 }

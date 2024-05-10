@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Dewberry/s3api/auth"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -117,7 +118,15 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-
+	claims, ok := c.Get("claims").(*auth.Claims)
+	if !ok {
+		return c.JSON(http.StatusInternalServerError, fmt.Errorf("could not get claims from request context"))
+	}
+	ue := claims.Email
+	canRead := bh.DB.CheckUserPermission(ue, key, bucket, []string{"read", "write"})
+	if !canRead {
+		return c.JSON(http.StatusForbidden, fmt.Errorf("user is not autherized").Error())
+	}
 	result, err := s3Ctrl.GetMetaData(bucket, key)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == "NotFound" {
@@ -148,12 +157,22 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-
+	claims, ok := c.Get("claims").(*auth.Claims)
+	if !ok {
+		return c.JSON(http.StatusInternalServerError, fmt.Errorf("could not get claims from request context"))
+	}
+	ue := claims.Email
+	canRead := bh.DB.CheckUserPermission(ue, key, bucket, []string{"read", "write"})
+	if !canRead {
+		return c.JSON(http.StatusForbidden, fmt.Errorf("user is not autherized").Error())
+	}
+	// Proceed if the permission check passes
 	result, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
 		log.Error("HandleGetObjExist: " + err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
+
 	log.Info("HandleGetObjExist: Successfully retrieved metadata for key:", key)
 	return c.JSON(http.StatusOK, result)
 }

@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Dewberry/s3api/auth"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -129,7 +130,15 @@ func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 		log.Error("HandleGetPresignedURL: " + err.Error())
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
-
+	claims, ok := c.Get("claims").(*auth.Claims)
+	if !ok {
+		return c.JSON(http.StatusInternalServerError, fmt.Errorf("could not get claims from request context"))
+	}
+	ue := claims.Email
+	canRead := bh.DB.CheckUserPermission(ue, key, bucket, []string{"read", "write"})
+	if !canRead {
+		return c.JSON(http.StatusForbidden, fmt.Errorf("user is not autherized").Error())
+	}
 	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
 		log.Error("HandleGetPresignedURL: Error checking if key exists:", err.Error())

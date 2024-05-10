@@ -12,7 +12,7 @@ import (
 
 // Database interface abstracts database operations
 type Database interface {
-	CheckUserPermission(userEmail, operation, s3_prefix string) bool
+	CheckUserPermission(userEmail, prefix, bucket string, operations []string) bool
 	Close() error
 	GetUserAccessiblePrefixes(userEmail, bucket string, operations []string) ([]string, error)
 }
@@ -100,20 +100,21 @@ func (db *PostgresDB) GetUserAccessiblePrefixes(userEmail, bucket string, operat
 }
 
 // CheckUserPermission checks if a user has permission for a specific request.
-func (db *PostgresDB) CheckUserPermission(userEmail, operation, s3_prefix string) bool {
+func (db *PostgresDB) CheckUserPermission(userEmail, bucket, prefix string, operations []string) bool {
+	s3_prefix := fmt.Sprintf("/%s/%s", bucket, prefix)
 	query := `
 	SELECT EXISTS (
 		SELECT 1
 		FROM permissions,
 			 UNNEST(allowed_s3_prefixes) AS allowed_prefix
 		WHERE user_email = $1
-		  AND operation = $2
+		  AND operation = ANY($2)
 		  AND $3 LIKE allowed_prefix || '%'
 	);
 	`
 
 	var hasPermission bool
-	if err := db.Handle.QueryRow(query, userEmail, operation, s3_prefix).Scan(&hasPermission); err != nil {
+	if err := db.Handle.QueryRow(query, userEmail, pq.Array(operations), s3_prefix).Scan(&hasPermission); err != nil {
 		log.Errorf("error querying user permissions: %v", err)
 		return false
 	}
