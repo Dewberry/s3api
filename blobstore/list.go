@@ -120,6 +120,13 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	bucket := c.QueryParam("bucket")
 
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+
 	// Fetch user permissions and full access status
 	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
 	if err != nil {
@@ -131,13 +138,6 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
-	}
-
-	s3Ctrl, err := bh.GetController(bucket)
-	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	if prefix != "" && prefix != "./" && prefix != "/" {
@@ -165,7 +165,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 	resp, err := s3Ctrl.GetList(bucket, prefix, true, permissions, fullAccess)
 	if err != nil {
-		log.Error("HandleListByPrefixWithDetail: error retrieving list, %s", err)
+		log.Errorf("HandleListByPrefixWithDetail: error retrieving list, %s", err)
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 

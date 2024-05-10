@@ -194,10 +194,10 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 		log.Error("HandleGetPresignedURLMultiObj: Error getting list:", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
-	if *response.KeyCount == 0 {
-		errMsg := fmt.Errorf("the specified prefix %s does not exist in S3", prefix)
-		log.Error("HandleGetPresignedURLMultiObj: " + errMsg.Error())
-		return c.JSON(http.StatusNotFound, errMsg.Error())
+	if len(response.Contents) == 0 {
+		errMsg := fmt.Errorf("prefix %s is empty or does not exist", prefix)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusBadRequest, errMsg.Error())
 	}
 	//check if size is below 5GB
 	size, _, err := bh.GetSize(response)
@@ -273,16 +273,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	if !strings.HasSuffix(prefix, "/") {
-		prefix += "/"
-	}
-	s3Ctrl, err := bh.GetController(bucket)
-	if err != nil {
-		errMsg := fmt.Errorf("error getting controller for bucket %s: %s", bucket, err)
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
-
+	// Fetch user permissions and full access status
 	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
 	if err != nil {
 		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
@@ -294,6 +285,17 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
 	}
+
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error getting controller for bucket %s: %s", bucket, err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+
 	response, err := s3Ctrl.GetList(bucket, prefix, false, permissions, fullAccess)
 	if err != nil {
 		errMsg := fmt.Errorf("error listing objects in bucket %s with prefix %s: %s", bucket, prefix, err)
