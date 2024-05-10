@@ -305,7 +305,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	if len(response.Contents) == 0 {
 		errMsg := fmt.Errorf("prefix %s is empty or does not exist", prefix)
 		log.Error(errMsg.Error())
-		return c.JSON(http.StatusBadRequest, errMsg.Error())
+		return c.JSON(http.StatusNotFound, errMsg.Error())
 	}
 	size, _, err := bh.GetSize(response)
 	if err != nil {
