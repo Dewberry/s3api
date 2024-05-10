@@ -130,11 +130,12 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 		log.Errorf("HandleDeleteObjects:  Error getting list: %s", err.Error())
 		return c.JSON(http.StatusInternalServerError, err)
 	}
-	if *response.KeyCount == 0 {
-		err := fmt.Errorf("the specified prefix %s does not exist in S3", prefix)
-		log.Errorf("HandleDeleteObjects: %s", err.Error())
-		return c.JSON(http.StatusNotFound, err.Error())
+	if len(response.Contents) == 0 {
+		errMsg := fmt.Errorf("prefix %s is empty or does not exist", prefix)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusBadRequest, errMsg.Error())
 	}
+
 	// This will recursively delete all objects with the specified prefix
 	err = s3Ctrl.RecursivelyDeleteObjects(bucket, prefix)
 	if err != nil {
