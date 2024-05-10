@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Dewberry/s3api/auth"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -118,14 +117,11 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	claims, ok := c.Get("claims").(*auth.Claims)
-	if !ok {
-		return c.JSON(http.StatusInternalServerError, fmt.Errorf("could not get claims from request context"))
-	}
-	ue := claims.Email
-	canRead := bh.DB.CheckUserPermission(ue, key, bucket, []string{"read", "write"})
-	if !canRead {
-		return c.JSON(http.StatusForbidden, fmt.Errorf("user is not autherized").Error())
+	httpCode, err := bh.CheckUserS3Permission(c, bucket, key, []string{"write", "read"})
+	if err != nil {
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(httpCode, errMsg.Error())
 	}
 	result, err := s3Ctrl.GetMetaData(bucket, key)
 	if err != nil {
@@ -157,14 +153,11 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	claims, ok := c.Get("claims").(*auth.Claims)
-	if !ok {
-		return c.JSON(http.StatusInternalServerError, fmt.Errorf("could not get claims from request context"))
-	}
-	ue := claims.Email
-	canRead := bh.DB.CheckUserPermission(ue, key, bucket, []string{"read", "write"})
-	if !canRead {
-		return c.JSON(http.StatusForbidden, fmt.Errorf("user is not autherized").Error())
+	httpCode, err := bh.CheckUserS3Permission(c, bucket, key, []string{"write", "read"})
+	if err != nil {
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(httpCode, errMsg.Error())
 	}
 	// Proceed if the permission check passes
 	result, err := s3Ctrl.KeyExists(bucket, key)

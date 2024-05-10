@@ -129,7 +129,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
-	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	httpCode, err := bh.CheckUserS3Permission(c, bucket, key, []string{"write"})
 	if err != nil {
 		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
 		log.Error(errMsg.Error())
@@ -240,7 +240,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	httpCode, err := bh.CheckUserS3Permission(c, bucket, key, []string{"write"})
 	if err != nil {
 		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
 		log.Error(errMsg.Error())
@@ -309,7 +309,7 @@ func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	httpCode, err := bh.CheckUserS3Permission(c, bucket, key, []string{"write"})
 	if err != nil {
 		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
 		log.Error(errMsg.Error())
@@ -358,7 +358,7 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	httpCode, err := bh.CheckUserS3Permission(c, bucket, key, []string{"write"})
 	if err != nil {
 		errMsg := fmt.Errorf("error while checking for user permission: %s", err.Error())
 		log.Error(errMsg.Error())
@@ -426,7 +426,7 @@ func (bh *BlobHandler) HandleAbortMultipartUpload(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	httpCode, err := bh.CheckUserS3WritePermission(c, bucket, key)
+	httpCode, err := bh.CheckUserS3Permission(c, bucket, key, []string{"write"})
 	if err != nil {
 		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
 		log.Error(errMsg.Error())

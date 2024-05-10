@@ -12,7 +12,7 @@ import (
 
 // Database interface abstracts database operations
 type Database interface {
-	CheckUserPermission(userEmail, prefix, bucket string, operations []string) bool
+	CheckUserPermission(userEmail, bucket, prefix string, operations []string) bool
 	Close() error
 	GetUserAccessiblePrefixes(userEmail, bucket string, operations []string) ([]string, error)
 }

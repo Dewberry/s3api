@@ -81,7 +81,7 @@ func isIdenticalArray(array1, array2 []string) bool {
 	return true
 }
 
-func (bh *BlobHandler) CheckUserS3WritePermission(c echo.Context, bucket, prefix string) (int, error) {
+func (bh *BlobHandler) CheckUserS3Permission(c echo.Context, bucket, prefix string, permissions []string) (int, error) {
 	if bh.Config.AuthLevel > 0 {
 		claims, ok := c.Get("claims").(*auth.Claims)
 		if !ok {
@@ -95,7 +95,7 @@ func (bh *BlobHandler) CheckUserS3WritePermission(c echo.Context, bucket, prefix
 
 		// We assume if someone is limited_writer, they should never be admin or super_writer
 		if isLimitedWriter {
-			if !bh.DB.CheckUserPermission(ue, bucket, prefix, []string{"write"}) {
+			if !bh.DB.CheckUserPermission(ue, bucket, prefix, permissions) {
 				return http.StatusForbidden, fmt.Errorf("forbidden")
 			}
 		}
