@@ -3,6 +3,7 @@ package blobstore
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Dewberry/s3api/auth"
@@ -92,6 +93,10 @@ func (bh *BlobHandler) CheckUserS3Permission(c echo.Context, bucket, prefix stri
 
 		// Check for required roles
 		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
+		// Ensure the prefix ends with a slash
+		if !strings.HasSuffix(prefix, "/") {
+			prefix += "/"
+		}
 
 		// We assume if someone is limited_writer, they should never be admin or super_writer
 		if isLimitedWriter {

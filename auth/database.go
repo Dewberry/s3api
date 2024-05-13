@@ -101,7 +101,7 @@ func (db *PostgresDB) GetUserAccessiblePrefixes(userEmail, bucket string, operat
 
 // CheckUserPermission checks if a user has permission for a specific request.
 func (db *PostgresDB) CheckUserPermission(userEmail, bucket, prefix string, operations []string) bool {
-	s3_prefix := fmt.Sprintf("/%s/%s", bucket, prefix)
+	s3Prefix := fmt.Sprintf("/%s/%s", bucket, prefix)
 	query := `
 	SELECT EXISTS (
 		SELECT 1
@@ -114,7 +114,7 @@ func (db *PostgresDB) CheckUserPermission(userEmail, bucket, prefix string, oper
 	`
 
 	var hasPermission bool
-	if err := db.Handle.QueryRow(query, userEmail, pq.Array(operations), s3_prefix).Scan(&hasPermission); err != nil {
+	if err := db.Handle.QueryRow(query, userEmail, pq.Array(operations), s3Prefix).Scan(&hasPermission); err != nil {
 		log.Errorf("error querying user permissions: %v", err)
 		return false
 	}
