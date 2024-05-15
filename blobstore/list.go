@@ -146,36 +146,50 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 	var results []ListResult
 	var count int
-
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
 	processPage := func(page *s3.ListObjectsV2Output) error {
 		for _, cp := range page.CommonPrefixes {
 			// Handle directories (common prefixes)
-			dir := ListResult{
-				ID:         count,
-				Name:       filepath.Base(*cp.Prefix),
-				Size:       "",
-				Path:       *cp.Prefix,
-				Type:       "",
-				IsDir:      true,
-				ModifiedBy: "",
+			if fullAccess || isPermittedPrefix(bucket, *cp.Prefix, permissions) {
+				dir := ListResult{
+					ID:         count,
+					Name:       filepath.Base(*cp.Prefix),
+					Size:       "",
+					Path:       *cp.Prefix,
+					Type:       "",
+					IsDir:      true,
+					ModifiedBy: "",
+				}
+				results = append(results, dir)
 			}
-			results = append(results, dir)
 			count++
 		}
 
 		for _, object := range page.Contents {
 			// Handle files
-			file := ListResult{
-				ID:         count,
-				Name:       filepath.Base(*object.Key),
-				Size:       strconv.FormatInt(*object.Size, 10),
-				Path:       filepath.Dir(*object.Key),
-				Type:       filepath.Ext(*object.Key),
-				IsDir:      false,
-				Modified:   *object.LastModified,
-				ModifiedBy: "",
+			if fullAccess || isPermittedPrefix(bucket, *object.Key, permissions) {
+				file := ListResult{
+					ID:         count,
+					Name:       filepath.Base(*object.Key),
+					Size:       strconv.FormatInt(*object.Size, 10),
+					Path:       filepath.Dir(*object.Key),
+					Type:       filepath.Ext(*object.Key),
+					IsDir:      false,
+					Modified:   *object.LastModified,
+					ModifiedBy: "",
+				}
+				results = append(results, file)
 			}
-			results = append(results, file)
 			count++
 		}
 		return nil
@@ -256,4 +270,38 @@ func (s3Ctrl *S3Controller) GetListWithCallBack(bucket, prefix string, delimiter
 		return lastError // Return the last error encountered in the processPage function
 	}
 	return err // Return any errors encountered in the pagination process
+}
+
+func isPermittedPrefix(bucket, prefix string, permissions []string) bool {
+	prefixForChecking := fmt.Sprintf("/%s/%s", bucket, prefix)
+
+	// Check if any of the permissions indicate the prefixForChecking is a parent directory
+	for _, perm := range permissions {
+		// Add a trailing slash to permission if it represents a directory
+		if !strings.HasSuffix(perm, "/") {
+			perm += "/"
+		}
+		// Split the paths into components
+		prefixComponents := strings.Split(prefixForChecking, "/")
+		permComponents := strings.Split(perm, "/")
+
+		// Compare each component
+		match := true
+		for i := 1; i < len(prefixComponents) && i < len(permComponents); i++ {
+			if permComponents[i] == "" || prefixComponents[i] == "" {
+				break
+			}
+			if prefixComponents[i] != permComponents[i] {
+				match = false
+				break
+			}
+		}
+
+		// If all components match up to the length of the permission path,
+		// and the permission path has no additional components, return true
+		if match {
+			return true
+		}
+	}
+	return false
 }
