@@ -54,7 +54,11 @@ func main() {
 			if !ok {
 				log.Fatal("AUTH_S3_LIMITED_WRITER env variable not set")
 			}
-			allUsers = append(allUsers, s3LimitWriterRoleName)
+			s3LimitedReaderRoleName, ok := os.LookupEnv("AUTH_LIMITED_READER_ROLE")
+			if !ok {
+				log.Fatal("AUTH_LIMITED_READER_ROLE env variable not set")
+			}
+			allUsers = append(allUsers, s3LimitWriterRoleName, s3LimitedReaderRoleName)
 			writers = append(writers, s3LimitWriterRoleName)
 		}
 
@@ -93,7 +97,7 @@ func main() {
 	// prefix
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefixWithDetail, allUsers...))
-	e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
+	// e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	e.GET("/prefix/download/script", auth.Authorize(bh.HandleGenerateDownloadScript, allUsers...))
 	e.PUT("/prefix/move", auth.Authorize(bh.HandleMovePrefix, admin...))
 	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeletePrefix, admin...))
@@ -107,6 +111,9 @@ func main() {
 	// multi-bucket -- not implemented
 	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writers...))
 	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writers...))
+
+	//auth
+	e.GET("/check_user_permission", auth.Authorize(bh.HandleCheckS3UserPermission, writers...))
 
 	// Start server
 	go func() {
