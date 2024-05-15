@@ -53,10 +53,16 @@ func getPublicKeys() ([]PublicKey, error) {
 }
 
 func init() {
+	initAuth := os.Getenv("INIT_AUTH")
+	if initAuth == "0" {
+		log.Println("Skipping authentication initialization")
+		return // Skip initialization if the environment variable is explicitly set to 0
+	}
+
 	var err error
 	publicKeys, err = getPublicKeys()
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Failed to initialize authentication: %v", err))
 	}
 }
 
