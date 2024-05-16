@@ -5,6 +5,7 @@ package blobstore
 import (
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
@@ -75,17 +76,22 @@ func (s3Ctrl *S3Controller) ListBuckets() (*s3.ListBucketsOutput, error) {
 //	}
 
 type BucketInfo struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	CanRead bool   `json:"can_read"`
 }
 
 func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 	var allBuckets []BucketInfo
-	currentID := 1 // Initialize ID counter
+
 	bh.Mu.Lock()
-	for i := 0; i < len(bh.S3Controllers); i++ {
+	defer bh.Mu.Unlock()
+
+	fullAccess := false
+
+	for _, controller := range bh.S3Controllers {
 		if bh.AllowAllBuckets {
-			result, err := bh.S3Controllers[i].ListBuckets()
+			result, err := controller.ListBuckets()
 			if err != nil {
 				errMsg := fmt.Errorf("error returning list of buckets, error: %s", err)
 				log.Error(errMsg)
@@ -95,24 +101,44 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 			for _, b := range result.Buckets {
 				mostRecentBucketList = append(mostRecentBucketList, *b.Name)
 			}
-			if !isIdenticalArray(bh.S3Controllers[i].Buckets, mostRecentBucketList) {
-
-				bh.S3Controllers[i].Buckets = mostRecentBucketList
-
+			if !isIdenticalArray(controller.Buckets, mostRecentBucketList) {
+				controller.Buckets = mostRecentBucketList
 			}
 		}
-		// Extract the bucket names from the response and append to allBuckets
-		for _, bucket := range bh.S3Controllers[i].Buckets {
-			allBuckets = append(allBuckets, BucketInfo{
-				ID:   currentID,
-				Name: bucket,
-			})
-			currentID++ // Increment the ID for the next bucket
 
+		// Extract the bucket names from the response and append to allBuckets
+		for i, bucket := range controller.Buckets {
+			permissions, fullAccessTmp, err := bh.GetUserS3ReadListPermission(c, bucket)
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, fmt.Errorf("error fetching user permissions: %s", err.Error()))
+			}
+			fullAccess = fullAccess || fullAccessTmp // Update full access based on any bucket returning full access
+
+			canRead := len(permissions) > 0 || fullAccessTmp // Set canRead based on permissions or full access
+			allBuckets = append(allBuckets, BucketInfo{
+				ID:      i,
+				Name:    bucket,
+				CanRead: canRead,
+			})
 		}
 	}
-	bh.Mu.Unlock()
+
+	if fullAccess { // If full access is true, set CanRead to true for all buckets
+		for i := range allBuckets {
+			allBuckets[i].CanRead = true
+		}
+	}
+
+	// Sorting allBuckets slice by CanRead true first and then by Name field alphabetically
+	sort.Slice(allBuckets, func(i, j int) bool {
+		if allBuckets[i].CanRead == allBuckets[j].CanRead {
+			return allBuckets[i].Name < allBuckets[j].Name
+		}
+		return allBuckets[i].CanRead && !allBuckets[j].CanRead
+	})
+
 	log.Info("Successfully retrieved list of buckets")
+
 	return c.JSON(http.StatusOK, allBuckets)
 }
 

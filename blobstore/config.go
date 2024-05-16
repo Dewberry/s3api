@@ -20,6 +20,7 @@ func newConfig(authLvl int) *Config {
 	c := &Config{
 		AuthLevel:                             authLvl,
 		LimitedWriterRoleName:                 os.Getenv("AUTH_LIMITED_WRITER_ROLE"),
+		LimitedReaderRoleName:                 os.Getenv("AUTH_LIMITED_READER_ROLE"),
 		DefaultTempPrefix:                     getEnvOrDefault("TEMP_PREFIX", defaultTempPrefix),
 		DefaultDownloadPresignedUrlExpiration: getIntEnvOrDefault("DOWNLOAD_URL_EXP_DAYS", defaultDownloadPresignedUrlExpiration),
 		DefaultUploadPresignedUrlExpiration:   getIntEnvOrDefault("UPLOAD_URL_EXP_MIN", defaultUploadPresignedUrlExpiration),
