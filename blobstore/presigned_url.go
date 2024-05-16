@@ -124,7 +124,23 @@ func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
 
+	if !fullAccess && !isPermittedPrefix(bucket, key, permissions) {
+		errMsg := fmt.Errorf("user does not have read permission to read this key %s", key)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
 	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
 		errMsg := fmt.Errorf("checking if key exists: %s", err.Error())
@@ -278,38 +294,51 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	scriptBuilder.WriteString("REM 4. Initiate the Download: Double-click the renamed \".bat\" file to initiate the download process. Windows might display a warning message to protect your PC.\n")
 	scriptBuilder.WriteString("REM 5. Windows Defender SmartScreen (Optional): If you see a message like \"Windows Defender SmartScreen prevented an unrecognized app from starting,\" click \"More info\" and then click \"Run anyway\" to proceed with the download.\n\n")
 	scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", basePrefix))
-
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
 	// Define the processPage function
 	processPage := func(page *s3.ListObjectsV2Output) error {
 		for _, item := range page.Contents {
-			// Size checking
-			if item.Size != nil {
-				totalSize += uint64(*item.Size)
-				if totalSize > uint64(bh.Config.DefaultScriptDownloadSizeLimit*1024*1024*1024) {
-					return fmt.Errorf("size limit of %d GB exceeded", bh.Config.DefaultScriptDownloadSizeLimit)
+			if fullAccess || isPermittedPrefix(bucket, *item.Key, permissions) {
+
+				// Size checking
+				if item.Size != nil {
+					totalSize += uint64(*item.Size)
+					if totalSize > uint64(bh.Config.DefaultScriptDownloadSizeLimit*1024*1024*1024) {
+						return fmt.Errorf("size limit of %d GB exceeded", bh.Config.DefaultScriptDownloadSizeLimit)
+					}
+
 				}
 
-			}
+				// Script generation logic (replicating your directory creation and URL logic)
+				relativePath := strings.TrimPrefix(*item.Key, filepath.Dir(prefix)+"/")
+				dirPath := filepath.Join(basePrefix, filepath.Dir(relativePath))
+				if _, exists := createdDirs[dirPath]; !exists && dirPath != basePrefix {
+					scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", dirPath))
+					createdDirs[dirPath] = true
+				}
 
-			// Script generation logic (replicating your directory creation and URL logic)
-			relativePath := strings.TrimPrefix(*item.Key, filepath.Dir(prefix)+"/")
-			dirPath := filepath.Join(basePrefix, filepath.Dir(relativePath))
-			if _, exists := createdDirs[dirPath]; !exists && dirPath != basePrefix {
-				scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", dirPath))
-				createdDirs[dirPath] = true
+				fullPath := filepath.Join(basePrefix, relativePath)
+				presignedURL, err := s3Ctrl.GetDownloadPresignedURL(bucket, *item.Key, bh.Config.DefaultDownloadPresignedUrlExpiration)
+				if err != nil {
+					return fmt.Errorf("error generating presigned URL for object %s: %v", *item.Key, err)
+				}
+				url, err := url.QueryUnescape(presignedURL)
+				if err != nil {
+					return fmt.Errorf("error unescaping URL encoding: %v", err)
+				}
+				encodedURL := strings.ReplaceAll(url, " ", "%20")
+				scriptBuilder.WriteString(fmt.Sprintf("if exist \"%s\" (echo skipping existing file) else (curl -v -o \"%s\" \"%s\")\n", fullPath, fullPath, encodedURL))
 			}
-
-			fullPath := filepath.Join(basePrefix, relativePath)
-			presignedURL, err := s3Ctrl.GetDownloadPresignedURL(bucket, *item.Key, bh.Config.DefaultDownloadPresignedUrlExpiration)
-			if err != nil {
-				return fmt.Errorf("error generating presigned URL for object %s: %v", *item.Key, err)
-			}
-			url, err := url.QueryUnescape(presignedURL)
-			if err != nil {
-				return fmt.Errorf("error unescaping URL encoding: %v", err)
-			}
-			encodedURL := strings.ReplaceAll(url, " ", "%20")
-			scriptBuilder.WriteString(fmt.Sprintf("if exist \"%s\" (echo skipping existing file) else (curl -v -o \"%s\" \"%s\")\n", fullPath, fullPath, encodedURL))
 		}
 		return nil
 	}
