@@ -30,11 +30,6 @@ type ListResult struct {
 // HandleListByPrefix handles the API endpoint for listing objects by prefix in S3 bucket.
 func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
-	if prefix == "" {
-		errMsg := fmt.Errorf("request must include a `prefix` parameter")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
@@ -67,44 +62,67 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		}
 	}
 
-	isObject, err := s3Ctrl.KeyExists(bucket, prefix)
-	if err != nil {
-		errMsg := fmt.Errorf("can't find bucket or object %s" + err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusInternalServerError, errMsg.Error())
-	}
-
-	if isObject {
-		objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
+	if prefix != "" && prefix != "./" && prefix != "/" {
+		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 		if err != nil {
-			errMsg := fmt.Errorf("error getting metadata: %s" + err.Error())
+			errMsg := fmt.Errorf("error checking if key exists: %s", err.Error())
 			log.Error(errMsg.Error())
 			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
-		if *objMeta.ContentLength == 0 {
-			log.Infof("Detected a zero byte directory marker within prefix: %s", prefix)
-		} else {
-			errMsg := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
-			log.Error(errMsg.Error())
-			return c.JSON(http.StatusTeapot, errMsg.Error())
+		if isObject {
+			objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
+			if err != nil {
+				errMsg := fmt.Errorf("error checking for object's metadata: %s", err.Error())
+				log.Error(errMsg.Error())
+				return c.JSON(http.StatusInternalServerError, errMsg.Error())
+			}
+			if *objMeta.ContentLength == 0 {
+				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
+			} else {
+				errMsg := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
+				log.Error(errMsg.Error())
+				return c.JSON(http.StatusTeapot, errMsg.Error())
+			}
 		}
+		prefix = strings.Trim(prefix, "/") + "/"
 	}
 
-	var objectKeys []string
+	var result []string
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
 	processPage := func(page *s3.ListObjectsV2Output) error {
+		for _, cp := range page.CommonPrefixes {
+			// Handle directories (common prefixes)
+			if fullAccess || isPermittedPrefix(bucket, *cp.Prefix, permissions) {
+				result = append(result, aws.StringValue(cp.Prefix))
+
+			}
+		}
 		for _, object := range page.Contents {
-			objectKeys = append(objectKeys, aws.StringValue(object.Key))
+			// Handle files
+			if fullAccess || isPermittedPrefix(bucket, *object.Key, permissions) {
+				result = append(result, aws.StringValue(object.Key))
+			}
+
 		}
 		return nil
 	}
-
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error processing objects: %v", err))
 	}
 
 	log.Info("Successfully retrieved list by prefix:", prefix)
-	return c.JSON(http.StatusOK, objectKeys)
+	return c.JSON(http.StatusOK, result)
 }
 
 // HandleListByPrefixWithDetail retrieves a detailed list of objects in the specified S3 bucket with the given prefix.
