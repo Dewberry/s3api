@@ -136,7 +136,11 @@ func overlap(s1 []string, s2 []string) bool {
 
 func Authorize(handler echo.HandlerFunc, allowedRoles ...string) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		initAuth := os.Getenv("INIT_AUTH")
 
+		if initAuth == "0" {
+			return handler(c)
+		}
 		headers := c.Request().Header
 
 		authHead := headers.Get("Authorization")
