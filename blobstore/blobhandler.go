@@ -127,7 +127,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 			return nil, errMsg
 		}
 
-		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC, S3Mock: false}
+		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
 		// Retrieve the list of buckets for each account
 		result, err := S3Ctrl.ListBuckets()
 		if err != nil {
