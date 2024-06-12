@@ -1,7 +1,6 @@
 package blobstore
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -142,7 +141,7 @@ func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey strin
 		return fmt.Errorf("error checking if object %s exists: %s", destObjectKey, err.Error())
 	}
 	if !oldKeyExists {
-		return errors.New("`srcObjectKey` " + srcObjectKey + " does not exist")
+		return fmt.Errorf("`srcObjectKey` " + srcObjectKey + " does not exist")
 	}
 	// Check if the new key already exists in the bucket
 	newKeyExists, err := s3Ctrl.KeyExists(bucket, destObjectKey)
@@ -150,7 +149,7 @@ func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey strin
 		return fmt.Errorf("error checking if object %s exists: %s", destObjectKey, err.Error())
 	}
 	if newKeyExists {
-		return errors.New(destObjectKey + " already exists in the bucket; duplication will cause an overwrite. Please rename dest_key to a different name")
+		return fmt.Errorf(destObjectKey + " already exists in the bucket; duplication will cause an overwrite. Please rename dest_key to a different name")
 	}
 	// Set up input parameters for the CopyObject API to rename the object
 	copyInput := &s3.CopyObjectInput{
@@ -162,7 +161,7 @@ func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey strin
 	// Copy the object to the new key (effectively renaming)
 	_, err = s3Ctrl.S3Svc.CopyObject(copyInput)
 	if err != nil {
-		return errors.New("error copying object" + srcObjectKey + "with the new key" + destObjectKey + ", " + err.Error())
+		return fmt.Errorf("error copying object" + srcObjectKey + "with the new key" + destObjectKey + ", " + err.Error())
 	}
 
 	// Delete the source object
@@ -171,7 +170,7 @@ func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey strin
 		Key:    aws.String(srcObjectKey),
 	})
 	if err != nil {
-		return errors.New("error deleting old object " + srcObjectKey + " in bucket " + bucket + ", " + err.Error())
+		return fmt.Errorf("error deleting old object " + srcObjectKey + " in bucket " + bucket + ", " + err.Error())
 	}
 
 	return nil

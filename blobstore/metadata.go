@@ -1,7 +1,6 @@
 package blobstore
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -14,12 +13,12 @@ import (
 
 func (bh *BlobHandler) GetSize(page *s3.ListObjectsV2Output, totalSize *uint64, fileCount *uint64) error {
 	if page == nil {
-		return errors.New("input page is nil")
+		return fmt.Errorf("input page is nil")
 	}
 
 	for _, file := range page.Contents {
 		if file.Size == nil {
-			return errors.New("file size is nil")
+			return fmt.Errorf("file size is nil")
 		}
 		*totalSize += uint64(*file.Size)
 		*fileCount++
@@ -32,7 +31,7 @@ func (bh *BlobHandler) GetSize(page *s3.ListObjectsV2Output, totalSize *uint64, 
 func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
-		errMsg := errors.New("request must include a `prefix` parameter")
+		errMsg := fmt.Errorf("request must include a `prefix` parameter")
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}

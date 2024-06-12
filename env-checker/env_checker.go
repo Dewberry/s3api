@@ -1,7 +1,6 @@
 package envcheck
 
 import (
-	"errors"
 	"fmt"
 	"os"
 )
@@ -20,7 +19,7 @@ func CheckEnvVariablesExist(envVars []string) error {
 
 	if len(missingVars) > 0 {
 		errMsg := fmt.Sprintf("The following environment variables are missing: %v", missingVars)
-		return errors.New(errMsg)
+		return fmt.Errorf(errMsg)
 	}
 
 	return nil
