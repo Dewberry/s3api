@@ -27,6 +27,32 @@ type ListResult struct {
 	ModifiedBy string    `json:"modified_by"`
 }
 
+// CheckAndAdjustPrefix checks if the prefix is an object and adjusts the prefix accordingly.
+// Returns the adjusted prefix, an error message (if any), and the HTTP status code.
+func CheckAndAdjustPrefix(s3Ctrl *S3Controller, bucket, prefix string) (string, string, int) {
+	//As of 6/12/24, unsure why ./ is included here, may be needed for an edge case, but could also cause problems
+	if prefix != "" && prefix != "./" && prefix != "/" {
+		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
+		if err != nil {
+			return "", fmt.Sprintf("error checking if object exists: %s", err.Error()), http.StatusInternalServerError
+		}
+		if isObject {
+			objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
+			if err != nil {
+				return "", fmt.Sprintf("error checking for object's metadata: %s", err.Error()), http.StatusInternalServerError
+			}
+			//this is because AWS considers empty prefixes with a .keep as an object, so we ignore and log
+			if *objMeta.ContentLength == 0 {
+				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
+			} else {
+				return "", fmt.Sprintf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix), http.StatusTeapot
+			}
+		}
+		prefix = strings.Trim(prefix, "/") + "/"
+	}
+	return prefix, "", http.StatusOK
+}
+
 // HandleListByPrefix handles the API endpoint for listing objects by prefix in S3 bucket.
 func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
@@ -42,7 +68,6 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	delimiterParam := c.QueryParam("delimiter")
 	var delimiter bool
 	if delimiterParam == "true" || delimiterParam == "false" {
-		var err error
 		delimiter, err = strconv.ParseBool(delimiterParam)
 		if err != nil {
 			errMsg := fmt.Errorf("error parsing `delimiter` param: %s", err.Error())
@@ -56,36 +81,16 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 
 	}
-	if delimiter {
-		if !strings.HasSuffix(prefix, "/") {
-			prefix = prefix + "/"
-		}
+	if delimiter && !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
 	}
 
-	if prefix != "" && prefix != "./" && prefix != "/" {
-		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
-		if err != nil {
-			errMsg := fmt.Errorf("error checking if key exists: %s", err.Error())
-			log.Error(errMsg.Error())
-			return c.JSON(http.StatusInternalServerError, errMsg.Error())
-		}
-		if isObject {
-			objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
-			if err != nil {
-				errMsg := fmt.Errorf("error checking for object's metadata: %s", err.Error())
-				log.Error(errMsg.Error())
-				return c.JSON(http.StatusInternalServerError, errMsg.Error())
-			}
-			if *objMeta.ContentLength == 0 {
-				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
-			} else {
-				errMsg := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
-				log.Error(errMsg.Error())
-				return c.JSON(http.StatusTeapot, errMsg.Error())
-			}
-		}
-		prefix = strings.Trim(prefix, "/") + "/"
+	adjustedPrefix, errMsg, statusCode := CheckAndAdjustPrefix(s3Ctrl, bucket, prefix)
+	if errMsg != "" {
+		log.Error(errMsg)
+		return c.JSON(statusCode, errMsg)
 	}
+	prefix = adjustedPrefix
 
 	var result []string
 	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
@@ -118,7 +123,9 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	}
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, fmt.Sprintf("Error processing objects: %v", err))
+		errMsg := fmt.Errorf("error processing objects: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
 	log.Info("Successfully retrieved list by prefix:", prefix)
@@ -137,30 +144,12 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
-	if prefix != "" && prefix != "./" && prefix != "/" {
-		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
-		if err != nil {
-			errMsg := fmt.Errorf("error checking if key exists: %s", err.Error())
-			log.Error(errMsg.Error())
-			return c.JSON(http.StatusInternalServerError, errMsg.Error())
-		}
-		if isObject {
-			objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
-			if err != nil {
-				errMsg := fmt.Errorf("error checking for object's metadata: %s", err.Error())
-				log.Error(errMsg.Error())
-				return c.JSON(http.StatusInternalServerError, errMsg.Error())
-			}
-			if *objMeta.ContentLength == 0 {
-				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
-			} else {
-				errMsg := fmt.Errorf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix)
-				log.Error(errMsg.Error())
-				return c.JSON(http.StatusTeapot, errMsg.Error())
-			}
-		}
-		prefix = strings.Trim(prefix, "/") + "/"
+	adjustedPrefix, errMsg, statusCode := CheckAndAdjustPrefix(s3Ctrl, bucket, prefix)
+	if errMsg != "" {
+		log.Error(errMsg)
+		return c.JSON(statusCode, errMsg)
 	}
+	prefix = adjustedPrefix
 
 	var results []ListResult
 	var count int
@@ -220,7 +209,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
-	log.Info("successfully retrieved detailed list by prefix:", prefix)
+	log.Info("Successfully retrieved detailed list by prefix:", prefix)
 	return c.JSON(http.StatusOK, results)
 }
 

@@ -146,7 +146,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 // 	bucketName := c.QueryParam("name")
 
 // 	if bucketName == "" {
-// 		err := errors.New("request must include a `name` parameter")
+// 		err := fmt.Errorf("request must include a `name` parameter")
 // 		log.Info("HandleCreateBucket: " + err.Error())
 // 		return c.JSON(http.StatusBadRequest, err.Error())
 // 	}
@@ -181,7 +181,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 // 	bucketName := c.QueryParam("name")
 
 // 	if bucketName == "" {
-// 		err := errors.New("request must include a `name` parameter")
+// 		err := fmt.Errorf("request must include a `name` parameter")
 // 		log.Info("HandleDeleteBucket: " + err.Error())
 // 		return c.JSON(http.StatusBadRequest, err.Error())
 // 	}
@@ -201,7 +201,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 // 	bucketName := c.QueryParam("name")
 
 // 	if bucketName == "" {
-// 		err := errors.New("request must include a `name` parameter")
+// 		err := fmt.Errorf("request must include a `name` parameter")
 // 		log.Info("HandleGetBucketACL: " + err.Error())
 // 		return c.JSON(http.StatusBadRequest, err.Error())
 // 	}

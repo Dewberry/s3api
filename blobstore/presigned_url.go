@@ -143,7 +143,7 @@ func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 	}
 	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
-		errMsg := fmt.Errorf("checking if key exists: %s", err.Error())
+		errMsg := fmt.Errorf("checking if object exists: %s", err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
@@ -269,7 +269,7 @@ func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
-		errMsg := fmt.Errorf("`prefix` and `bucket` query params are required")
+		errMsg := fmt.Errorf("`prefix` query params are required")
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -285,7 +285,6 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	var scriptBuilder strings.Builder
 	createdDirs := make(map[string]bool)
 	basePrefix := filepath.Base(strings.TrimSuffix(prefix, "/"))
-	scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", basePrefix))
 	scriptBuilder.WriteString("REM Download Instructions\n")
 	scriptBuilder.WriteString("REM To download the selected directory or file, please follow these steps:\n\n")
 	scriptBuilder.WriteString("REM 1. Locate the Downloaded File: Find the file you just downloaded. It should have a .txt file extension.\n")
