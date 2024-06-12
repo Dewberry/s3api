@@ -69,7 +69,7 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	if totalSize == 0 {
+	if fileCount == 0 {
 		errMsg := fmt.Errorf("prefix %s not found", prefix)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusNotFound, errMsg.Error())
