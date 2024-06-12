@@ -30,11 +30,6 @@ jobs:
           echo AWS_S3_BUCKET='test-bucket' >> .env
           echo S3API_SERVICE_PORT='5005' >> .env
           echo AUTH_LEVEL=0 >> .env
-          echo POSTGRES_CONN_STRING='postgres://user:password@postgres:5432/db?sslmode=disable' >> .env
-          echo POSTGRES_PASSWORD='password' >> .env
-          echo POSTGRES_USER='user' >> .env
-          echo POSTGRES_DB='db' >> .env
-          echo PG_LOG_CHECKPOINTS='off' >> .env
 
       - name: Substitute secret variables in JSON
         env:

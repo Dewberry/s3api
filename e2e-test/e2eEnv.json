@@ -52,7 +52,7 @@
 		},
 		{
 			"key": "e2eObjName",
-			"value": "staff_table3.txt",
+			"value": "missing_huc8s.xlsx",
 			"type": "default",
 			"enabled": true
 		},
@@ -72,6 +72,24 @@
 			"key": "bucket",
 			"value": "test-bucket",
 			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "uploadId",
+			"value": "",
+			"type": "any",
+			"enabled": true
+		},
+		{
+			"key": "presignedUploadUrl",
+			"value": "",
+			"type": "any",
+			"enabled": true
+		},
+		{
+			"key": "etag",
+			"value": "",
+			"type": "any",
 			"enabled": true
 		}
 	],

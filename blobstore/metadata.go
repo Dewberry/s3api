@@ -1,7 +1,6 @@
 package blobstore
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -12,38 +11,35 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (bh *BlobHandler) GetSize(list *s3.ListObjectsV2Output) (uint64, uint32, error) {
-	if list == nil {
-		return 0, 0, errors.New("getSize: input list is nil")
+func (bh *BlobHandler) GetSize(page *s3.ListObjectsV2Output, totalSize *uint64, fileCount *uint64) error {
+	if page == nil {
+		return fmt.Errorf("input page is nil")
 	}
 
-	var size uint64 = 0
-	fileCount := uint32(len(list.Contents))
-
-	for _, file := range list.Contents {
+	for _, file := range page.Contents {
 		if file.Size == nil {
-			return 0, 0, errors.New("getSize: file size is nil")
+			return fmt.Errorf("file size is nil")
 		}
-		size += uint64(*file.Size)
+		*totalSize += uint64(*file.Size)
+		*fileCount++
 	}
 
-	return size, fileCount, nil
+	return nil
 }
 
-// HandleGetSize retrieves the total size and the number of files in the specified S3 bucket with the given prefix.
 // HandleGetSize retrieves the total size and the number of files in the specified S3 bucket with the given prefix.
 func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
-		err := errors.New("request must include a `prefix` parameter")
-		log.Error("HandleGetSize: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("request must include a `prefix` parameter")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -51,57 +47,59 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	// Check if the prefix points directly to an object
 	isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 	if err != nil {
-		log.Error("HandleGetSize: Error checking if prefix is an object:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error checking if prefix is an object: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
 	if isObject {
-		// Prefix points directly to an object instead of a collection of objects
-		return c.JSON(http.StatusTeapot, "The provided prefix points to a single object rather than a collection")
+		errMsg := fmt.Errorf("the provided prefix %s points to a single object rather than a collection", prefix)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusTeapot, errMsg.Error())
 	}
-	list, err := s3Ctrl.GetList(bucket, prefix, false)
+
+	var totalSize uint64
+	var fileCount uint64
+	err = s3Ctrl.GetListWithCallBack(bucket, prefix, false, func(page *s3.ListObjectsV2Output) error {
+		return bh.GetSize(page, &totalSize, &fileCount)
+	})
+
 	if err != nil {
-		log.Error("HandleGetSize: Error getting list:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error processing objects: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-
-	if len(list.Contents) == 0 {
-		// No objects found with the provided prefix
-		return c.JSON(http.StatusNotFound, "Prefix not found")
+	if fileCount == 0 {
+		errMsg := fmt.Errorf("prefix %s not found", prefix)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusNotFound, errMsg.Error())
 	}
-
-	size, fileCount, err := bh.GetSize(list)
-	if err != nil {
-		log.Error("HandleGetSize: Error getting size:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
-
 	response := struct {
 		Size      uint64 `json:"size"`
-		FileCount uint32 `json:"file_count"`
+		FileCount uint64 `json:"file_count"`
 		Prefix    string `json:"prefix"`
 	}{
-		Size:      size,
+		Size:      totalSize,
 		FileCount: fileCount,
 		Prefix:    prefix,
 	}
 
-	log.Info("HandleGetSize: Successfully retrieved size for prefix:", prefix)
+	log.Info("Successfully retrieved size for prefix:", prefix)
 	return c.JSON(http.StatusOK, response)
 }
 
 func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		err := errors.New("request must include a `key` parameter")
-		log.Error("HandleGetMetaData: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("request must include a `key` parameter")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -109,40 +107,42 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	result, err := s3Ctrl.GetMetaData(bucket, key)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == "NotFound" {
-			err := fmt.Errorf("object %s not found", key)
-			log.Error("HandleGetMetaData: " + err.Error())
-			return c.JSON(http.StatusNotFound, err.Error())
+			errMsg := fmt.Errorf("object %s not found", key)
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusNotFound, errMsg.Error())
 		}
-		log.Error("HandleGetMetaData: Error getting metadata:", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error getting metadata: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
 
-	log.Info("HandleGetMetaData: Successfully retrieved metadata for key:", key)
+	log.Info("successfully retrieved metadata for key:", key)
 	return c.JSON(http.StatusOK, result)
 }
 
 func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		err := errors.New("request must include a `key` parameter")
-		log.Error("HandleGetObjExist: " + err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+		errMsg := fmt.Errorf("request must include a `key` parameter")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("bucket %s is not available, %s", bucket, err.Error())
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
 	result, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
-		log.Error("HandleGetObjExist: " + err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		errMsg := fmt.Errorf("error checking if object exists: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
-	log.Info("HandleGetObjExist: Successfully retrieved metadata for key:", key)
+	log.Info("successfully retrieved metadata for key:", key)
 	return c.JSON(http.StatusOK, result)
 }
 
