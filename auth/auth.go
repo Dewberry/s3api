@@ -53,10 +53,16 @@ func getPublicKeys() ([]PublicKey, error) {
 }
 
 func init() {
+	initAuth := os.Getenv("INIT_AUTH")
+	if initAuth == "0" {
+		log.Println("Skipping authentication initialization")
+		return // Skip initialization if the environment variable is explicitly set to 0
+	}
+
 	var err error
 	publicKeys, err = getPublicKeys()
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Failed to initialize authentication: %v", err))
 	}
 }
 
@@ -130,7 +136,11 @@ func overlap(s1 []string, s2 []string) bool {
 
 func Authorize(handler echo.HandlerFunc, allowedRoles ...string) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		initAuth := os.Getenv("INIT_AUTH")
 
+		if initAuth == "0" {
+			return handler(c)
+		}
 		headers := c.Request().Header
 
 		authHead := headers.Get("Authorization")

@@ -12,7 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (s3Ctrl *S3Controller) FetchObjectContent(bucket string, key string) ([]byte, error) {
+func (s3Ctrl *S3Controller) FetchObjectContent(bucket string, key string) (io.ReadCloser, error) {
 	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
 		return nil, err
@@ -29,12 +29,7 @@ func (s3Ctrl *S3Controller) FetchObjectContent(bucket string, key string) ([]byt
 		return nil, err
 	}
 
-	body, err := io.ReadAll(output.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return body, nil
+	return output.Body, nil
 }
 
 func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
@@ -53,7 +48,7 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
-	body, err := s3Ctrl.FetchObjectContent(bucket, key)
+	outPutBody, err := s3Ctrl.FetchObjectContent(bucket, key)
 	if err != nil {
 		errMsg := fmt.Errorf("error fetching object's content: %s", err.Error())
 		log.Error(errMsg.Error())
@@ -63,8 +58,11 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, errMsg.Error())
 		}
 	}
-
-	log.Info("successfully fetched object data for key:", key)
+	body, err := io.ReadAll(outPutBody)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	log.Info("HandleObjectContents: Successfully fetched object data for key:", key)
 	//TODO: add contentType
 	return c.Blob(http.StatusOK, "", body)
 }
