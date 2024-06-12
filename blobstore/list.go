@@ -40,6 +40,7 @@ func CheckAndAdjustPrefix(s3Ctrl *S3Controller, bucket, prefix string) (string, 
 			if err != nil {
 				return "", fmt.Sprintf("error checking for object's metadata: %s", err.Error()), http.StatusInternalServerError
 			}
+			//this is because AWS considers empty prefixes with a .keep as an object, so we ignnore and log
 			if *objMeta.ContentLength == 0 {
 				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
 			} else {

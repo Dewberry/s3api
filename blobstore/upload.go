@@ -217,6 +217,8 @@ func (s3Ctrl *S3Controller) GetUploadPartPresignedURL(bucket string, key string,
 	var err error
 	if s3Ctrl.S3Mock {
 		// Create a temporary S3 client with the modified endpoint
+		//this is done  so that the presigned url starts with localhost:9000 instead of
+		//minio:9000 which would cause an error due to cors origin policy
 		tempS3Svc, err := session.NewSession(&aws.Config{
 			Endpoint:         aws.String("http://localhost:9000"),
 			Region:           s3Ctrl.S3Svc.Config.Region,
