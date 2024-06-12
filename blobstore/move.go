@@ -34,7 +34,7 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	err = s3Ctrl.CopyPrefix(bucket, srcPrefix, destPrefix)
+	err = s3Ctrl.MovePrefix(bucket, srcPrefix, destPrefix)
 	if err != nil {
 		if strings.Contains(err.Error(), "source prefix not found") {
 			errMsg := fmt.Errorf("no objects found with source prefix: %s", srcPrefix)
@@ -47,7 +47,7 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 	return c.JSON(http.StatusOK, fmt.Sprintf("Successfully moved prefix from %s to %s", srcPrefix, destPrefix))
 }
 
-func (s3Ctrl *S3Controller) CopyPrefix(bucket, srcPrefix, destPrefix string) error {
+func (s3Ctrl *S3Controller) MovePrefix(bucket, srcPrefix, destPrefix string) error {
 	var objectsFound bool
 
 	processPage := func(page *s3.ListObjectsV2Output) error {
