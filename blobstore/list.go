@@ -30,6 +30,7 @@ type ListResult struct {
 // CheckAndAdjustPrefix checks if the prefix is an object and adjusts the prefix accordingly.
 // Returns the adjusted prefix, an error message (if any), and the HTTP status code.
 func CheckAndAdjustPrefix(s3Ctrl *S3Controller, bucket, prefix string) (string, string, int) {
+	//As of 6/12/24, unsure why ./ is included here, may be needed for an edge case, but could also cause problems
 	if prefix != "" && prefix != "./" && prefix != "/" {
 		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 		if err != nil {
@@ -40,7 +41,7 @@ func CheckAndAdjustPrefix(s3Ctrl *S3Controller, bucket, prefix string) (string, 
 			if err != nil {
 				return "", fmt.Sprintf("error checking for object's metadata: %s", err.Error()), http.StatusInternalServerError
 			}
-			//this is because AWS considers empty prefixes with a .keep as an object, so we ignnore and log
+			//this is because AWS considers empty prefixes with a .keep as an object, so we ignore and log
 			if *objMeta.ContentLength == 0 {
 				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
 			} else {

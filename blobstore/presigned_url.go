@@ -131,7 +131,7 @@ func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 
 	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
-		errMsg := fmt.Errorf("checking if key exists: %s", err.Error())
+		errMsg := fmt.Errorf("checking if object exists: %s", err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
@@ -273,7 +273,6 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	var scriptBuilder strings.Builder
 	createdDirs := make(map[string]bool)
 	basePrefix := filepath.Base(strings.TrimSuffix(prefix, "/"))
-	scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", basePrefix))
 	scriptBuilder.WriteString("REM Download Instructions\n")
 	scriptBuilder.WriteString("REM To download the selected directory or file, please follow these steps:\n\n")
 	scriptBuilder.WriteString("REM 1. Locate the Downloaded File: Find the file you just downloaded. It should have a .txt file extension.\n")
@@ -281,6 +280,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	scriptBuilder.WriteString("REM 3. Rename the File: Right-click on the file, select \"Rename,\" and change the file extension from \".txt\" to \".bat.\" For example, if the file is named \"script.txt,\" rename it to \"script.bat.\"\n")
 	scriptBuilder.WriteString("REM 4. Initiate the Download: Double-click the renamed \".bat\" file to initiate the download process. Windows might display a warning message to protect your PC.\n")
 	scriptBuilder.WriteString("REM 5. Windows Defender SmartScreen (Optional): If you see a message like \"Windows Defender SmartScreen prevented an unrecognized app from starting,\" click \"More info\" and then click \"Run anyway\" to proceed with the download.\n\n")
+	scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", basePrefix))
 
 	// Define the processPage function
 	processPage := func(page *s3.ListObjectsV2Output) error {

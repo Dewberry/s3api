@@ -154,7 +154,7 @@ func (s3Ctrl *S3Controller) DeleteKeys(bucket string, key []string) error {
 
 	_, err := s3Ctrl.S3Svc.DeleteObjects(input)
 	if err != nil {
-		return fmt.Errorf("error Deleting objects: %s", err.Error())
+		return fmt.Errorf("error deleting objects: %s", err.Error())
 	}
 	return nil
 }
