@@ -170,7 +170,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 
 	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
-		errMsg := fmt.Errorf("error checking if key exists: %s", err.Error())
+		errMsg := fmt.Errorf("error checking if object exists: %s", err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}

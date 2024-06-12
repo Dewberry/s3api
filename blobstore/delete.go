@@ -76,7 +76,7 @@ func (bh *BlobHandler) HandleDeleteObject(c echo.Context) error {
 	// If the key is not a folder, proceed with deleting a single object
 	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
-		errMsg := fmt.Errorf("error checking if key exists: %s", err.Error())
+		errMsg := fmt.Errorf("error checking if object exists: %s", err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
@@ -195,7 +195,7 @@ func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
 		// Check if the key exists before appending it to the keys list
 		keyExists, err := s3Ctrl.KeyExists(bucket, s3Path)
 		if err != nil {
-			errMsg := fmt.Errorf("error checking if key exists. %s", err.Error())
+			errMsg := fmt.Errorf("error checking if object exists. %s", err.Error())
 			log.Error(errMsg.Error())
 			return c.JSON(http.StatusInternalServerError, errMsg)
 		}

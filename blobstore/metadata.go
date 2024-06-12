@@ -138,7 +138,7 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 
 	result, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
-		errMsg := fmt.Errorf("error checking if key exists: %s", err.Error())
+		errMsg := fmt.Errorf("error checking if object exists: %s", err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}

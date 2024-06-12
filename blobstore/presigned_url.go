@@ -257,7 +257,7 @@ func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
 func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
-		errMsg := fmt.Errorf("`prefix` and `bucket` query params are required")
+		errMsg := fmt.Errorf("`prefix` query params are required")
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
@@ -281,7 +281,6 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	scriptBuilder.WriteString("REM 3. Rename the File: Right-click on the file, select \"Rename,\" and change the file extension from \".txt\" to \".bat.\" For example, if the file is named \"script.txt,\" rename it to \"script.bat.\"\n")
 	scriptBuilder.WriteString("REM 4. Initiate the Download: Double-click the renamed \".bat\" file to initiate the download process. Windows might display a warning message to protect your PC.\n")
 	scriptBuilder.WriteString("REM 5. Windows Defender SmartScreen (Optional): If you see a message like \"Windows Defender SmartScreen prevented an unrecognized app from starting,\" click \"More info\" and then click \"Run anyway\" to proceed with the download.\n\n")
-	scriptBuilder.WriteString(fmt.Sprintf("mkdir \"%s\"\n", basePrefix))
 
 	// Define the processPage function
 	processPage := func(page *s3.ListObjectsV2Output) error {
