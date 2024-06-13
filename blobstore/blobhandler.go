@@ -154,7 +154,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		}
 
 		if len(bucketNames) > 0 {
-			config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames})
+			config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames, S3Mock: false})
 		}
 	}
 
@@ -305,6 +305,17 @@ func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, bucketHealth)
+}
+
+func (bh *BlobHandler) GetS3ReadPermissions(c echo.Context, bucket string) ([]string, bool, int, error) {
+	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	if err != nil {
+		return nil, false, http.StatusInternalServerError, fmt.Errorf("error fetching user permissions: %s", err.Error())
+	}
+	if !fullAccess && len(permissions) == 0 {
+		return nil, false, http.StatusForbidden, fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+	}
+	return permissions, fullAccess, http.StatusOK, nil
 }
 
 func (bh *BlobHandler) HandleCheckS3UserPermission(c echo.Context) error {

@@ -21,7 +21,7 @@ type PostgresDB struct {
 	Handle *sql.DB
 }
 
-// Initialize the database and create tables if they do not exist.
+// NewPostgresDB initializes the database and creates tables if they do not exist.
 func NewPostgresDB() (*PostgresDB, error) {
 	connString, exist := os.LookupEnv("POSTGRES_CONN_STRING")
 	if !exist {
@@ -43,7 +43,7 @@ func NewPostgresDB() (*PostgresDB, error) {
 	return pgDB, nil
 }
 
-// Creates the necessary tables in the database.
+// createTables creates the necessary tables in the database.
 func (db *PostgresDB) createTables() error {
 	createPermissionsTable := `
 	CREATE TABLE IF NOT EXISTS permissions (
@@ -65,6 +65,7 @@ func (db *PostgresDB) createTables() error {
 	return nil
 }
 
+// GetUserAccessiblePrefixes retrieves the accessible prefixes for a user.
 func (db *PostgresDB) GetUserAccessiblePrefixes(userEmail, bucket string, operations []string) ([]string, error) {
 	query := `
         WITH unnested_permissions AS (

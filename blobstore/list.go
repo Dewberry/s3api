@@ -30,7 +30,7 @@ type ListResult struct {
 // CheckAndAdjustPrefix checks if the prefix is an object and adjusts the prefix accordingly.
 // Returns the adjusted prefix, an error message (if any), and the HTTP status code.
 func CheckAndAdjustPrefix(s3Ctrl *S3Controller, bucket, prefix string) (string, string, int) {
-	//As of 6/12/24, unsure why ./ is included here, may be needed for an edge case, but could also cause problems
+	// As of 6/12/24, unsure why ./ is included here, may be needed for an edge case, but could also cause problems
 	if prefix != "" && prefix != "./" && prefix != "/" {
 		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 		if err != nil {
@@ -41,11 +41,11 @@ func CheckAndAdjustPrefix(s3Ctrl *S3Controller, bucket, prefix string) (string, 
 			if err != nil {
 				return "", fmt.Sprintf("error checking for object's metadata: %s", err.Error()), http.StatusInternalServerError
 			}
-			//this is because AWS considers empty prefixes with a .keep as an object, so we ignore and log
+			// This is because AWS considers empty prefixes with a .keep as an object, so we ignore and log
 			if *objMeta.ContentLength == 0 {
 				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
 			} else {
-				return "", fmt.Sprintf("`%s` is an object, not a prefix. please see options for keys or pass a prefix", prefix), http.StatusTeapot
+				return "", fmt.Sprintf("`%s` is an object, not a prefix. Please see options for keys or pass a prefix", prefix), http.StatusTeapot
 			}
 		}
 		prefix = strings.Trim(prefix, "/") + "/"
@@ -53,7 +53,7 @@ func CheckAndAdjustPrefix(s3Ctrl *S3Controller, bucket, prefix string) (string, 
 	return prefix, "", http.StatusOK
 }
 
-// HandleListByPrefix handles the API endpoint for listing objects by prefix in S3 bucket.
+// HandleListByPrefix handles the API endpoint for listing objects by prefix in an S3 bucket.
 func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 
@@ -93,16 +93,10 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	prefix = adjustedPrefix
 
 	var result []string
-	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusInternalServerError, errMsg.Error())
-	}
-	if !fullAccess && len(permissions) == 0 {
-		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusForbidden, errMsg.Error())
+		log.Error(err.Error())
+		return c.JSON(statusCode, err.Error())
 	}
 	processPage := func(page *s3.ListObjectsV2Output) error {
 		for _, cp := range page.CommonPrefixes {
@@ -153,16 +147,10 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 	var results []ListResult
 	var count int
-	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
+	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("error fetching user permissions: %s", err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusInternalServerError, errMsg.Error())
-	}
-	if !fullAccess && len(permissions) == 0 {
-		errMsg := fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusForbidden, errMsg.Error())
+		log.Error(err.Error())
+		return c.JSON(statusCode, err.Error())
 	}
 	processPage := func(page *s3.ListObjectsV2Output) error {
 		for _, cp := range page.CommonPrefixes {
@@ -197,7 +185,6 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 				}
 				results = append(results, file)
 			}
-			count++
 		}
 		return nil
 	}
@@ -214,9 +201,9 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 }
 
 // GetList retrieves a list of objects in the specified S3 bucket with the given prefix.
-// if delimiter is set to true then it is going to search for any objects within the prefix provided, if no object sare found it will
-// return null even if there was prefixes within the user provided prefix. If delimiter is set to false then it will look for all prefixes
-// that start with the user provided prefix.
+// If delimiter is set to true, it will search for any objects within the prefix provided.
+// If no objects are found, it will return null even if there were prefixes within the user-provided prefix.
+// If delimiter is set to false, it will look for all prefixes that start with the user-provided prefix.
 func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool) (*s3.ListObjectsV2Output, error) {
 	// Set up input parameters for the ListObjectsV2 API
 	input := &s3.ListObjectsV2Input{
@@ -252,8 +239,8 @@ func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool) (*s3.
 	return response, nil
 }
 
-// GetListWithCallBack is the same as GetList, except instead of returning the entire list at once, it gives you the option of processing page by page
-// this method is safer than GetList as it avoid memory overload for large datasets since it does not store the entire list in memory but rather processes it on the go.
+// GetListWithCallBack is the same as GetList, except instead of returning the entire list at once, it allows processing page by page.
+// This method is safer than GetList as it avoids memory overload for large datasets by processing data on the go.
 func (s3Ctrl *S3Controller) GetListWithCallBack(bucket, prefix string, delimiter bool, processPage func(*s3.ListObjectsV2Output) error) error {
 	input := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucket),
@@ -279,6 +266,7 @@ func (s3Ctrl *S3Controller) GetListWithCallBack(bucket, prefix string, delimiter
 	return err // Return any errors encountered in the pagination process
 }
 
+// isPermittedPrefix checks if the prefix is within the user's permissions.
 func isPermittedPrefix(bucket, prefix string, permissions []string) bool {
 	prefixForChecking := fmt.Sprintf("/%s/%s", bucket, prefix)
 
