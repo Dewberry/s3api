@@ -166,8 +166,9 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 					ModifiedBy: "",
 				}
 				results = append(results, dir)
+				count++
 			}
-			count++
+
 		}
 
 		for _, object := range page.Contents {
@@ -184,7 +185,9 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 					ModifiedBy: "",
 				}
 				results = append(results, file)
+				count++
 			}
+
 		}
 		return nil
 	}
