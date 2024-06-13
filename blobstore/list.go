@@ -101,14 +101,14 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	processPage := func(page *s3.ListObjectsV2Output) error {
 		for _, cp := range page.CommonPrefixes {
 			// Handle directories (common prefixes)
-			if fullAccess || isPermittedPrefix(bucket, *cp.Prefix, permissions) {
+			if fullAccess || IsPermittedPrefix(bucket, *cp.Prefix, permissions) {
 				result = append(result, aws.StringValue(cp.Prefix))
 
 			}
 		}
 		for _, object := range page.Contents {
 			// Handle files
-			if fullAccess || isPermittedPrefix(bucket, *object.Key, permissions) {
+			if fullAccess || IsPermittedPrefix(bucket, *object.Key, permissions) {
 				result = append(result, aws.StringValue(object.Key))
 			}
 
@@ -155,7 +155,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	processPage := func(page *s3.ListObjectsV2Output) error {
 		for _, cp := range page.CommonPrefixes {
 			// Handle directories (common prefixes)
-			if fullAccess || isPermittedPrefix(bucket, *cp.Prefix, permissions) {
+			if fullAccess || IsPermittedPrefix(bucket, *cp.Prefix, permissions) {
 				dir := ListResult{
 					ID:         count,
 					Name:       filepath.Base(*cp.Prefix),
@@ -172,7 +172,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 		for _, object := range page.Contents {
 			// Handle files
-			if fullAccess || isPermittedPrefix(bucket, *object.Key, permissions) {
+			if fullAccess || IsPermittedPrefix(bucket, *object.Key, permissions) {
 				file := ListResult{
 					ID:         count,
 					Name:       filepath.Base(*object.Key),
@@ -266,8 +266,8 @@ func (s3Ctrl *S3Controller) GetListWithCallBack(bucket, prefix string, delimiter
 	return err // Return any errors encountered in the pagination process
 }
 
-// isPermittedPrefix checks if the prefix is within the user's permissions.
-func isPermittedPrefix(bucket, prefix string, permissions []string) bool {
+// IsPermittedPrefix checks if the prefix is within the user's permissions.
+func IsPermittedPrefix(bucket, prefix string, permissions []string) bool {
 	prefixForChecking := fmt.Sprintf("/%s/%s", bucket, prefix)
 
 	// Check if any of the permissions indicate the prefixForChecking is a parent directory

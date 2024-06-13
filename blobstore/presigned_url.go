@@ -130,7 +130,7 @@ func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 		return c.JSON(statusCode, err.Error())
 	}
 
-	if !fullAccess && !isPermittedPrefix(bucket, key, permissions) {
+	if !fullAccess && !IsPermittedPrefix(bucket, key, permissions) {
 		errMsg := fmt.Errorf("user does not have read permission to read this key %s", key)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
@@ -296,7 +296,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	// Define the processPage function
 	processPage := func(page *s3.ListObjectsV2Output) error {
 		for _, item := range page.Contents {
-			if fullAccess || isPermittedPrefix(bucket, *item.Key, permissions) {
+			if fullAccess || IsPermittedPrefix(bucket, *item.Key, permissions) {
 
 				// Size checking
 				if item.Size != nil {

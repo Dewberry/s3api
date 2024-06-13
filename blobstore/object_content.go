@@ -53,7 +53,7 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 		return c.JSON(statusCode, err.Error())
 	}
 
-	if !fullAccess && !isPermittedPrefix(bucket, key, permissions) {
+	if !fullAccess && !IsPermittedPrefix(bucket, key, permissions) {
 		errMsg := fmt.Errorf("user does not have read permission to read this key %s", key)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
