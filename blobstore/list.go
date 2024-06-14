@@ -143,6 +143,18 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		log.Error(errMsg)
 		return c.JSON(statusCode, errMsg)
 	}
+	delimiterParam := c.QueryParam("delimiter")
+	delimiter := true
+	if delimiterParam != "" {
+		delimiter, err = strconv.ParseBool(delimiterParam)
+		if err != nil {
+			errMsg := fmt.Errorf("error parsing `delimiter` param: %s", err.Error())
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+		}
+
+	}
+
 	prefix = adjustedPrefix
 
 	var results []ListResult
@@ -191,8 +203,8 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		}
 		return nil
 	}
-
-	err = s3Ctrl.GetListWithCallBack(bucket, prefix, true, processPage)
+	fmt.Println(delimiter)
+	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
 	if err != nil {
 		errMsg := fmt.Errorf("error processing objects: %s", err.Error())
 		log.Error(errMsg.Error())
