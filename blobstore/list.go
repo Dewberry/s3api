@@ -66,19 +66,14 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	}
 
 	delimiterParam := c.QueryParam("delimiter")
-	var delimiter bool
-	if delimiterParam == "true" || delimiterParam == "false" {
+	delimiter := true
+	if delimiterParam != "" {
 		delimiter, err = strconv.ParseBool(delimiterParam)
 		if err != nil {
 			errMsg := fmt.Errorf("error parsing `delimiter` param: %s", err.Error())
 			log.Error(errMsg.Error())
 			return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 		}
-
-	} else {
-		errMsg := fmt.Errorf("request must include a `delimiter`, options are `true` or `false`")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 
 	}
 	if delimiter && !strings.HasSuffix(prefix, "/") {
