@@ -323,6 +323,14 @@ func (bh *BlobHandler) HandleCheckS3UserPermission(c echo.Context) error {
 		log.Info("Checked user permissions successfully")
 		return c.JSON(http.StatusOK, true)
 	}
+	initAuth := os.Getenv("INIT_AUTH")
+
+	if initAuth == "0" {
+		errMsg := fmt.Errorf("this endpoint requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+
+	}
 	prefix := c.QueryParam("prefix")
 	bucket := c.QueryParam("bucket")
 	operation := c.QueryParam("operation")
