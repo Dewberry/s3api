@@ -54,7 +54,7 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 	}
 
 	if !fullAccess && !IsPermittedPrefix(bucket, key, permissions) {
-		errMsg := fmt.Errorf("user does not have read permission to read this key %s", key)
+		errMsg := fmt.Errorf("user does not have permission to read the %s key", key)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
 	}

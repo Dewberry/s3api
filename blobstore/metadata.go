@@ -49,7 +49,7 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		return c.JSON(statusCode, err.Error())
 	}
 	if !fullAccess && !IsPermittedPrefix(bucket, prefix, permissions) {
-		errMsg := fmt.Errorf("user does not have read permission to read this prefix %s", prefix)
+		errMsg := fmt.Errorf("user does not have permission to read the %s prefix", prefix)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
 	}
@@ -119,7 +119,7 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	}
 
 	if !fullAccess && !IsPermittedPrefix(bucket, key, permissions) {
-		errMsg := fmt.Errorf("user does not have read permission to read this key %s", key)
+		errMsg := fmt.Errorf("user does not have permission to read the %s key", key)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
 	}
@@ -162,7 +162,7 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 	}
 
 	if !fullAccess && !IsPermittedPrefix(bucket, key, permissions) {
-		errMsg := fmt.Errorf("user does not have read permission to read this key %s", key)
+		errMsg := fmt.Errorf("user does not have permission to read the %s key", key)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
 	}

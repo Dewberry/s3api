@@ -313,7 +313,7 @@ func (bh *BlobHandler) GetS3ReadPermissions(c echo.Context, bucket string) ([]st
 		return nil, false, http.StatusInternalServerError, fmt.Errorf("error fetching user permissions: %s", err.Error())
 	}
 	if !fullAccess && len(permissions) == 0 {
-		return nil, false, http.StatusForbidden, fmt.Errorf("user does not have read permission to read the %s bucket", bucket)
+		return nil, false, http.StatusForbidden, fmt.Errorf("user does not have permission to read the %s bucket", bucket)
 	}
 	return permissions, fullAccess, http.StatusOK, nil
 }
