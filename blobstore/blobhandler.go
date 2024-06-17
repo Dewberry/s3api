@@ -310,9 +310,9 @@ func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
 
 func (bh *BlobHandler) GetS3ReadPermissions(c echo.Context, bucket string) ([]string, bool, int, error) {
 	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
-	httpStatus := http.StatusInternalServerError
 	if err != nil {
 		//TEMP solution before error library is implimented and string check ups become redundant
+		httpStatus := http.StatusInternalServerError
 		if strings.Contains(err.Error(), "this endpoint requires authentication information that is unavailable when authorization is disabled.") {
 			httpStatus = http.StatusForbidden
 		}
