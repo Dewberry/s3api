@@ -76,7 +76,8 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		}
 
 	}
-	if delimiter && !strings.HasSuffix(prefix, "/") {
+
+	if delimiter && prefix != "" && !strings.HasSuffix(prefix, "/") {
 		prefix = prefix + "/"
 	}
 
@@ -138,6 +139,8 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		log.Error(errMsg)
 		return c.JSON(statusCode, errMsg)
 	}
+	prefix = adjustedPrefix
+
 	delimiterParam := c.QueryParam("delimiter")
 	delimiter := true
 	if delimiterParam != "" {
@@ -150,7 +153,9 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 	}
 
-	prefix = adjustedPrefix
+	if delimiter && prefix != "" && !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
 
 	var results []ListResult
 	var count int
@@ -198,7 +203,6 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		}
 		return nil
 	}
-	fmt.Println(delimiter)
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
 	if err != nil {
 		errMsg := fmt.Errorf("error processing objects: %s", err.Error())
