@@ -6,20 +6,22 @@ import (
 	"os"
 
 	"github.com/labstack/gommon/log"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
 // Database interface abstracts database operations
 type Database interface {
-	CheckUserPermission(userEmail, operation, s3_prefix string) bool
+	CheckUserPermission(userEmail, bucket, prefix string, operations []string) bool
 	Close() error
+	GetUserAccessiblePrefixes(userEmail, bucket string, operations []string) ([]string, error)
 }
 
 type PostgresDB struct {
 	Handle *sql.DB
 }
 
-// Initialize the database and create tables if they do not exist.
+// NewPostgresDB initializes the database and creates tables if they do not exist.
 func NewPostgresDB() (*PostgresDB, error) {
 	connString, exist := os.LookupEnv("POSTGRES_CONN_STRING")
 	if !exist {
@@ -41,7 +43,7 @@ func NewPostgresDB() (*PostgresDB, error) {
 	return pgDB, nil
 }
 
-// Creates the necessary tables in the database.
+// createTables creates the necessary tables in the database.
 func (db *PostgresDB) createTables() error {
 	createPermissionsTable := `
 	CREATE TABLE IF NOT EXISTS permissions (
@@ -63,21 +65,57 @@ func (db *PostgresDB) createTables() error {
 	return nil
 }
 
+// GetUserAccessiblePrefixes retrieves the accessible prefixes for a user.
+func (db *PostgresDB) GetUserAccessiblePrefixes(userEmail, bucket string, operations []string) ([]string, error) {
+	query := `
+        WITH unnested_permissions AS (
+            SELECT DISTINCT unnest(allowed_s3_prefixes) AS allowed_prefix
+            FROM permissions
+            WHERE user_email = $1 AND operation = ANY($3)
+        )
+        SELECT allowed_prefix
+        FROM unnested_permissions
+        WHERE allowed_prefix LIKE $2 || '/%'
+        ORDER BY allowed_prefix;
+    `
+
+	rows, err := db.Handle.Query(query, userEmail, "/"+bucket, pq.Array(operations))
+	if err != nil {
+		return nil, fmt.Errorf("database error: %s", err)
+	}
+	defer rows.Close()
+
+	var prefixes []string
+	var prefix string
+	for rows.Next() {
+		if err := rows.Scan(&prefix); err != nil {
+			return nil, fmt.Errorf("scan error: %s", err)
+		}
+		prefixes = append(prefixes, prefix)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("row error: %s", err)
+	}
+
+	return prefixes, nil
+}
+
 // CheckUserPermission checks if a user has permission for a specific request.
-func (db *PostgresDB) CheckUserPermission(userEmail, operation, s3_prefix string) bool {
+func (db *PostgresDB) CheckUserPermission(userEmail, bucket, prefix string, operations []string) bool {
+	s3Prefix := fmt.Sprintf("/%s/%s", bucket, prefix)
 	query := `
 	SELECT EXISTS (
 		SELECT 1
 		FROM permissions,
 			 UNNEST(allowed_s3_prefixes) AS allowed_prefix
 		WHERE user_email = $1
-		  AND operation = $2
+		  AND operation = ANY($2)
 		  AND $3 LIKE allowed_prefix || '%'
 	);
 	`
 
 	var hasPermission bool
-	if err := db.Handle.QueryRow(query, userEmail, operation, s3_prefix).Scan(&hasPermission); err != nil {
+	if err := db.Handle.QueryRow(query, userEmail, pq.Array(operations), s3Prefix).Scan(&hasPermission); err != nil {
 		log.Errorf("error querying user permissions: %v", err)
 		return false
 	}

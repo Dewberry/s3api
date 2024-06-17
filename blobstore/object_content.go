@@ -47,7 +47,17 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
+	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
+	if err != nil {
+		log.Error(err.Error())
+		return c.JSON(statusCode, err.Error())
+	}
 
+	if !fullAccess && !IsPermittedPrefix(bucket, key, permissions) {
+		errMsg := fmt.Errorf("user does not have permission to read the %s key", key)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
 	outPutBody, err := s3Ctrl.FetchObjectContent(bucket, key)
 	if err != nil {
 		errMsg := fmt.Errorf("error fetching object's content: %s", err.Error())

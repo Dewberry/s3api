@@ -43,7 +43,16 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-
+	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
+	if err != nil {
+		log.Error(err.Error())
+		return c.JSON(statusCode, err.Error())
+	}
+	if !fullAccess && !IsPermittedPrefix(bucket, prefix, permissions) {
+		errMsg := fmt.Errorf("user does not have permission to read the %s prefix", prefix)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
 	// Check if the prefix points directly to an object
 	isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 	if err != nil {
@@ -103,7 +112,17 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
+	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
+	if err != nil {
+		log.Error(err.Error())
+		return c.JSON(statusCode, err.Error())
+	}
 
+	if !fullAccess && !IsPermittedPrefix(bucket, key, permissions) {
+		errMsg := fmt.Errorf("user does not have permission to read the %s key", key)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
+	}
 	result, err := s3Ctrl.GetMetaData(bucket, key)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == "NotFound" {
@@ -134,6 +153,18 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+
+	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
+	if err != nil {
+		log.Error(err.Error())
+		return c.JSON(statusCode, err.Error())
+	}
+
+	if !fullAccess && !IsPermittedPrefix(bucket, key, permissions) {
+		errMsg := fmt.Errorf("user does not have permission to read the %s key", key)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusForbidden, errMsg.Error())
 	}
 
 	result, err := s3Ctrl.KeyExists(bucket, key)

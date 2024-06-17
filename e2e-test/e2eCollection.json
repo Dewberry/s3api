@@ -728,55 +728,6 @@
 					"response": []
 				},
 				{
-					"name": "10/prefix/download",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/download?prefix={{e2ePathToObj}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"prefix",
-								"download"
-							],
-							"query": [
-								{
-									"key": "prefix",
-									"value": "{{e2ePathToObj}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "10.2/prefix/download_script",
 					"request": {
 						"auth": {
@@ -2092,7 +2043,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/list?bucket={{bucket}}",
+									"raw": "{{s3_api_root_url}}/prefix/list?bucket=",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2110,10 +2061,6 @@
 											"key": "delimiter",
 											"value": "{{e2eoverride}}",
 											"disabled": true
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
 										}
 									]
 								}
@@ -2529,56 +2476,6 @@
 							"response": []
 						},
 						{
-							"name": "10/prefix/download",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/download?bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"prefix",
-										"download"
-									],
-									"query": [
-										{
-											"key": "prefix",
-											"value": "{{e2ePathToObj}}",
-											"disabled": true
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
 							"name": "10.2/prefix/download/script",
 							"event": [
 								{
@@ -2902,55 +2799,6 @@
 										"delete_keys"
 									],
 									"query": [
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "10/prefix/download",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/download?prefix=invalid&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"prefix",
-										"download"
-									],
-									"query": [
-										{
-											"key": "prefix",
-											"value": "invalid"
-										},
 										{
 											"key": "bucket",
 											"value": "{{bucket}}"
