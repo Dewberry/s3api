@@ -11,6 +11,8 @@ import (
 
 	"github.com/Dewberry/s3api/auth"
 	"github.com/Dewberry/s3api/blobstore"
+	"github.com/Dewberry/s3api/configberry"
+	"github.com/Dewberry/s3api/utils"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -18,6 +20,10 @@ import (
 )
 
 func main() {
+	err := configberry.CheckEnvVariablesExist(utils.REQUIRED_ENV_VAR)
+	if err != nil {
+		log.Fatal(err)
+	}
 	log.SetFormatter(&log.JSONFormatter{})
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {

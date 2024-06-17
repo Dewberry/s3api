@@ -1,4 +1,4 @@
-package errorshandling
+package configberry
 
 import (
 	"database/sql"
@@ -28,6 +28,7 @@ var (
 	UnauthorizedError   = ErrorType{Value: 4, Name: "Unauthorized Error"}
 	InternalServerError = ErrorType{Value: 5, Name: "Internal Server Error"}
 	AWSError            = ErrorType{Value: 6, Name: "AWS Error"}
+	Fatal               = ErrorType{Value: 7, Name: "Fatal Error"}
 )
 
 // AppError includes the error type, message, and the original error.

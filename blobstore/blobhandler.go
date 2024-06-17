@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/Dewberry/s3api/auth"
-	envcheck "github.com/Dewberry/s3api/env-checker"
+	"github.com/Dewberry/s3api/configberry"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -55,7 +55,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	}
 
 	if authLvl > 0 {
-		if err := envcheck.CheckEnvVariablesExist([]string{"AUTH_LIMITED_WRITER_ROLE"}); err != nil {
+		if err := configberry.CheckEnvVariablesExist([]string{"AUTH_LIMITED_WRITER_ROLE"}); err != nil {
 			log.Fatal(err)
 		}
 		config.Config.AuthLevel = authLvl
