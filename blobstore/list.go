@@ -65,6 +65,13 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
+	adjustedPrefix, errMsg, statusCode := CheckAndAdjustPrefix(s3Ctrl, bucket, prefix)
+	if errMsg != "" {
+		log.Error(errMsg)
+		return c.JSON(statusCode, errMsg)
+	}
+	prefix = adjustedPrefix
+
 	delimiterParam := c.QueryParam("delimiter")
 	delimiter := true
 	if delimiterParam != "" {
@@ -80,13 +87,6 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	if delimiter && prefix != "" && !strings.HasSuffix(prefix, "/") {
 		prefix = prefix + "/"
 	}
-
-	adjustedPrefix, errMsg, statusCode := CheckAndAdjustPrefix(s3Ctrl, bucket, prefix)
-	if errMsg != "" {
-		log.Error(errMsg)
-		return c.JSON(statusCode, errMsg)
-	}
-	prefix = adjustedPrefix
 
 	var result []string
 	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
