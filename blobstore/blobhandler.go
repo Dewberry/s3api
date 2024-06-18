@@ -57,12 +57,12 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 
 	if authLvl > 0 {
 		if err := configberry.CheckEnvVariablesExist([]string{"AUTH_LIMITED_WRITER_ROLE"}); err != nil {
-			log.Fatal(err)
+			return &config, err
 		}
 		config.Config.AuthLevel = authLvl
 		db, err := auth.NewPostgresDB()
 		if err != nil {
-			log.Fatal(err)
+			return &config, err
 		}
 		config.DB = db
 	}
@@ -73,7 +73,8 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	}
 	s3Mock, err := strconv.Atoi(s3MockStr)
 	if err != nil {
-		log.Fatalf("could not convert S3_MOCK env variable to integer: %v", err)
+		errMsg := fmt.Errorf("could not convert S3_MOCK env variable to integer: %v", err)
+		return &config, errMsg
 	}
 	// Check if the S3_MOCK environment variable is set to "true"
 	if s3Mock == 1 {
@@ -85,13 +86,13 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		// Validate MinIO credentials, check if they are missing or incomplete
 		// if not then the s3api won't start
 		if err := creds.validateMinioConfig(); err != nil {
-			log.Fatalf("MINIO credentials are either not provided or contain missing variables: %s", err.Error())
+			return &config, err
 		}
 
 		// Create a MinIO session and S3 client
 		s3SVC, sess, err := minIOSessionManager(creds)
 		if err != nil {
-			log.Fatalf("failed to create MinIO session: %s", err.Error())
+			return &config, err
 		}
 
 		// Configure the BlobHandler with MinIO session and bucket information
@@ -107,7 +108,8 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 
 	// Check if loading AWS credentials from .env.json failed
 	if err != nil {
-		return nil, fmt.Errorf("env.json credentials extraction failed, please check `.env.json.example` for reference on formatting, %s", err.Error())
+		errMsg := fmt.Errorf("env.json credentials extraction failed, please check `.env.json.example` for reference on formatting, %s", err.Error())
+		return &config, errMsg
 	}
 
 	//does it contain "*"
@@ -126,7 +128,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		if err != nil {
 			errMsg := fmt.Errorf("failed to create AWS session: %s", err.Error())
 			log.Error(errMsg.Error())
-			return nil, errMsg
+			return &config, errMsg
 		}
 
 		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
@@ -134,7 +136,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		result, err := S3Ctrl.ListBuckets()
 		if err != nil {
 			errMsg := fmt.Errorf("failed to retrieve list of buckets with access key: %s, error: %s", creds.AWS_ACCESS_KEY_ID, err.Error())
-			return nil, errMsg
+			return &config, errMsg
 		}
 
 		var bucketNames []string
@@ -164,7 +166,8 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		for bucket := range allowedBucketsMap {
 			missingBuckets = append(missingBuckets, bucket)
 		}
-		return nil, fmt.Errorf("some buckets in the allow list were not found: %v", missingBuckets)
+		errMsg := fmt.Errorf("some buckets in the allow list were not found: %v", missingBuckets)
+		return &config, errMsg
 	}
 
 	// Return the configured BlobHandler
@@ -178,7 +181,7 @@ func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
 		Credentials: credentials.NewStaticCredentials(creds.AWS_ACCESS_KEY_ID, creds.AWS_SECRET_ACCESS_KEY, ""),
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating s3 session: %s", err.Error())
+		return nil, nil, err
 	}
 	return s3.New(sess), sess, nil
 }
@@ -191,7 +194,7 @@ func minIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
 		S3ForcePathStyle: aws.Bool(true),
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("error connecting to minio session: %s", err.Error())
+		return nil, nil, err
 	}
 	log.Info("Using minio to mock s3")
 
@@ -219,8 +222,7 @@ func minIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
 
 func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 	if bucket == "" {
-		err := fmt.Errorf("parameter 'bucket' is required")
-		log.Error(err.Error())
+		err := fmt.Errorf("parameter `bucket` is required")
 		return nil, err
 	}
 	var s3Ctrl S3Controller
@@ -259,7 +261,8 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 			}
 		}
 	}
-	return &s3Ctrl, fmt.Errorf("bucket '%s' not found", bucket)
+	errMsg := fmt.Errorf("bucket '%s' not found", bucket)
+	return &s3Ctrl, errMsg
 }
 
 func getBucketRegion(S3Svc *s3.S3, bucketName string) (string, error) {
@@ -279,35 +282,6 @@ func getBucketRegion(S3Svc *s3.S3, bucketName string) (string, error) {
 	return *output.LocationConstraint, nil
 }
 
-func (bh *BlobHandler) Ping(c echo.Context) error {
-	return c.JSON(http.StatusOK, "connection without Auth is healthy")
-}
-
-func (bh *BlobHandler) PingWithAuth(c echo.Context) error {
-	// Perform a HeadBucket operation to check the health of the S3 connection
-	bucketHealth := make(map[string]string)
-	var valid string
-
-	for _, s3Ctrl := range bh.S3Controllers {
-		for _, b := range s3Ctrl.Buckets {
-			_, err := s3Ctrl.S3Svc.HeadBucket(&s3.HeadBucketInput{
-				Bucket: aws.String(b),
-			})
-			if err != nil {
-				valid = "unhealthy"
-			} else {
-				valid = "healthy"
-			}
-			log.Debugf("Ping operation preformed succesfully, connection to `%s` is %s", b, valid)
-
-			bucketHealth[b] = valid
-			print(b, valid)
-		}
-	}
-
-	return c.JSON(http.StatusOK, bucketHealth)
-}
-
 func (bh *BlobHandler) GetS3ReadPermissions(c echo.Context, bucket string) ([]string, bool, int, error) {
 	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
 	if err != nil {
@@ -322,35 +296,4 @@ func (bh *BlobHandler) GetS3ReadPermissions(c echo.Context, bucket string) ([]st
 		return nil, false, http.StatusForbidden, fmt.Errorf("user does not have permission to read the %s bucket", bucket)
 	}
 	return permissions, fullAccess, http.StatusOK, nil
-}
-
-func (bh *BlobHandler) HandleCheckS3UserPermission(c echo.Context) error {
-	if bh.Config.AuthLevel == 0 {
-		log.Info("Checked user permissions successfully")
-		return c.JSON(http.StatusOK, true)
-	}
-	initAuth := os.Getenv("INIT_AUTH")
-	if initAuth == "0" {
-		errMsg := fmt.Errorf("this endpoint requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusForbidden, errMsg.Error())
-	}
-	prefix := c.QueryParam("prefix")
-	bucket := c.QueryParam("bucket")
-	operation := c.QueryParam("operation")
-	claims, ok := c.Get("claims").(*auth.Claims)
-	if !ok {
-		errMsg := fmt.Errorf("could not get claims from request context")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusInternalServerError, errMsg.Error())
-	}
-	userEmail := claims.Email
-	if operation == "" || prefix == "" || bucket == "" {
-		errMsg := fmt.Errorf("`prefix`,  `operation` and 'bucket are required params")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
-	isAllowed := bh.DB.CheckUserPermission(userEmail, bucket, prefix, []string{operation})
-	log.Info("Checked user permissions successfully")
-	return c.JSON(http.StatusOK, isAllowed)
 }
