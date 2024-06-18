@@ -16,8 +16,8 @@ func CheckEnvVariablesExist(envVars []string) error {
 	}
 
 	if len(missingVars) > 0 {
-		errMsg := fmt.Sprintf("The following environment variables are missing: %v", missingVars)
-		return fmt.Errorf(errMsg)
+		errMsg := fmt.Errorf("the following environment variables are missing: %v", missingVars)
+		return errMsg
 	}
 
 	return nil

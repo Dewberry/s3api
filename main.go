@@ -20,20 +20,23 @@ import (
 )
 
 func main() {
-	err := configberry.CheckEnvVariablesExist(utils.REQUIRED_ENV_VAR)
-	if err != nil {
-		log.Fatal(err)
-	}
 	log.SetFormatter(&log.JSONFormatter{})
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
 		logLevel = "info"
 	}
+	err := configberry.CheckEnvVariablesExist(utils.REQUIRED_ENV_VAR)
+	if err != nil {
+		appErr := configberry.NewAppError(configberry.FatalError, "Critical configuration error: ", err)
+		log.Fatal(configberry.LogErrorFormatter(appErr, true))
+	}
+
 	level, err := log.ParseLevel(logLevel)
 	if err != nil {
 		log.WithError(err).Error("Invalid log level")
 		level = log.InfoLevel
 	}
+
 	log.SetLevel(level)
 	log.SetReportCaller(true)
 	log.Infof("level level set to: %s", level)
