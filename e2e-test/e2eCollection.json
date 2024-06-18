@@ -2043,7 +2043,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/list?bucket={{bucket}}",
+									"raw": "{{s3_api_root_url}}/prefix/list?bucket=",
 									"host": [
 										"{{s3_api_root_url}}"
 									],
@@ -2061,10 +2061,6 @@
 											"key": "delimiter",
 											"value": "{{e2eoverride}}",
 											"disabled": true
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
 										}
 									]
 								}

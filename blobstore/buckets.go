@@ -87,7 +87,11 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 	bh.Mu.Lock()
 	defer bh.Mu.Unlock()
 
-	fullAccess := false
+	// Check user's overall read access level
+	_, fullAccess, err := bh.GetUserS3ReadListPermission(c, "")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, fmt.Errorf("error fetching user permissions: %s", err.Error()))
+	}
 
 	for _, controller := range bh.S3Controllers {
 		if bh.AllowAllBuckets {
@@ -108,24 +112,19 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 
 		// Extract the bucket names from the response and append to allBuckets
 		for i, bucket := range controller.Buckets {
-			permissions, fullAccessTmp, err := bh.GetUserS3ReadListPermission(c, bucket)
-			if err != nil {
-				return c.JSON(http.StatusInternalServerError, fmt.Errorf("error fetching user permissions: %s", err.Error()))
+			canRead := fullAccess
+			if !fullAccess {
+				permissions, _, err := bh.GetUserS3ReadListPermission(c, bucket)
+				if err != nil {
+					return c.JSON(http.StatusInternalServerError, fmt.Errorf("error fetching user permissions: %s", err.Error()))
+				}
+				canRead = len(permissions) > 0
 			}
-			fullAccess = fullAccess || fullAccessTmp // Update full access based on any bucket returning full access
-
-			canRead := len(permissions) > 0 || fullAccessTmp // Set canRead based on permissions or full access
 			allBuckets = append(allBuckets, BucketInfo{
 				ID:      i,
 				Name:    bucket,
 				CanRead: canRead,
 			})
-		}
-	}
-
-	if fullAccess { // If full access is true, set CanRead to true for all buckets
-		for i := range allBuckets {
-			allBuckets[i].CanRead = true
 		}
 	}
 

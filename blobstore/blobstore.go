@@ -3,6 +3,7 @@ package blobstore
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/Dewberry/s3api/auth"
@@ -83,6 +84,11 @@ func isIdenticalArray(array1, array2 []string) bool {
 
 func (bh *BlobHandler) CheckUserS3Permission(c echo.Context, bucket, prefix string, permissions []string) (int, error) {
 	if bh.Config.AuthLevel > 0 {
+		initAuth := os.Getenv("INIT_AUTH")
+		if initAuth == "0" {
+			errMsg := fmt.Errorf("this requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality")
+			return http.StatusForbidden, errMsg
+		}
 		claims, ok := c.Get("claims").(*auth.Claims)
 		if !ok {
 			return http.StatusInternalServerError, fmt.Errorf("could not get claims from request context")
@@ -111,6 +117,11 @@ func (bh *BlobHandler) GetUserS3ReadListPermission(c echo.Context, bucket string
 	permissions := make([]string, 0)
 
 	if bh.Config.AuthLevel > 0 {
+		initAuth := os.Getenv("INIT_AUTH")
+		if initAuth == "0" {
+			errMsg := fmt.Errorf("this endpoint requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality")
+			return permissions, false, errMsg
+		}
 		fullAccess := false
 		claims, ok := c.Get("claims").(*auth.Claims)
 		if !ok {

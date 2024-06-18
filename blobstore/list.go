@@ -65,9 +65,16 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
+	adjustedPrefix, errMsg, statusCode := CheckAndAdjustPrefix(s3Ctrl, bucket, prefix)
+	if errMsg != "" {
+		log.Error(errMsg)
+		return c.JSON(statusCode, errMsg)
+	}
+	prefix = adjustedPrefix
+
 	delimiterParam := c.QueryParam("delimiter")
-	var delimiter bool
-	if delimiterParam == "true" || delimiterParam == "false" {
+	delimiter := true
+	if delimiterParam != "" {
 		delimiter, err = strconv.ParseBool(delimiterParam)
 		if err != nil {
 			errMsg := fmt.Errorf("error parsing `delimiter` param: %s", err.Error())
@@ -75,22 +82,11 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 			return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 		}
 
-	} else {
-		errMsg := fmt.Errorf("request must include a `delimiter`, options are `true` or `false`")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-
 	}
-	if delimiter && !strings.HasSuffix(prefix, "/") {
+
+	if delimiter && prefix != "" && !strings.HasSuffix(prefix, "/") {
 		prefix = prefix + "/"
 	}
-
-	adjustedPrefix, errMsg, statusCode := CheckAndAdjustPrefix(s3Ctrl, bucket, prefix)
-	if errMsg != "" {
-		log.Error(errMsg)
-		return c.JSON(statusCode, errMsg)
-	}
-	prefix = adjustedPrefix
 
 	var result []string
 	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
@@ -143,6 +139,8 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		log.Error(errMsg)
 		return c.JSON(statusCode, errMsg)
 	}
+	prefix = adjustedPrefix
+
 	delimiterParam := c.QueryParam("delimiter")
 	delimiter := true
 	if delimiterParam != "" {
@@ -155,7 +153,9 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 	}
 
-	prefix = adjustedPrefix
+	if delimiter && prefix != "" && !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
 
 	var results []ListResult
 	var count int
@@ -203,7 +203,6 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		}
 		return nil
 	}
-	fmt.Println(delimiter)
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
 	if err != nil {
 		errMsg := fmt.Errorf("error processing objects: %s", err.Error())
