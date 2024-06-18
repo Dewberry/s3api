@@ -84,8 +84,8 @@ func main() {
 		AllowOrigins:     []string{"*"},
 	}))
 
-	e.GET("/ping_with_auth", auth.Authorize(bh.PingWithAuth, allUsers...))
-	e.GET("/ping", bh.Ping)
+	e.GET("/ping_with_auth", auth.Authorize(bh.HandlePingWithAuth, allUsers...))
+	e.GET("/ping", bh.HandlePing)
 
 	// object content
 	e.GET("/object/metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
@@ -102,23 +102,22 @@ func main() {
 	// prefix
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefixWithDetail, allUsers...))
-	// e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	e.GET("/prefix/download/script", auth.Authorize(bh.HandleGenerateDownloadScript, allUsers...))
 	e.PUT("/prefix/move", auth.Authorize(bh.HandleMovePrefix, admin...))
 	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeletePrefix, admin...))
 	e.GET("/prefix/size", auth.Authorize(bh.HandleGetSize, allUsers...))
-
 	// universal
 	e.DELETE("/delete_keys", auth.Authorize(bh.HandleDeleteObjectsByList, admin...))
-
 	// multi-bucket
 	e.GET("/list_buckets", auth.Authorize(bh.HandleListBuckets, allUsers...))
+	//auth
+	e.GET("/check_user_permission", auth.Authorize(bh.HandleCheckS3UserPermission, writers...))
+
+	//deprecated endpoints (code can be found in /utils/deprecated.txt)
+	// e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	// multi-bucket -- not implemented
 	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writers...))
 	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writers...))
-
-	//auth
-	e.GET("/check_user_permission", auth.Authorize(bh.HandleCheckS3UserPermission, writers...))
 
 	// Start server
 	go func() {

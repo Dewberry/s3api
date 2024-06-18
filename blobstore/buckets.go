@@ -12,6 +12,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type BucketInfo struct {
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	CanRead bool   `json:"can_read"`
+}
+
 // listBuckets returns the list of all S3 buckets.
 func (s3Ctrl *S3Controller) ListBuckets() (*s3.ListBucketsOutput, error) {
 	// Set up input parameters for the ListBuckets API
@@ -28,59 +34,6 @@ func (s3Ctrl *S3Controller) ListBuckets() (*s3.ListBucketsOutput, error) {
 	return result, nil
 }
 
-// func (bh *BlobHandler) createBucket(bucketName string) error {
-// 	// Set up input parameters for the CreateBucket API
-// 	input := &s3.CreateBucketInput{
-// 		Bucket: aws.String(bucketName),
-// 	}
-
-// 	// Create the bucket
-// 	_, err := bh.S3Svc.CreateBucket(input)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
-
-// // deleteBucket deletes the specified S3 bucket.
-// func (bh *BlobHandler) deleteBucket(bucketName string) error {
-// 	// Set up input parameters for the DeleteBucket API
-// 	input := &s3.DeleteBucketInput{
-// 		Bucket: aws.String(bucketName),
-// 	}
-
-// 	// Delete the bucket
-// 	_, err := bh.S3Svc.DeleteBucket(input)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
-
-// // getBucketACL retrieves the ACL (Access Control List) for the specified bucket.
-// func (bh *BlobHandler) getBucketACL(bucketName string) (*s3.GetBucketAclOutput, error) {
-// 	// Set up input parameters for the GetBucketAcl API
-// 	input := &s3.GetBucketAclInput{
-// 		Bucket: aws.String(bucketName),
-// 	}
-
-// 	// Get the bucket ACL
-// 	result, err := bh.S3Svc.GetBucketAcl(input)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-//		return result, nil
-//	}
-
-type BucketInfo struct {
-	ID      int    `json:"id"`
-	Name    string `json:"name"`
-	CanRead bool   `json:"can_read"`
-}
-
 func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 	var allBuckets []BucketInfo
 
@@ -88,7 +41,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 	defer bh.Mu.Unlock()
 
 	// Check user's overall read access level
-	_, fullAccess, err := bh.GetUserS3ReadListPermission(c, "")
+	_, fullAccess, err := bh.getUserS3ReadListPermission(c, "")
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, fmt.Errorf("error fetching user permissions: %s", err.Error()))
 	}
@@ -114,7 +67,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 		for i, bucket := range controller.Buckets {
 			canRead := fullAccess
 			if !fullAccess {
-				permissions, _, err := bh.GetUserS3ReadListPermission(c, bucket)
+				permissions, _, err := bh.getUserS3ReadListPermission(c, bucket)
 				if err != nil {
 					return c.JSON(http.StatusInternalServerError, fmt.Errorf("error fetching user permissions: %s", err.Error()))
 				}
@@ -140,78 +93,3 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, allBuckets)
 }
-
-// func (bh *BlobHandler) HandleCreateBucket(c echo.Context) error {
-// 	bucketName := c.QueryParam("name")
-
-// 	if bucketName == "" {
-// 		err := fmt.Errorf("request must include a `name` parameter")
-// 		log.Info("HandleCreateBucket: " + err.Error())
-// 		return c.JSON(http.StatusBadRequest, err.Error())
-// 	}
-
-// 	// Check if the bucket already exists
-// 	buckets, err := bh.listBuckets()
-// 	if err != nil {
-// 		log.Info("HandleCreateBucket: Error listing buckets:", err.Error())
-// 		return c.JSON(http.StatusInternalServerError, err.Error())
-// 	}
-
-// 	for _, b := range buckets.Buckets {
-// 		if aws.StringValue(b.Name) == bucketName {
-// 			err := fmt.Errorf("bucket with the name `%s` already exists", bucketName)
-// 			log.Info("HandleCreateBucket: " + err.Error())
-// 			return c.JSON(http.StatusConflict, err.Error())
-// 		}
-// 	}
-
-// 	// Create the S3 bucket
-// 	err = bh.createBucket(bucketName)
-// 	if err != nil {
-// 		log.Info("HandleCreateBucket: Error creating bucket:", err.Error())
-// 		return c.JSON(http.StatusInternalServerError, err.Error())
-// 	}
-
-// 	log.Info("HandleCreateBucket: Successfully created bucket:", bucketName)
-// 	return c.JSON(http.StatusOK, "Bucket created successfully")
-// }
-
-// func (bh *BlobHandler) HandleDeleteBucket(c echo.Context) error {
-// 	bucketName := c.QueryParam("name")
-
-// 	if bucketName == "" {
-// 		err := fmt.Errorf("request must include a `name` parameter")
-// 		log.Info("HandleDeleteBucket: " + err.Error())
-// 		return c.JSON(http.StatusBadRequest, err.Error())
-// 	}
-
-// 	// Delete the S3 bucket
-// 	err := bh.deleteBucket(bucketName)
-// 	if err != nil {
-// 		log.Info("HandleDeleteBucket: Error deleting bucket:", err.Error())
-// 		return c.JSON(http.StatusInternalServerError, err.Error())
-// 	}
-
-// 	log.Info("HandleDeleteBucket: Successfully deleted bucket:", bucketName)
-// 	return c.JSON(http.StatusOK, "Bucket deleted successfully")
-// }
-
-// func (bh *BlobHandler) HandleGetBucketACL(c echo.Context) error {
-// 	bucketName := c.QueryParam("name")
-
-// 	if bucketName == "" {
-// 		err := fmt.Errorf("request must include a `name` parameter")
-// 		log.Info("HandleGetBucketACL: " + err.Error())
-// 		return c.JSON(http.StatusBadRequest, err.Error())
-// 	}
-
-// 	// Get the bucket ACL
-// 	acl, err := bh.getBucketACL(bucketName)
-// 	if err != nil {
-// 		log.Info("HandleGetBucketACL: Error getting bucket ACL:", err.Error())
-// 		return c.JSON(http.StatusInternalServerError, err.Error())
-// 	}
-
-// 	log.Info("HandleGetBucketACL: Successfully retrieved ACL for bucket:", bucketName)
-// 	return c.JSON(http.StatusOK, acl)
-// }

@@ -2,19 +2,15 @@ package blobstore
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/Dewberry/s3api/auth"
 	"github.com/Dewberry/s3api/configberry"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -81,22 +77,22 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		log.Info("Using MinIO")
 
 		// Load MinIO credentials from environment
-		creds := newMinioConfig()
+		mc := newMinioConfig()
 
 		// Validate MinIO credentials, check if they are missing or incomplete
 		// if not then the s3api won't start
-		if err := creds.validateMinioConfig(); err != nil {
+		if err := mc.validateMinioConfig(); err != nil {
 			return &config, err
 		}
 
 		// Create a MinIO session and S3 client
-		s3SVC, sess, err := minIOSessionManager(creds)
+		s3SVC, sess, err := mc.minIOSessionManager()
 		if err != nil {
 			return &config, err
 		}
 
 		// Configure the BlobHandler with MinIO session and bucket information
-		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{creds.Bucket}, S3Mock: true}}
+		config.S3Controllers = []S3Controller{{Sess: sess, S3Svc: s3SVC, Buckets: []string{mc.Bucket}, S3Mock: true}}
 		// Return the configured BlobHandler
 		return &config, nil
 	}
@@ -122,9 +118,9 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	}
 
 	// Load AWS credentials for multiple accounts from .env.json
-	for _, creds := range awsConfig.Accounts {
+	for _, ac := range awsConfig.Accounts {
 		// Create an AWS session and S3 client for each account
-		s3SVC, sess, err := aWSSessionManager(creds)
+		s3SVC, sess, err := ac.aWSSessionManager()
 		if err != nil {
 			errMsg := fmt.Errorf("failed to create AWS session: %s", err.Error())
 			log.Error(errMsg.Error())
@@ -135,7 +131,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		// Retrieve the list of buckets for each account
 		result, err := S3Ctrl.ListBuckets()
 		if err != nil {
-			errMsg := fmt.Errorf("failed to retrieve list of buckets with access key: %s, error: %s", creds.AWS_ACCESS_KEY_ID, err.Error())
+			errMsg := fmt.Errorf("failed to retrieve list of buckets with access key: %s, error: %s", ac.AWS_ACCESS_KEY_ID, err.Error())
 			return &config, errMsg
 		}
 
@@ -174,50 +170,21 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	return &config, nil
 }
 
-func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
-	log.Info("Using AWS S3")
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("us-east-1"),
-		Credentials: credentials.NewStaticCredentials(creds.AWS_ACCESS_KEY_ID, creds.AWS_SECRET_ACCESS_KEY, ""),
+func (s3Ctrl *S3Controller) getBucketRegion(bucketName string) (string, error) {
+	req, output := s3Ctrl.S3Svc.GetBucketLocationRequest(&s3.GetBucketLocationInput{
+		Bucket: aws.String(bucketName),
 	})
-	if err != nil {
-		return nil, nil, err
-	}
-	return s3.New(sess), sess, nil
-}
 
-func minIOSessionManager(mc MinioConfig) (*s3.S3, *session.Session, error) {
-	sess, err := session.NewSession(&aws.Config{
-		Endpoint:         aws.String(mc.S3Endpoint),
-		Region:           aws.String("us-east-1"),
-		Credentials:      credentials.NewStaticCredentials(mc.AccessKeyID, mc.SecretAccessKey, ""),
-		S3ForcePathStyle: aws.Bool(true),
-	})
+	err := req.Send()
 	if err != nil {
-		return nil, nil, err
-	}
-	log.Info("Using minio to mock s3")
-
-	// Check if the bucket exists
-	s3SVC := s3.New(sess)
-	_, err = s3SVC.HeadBucket(&s3.HeadBucketInput{
-		Bucket: aws.String(mc.Bucket),
-	})
-	if err != nil {
-		// Bucket does not exist, create it
-		_, err := s3SVC.CreateBucket(&s3.CreateBucketInput{
-			Bucket: aws.String(mc.Bucket),
-		})
-		if err != nil {
-			log.Errorf("Error creating bucket: %s", err.Error())
-			return nil, nil, nil
-		}
-		log.Info("Bucket created successfully")
-	} else {
-		log.Info("Bucket already exists")
+		return "", err
 	}
 
-	return s3SVC, sess, nil
+	if output.LocationConstraint == nil {
+		return "us-east-1", nil
+	}
+
+	return *output.LocationConstraint, nil
 }
 
 func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
@@ -232,7 +199,7 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 				s3Ctrl = bh.S3Controllers[i]
 
 				// Detect the bucket's region
-				region, err := getBucketRegion(bh.S3Controllers[i].S3Svc, b)
+				region, err := s3Ctrl.getBucketRegion(b)
 				if err != nil {
 					log.Errorf("Failed to get region for bucket '%s': %s", b, err.Error())
 					continue
@@ -263,37 +230,4 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 	}
 	errMsg := fmt.Errorf("bucket '%s' not found", bucket)
 	return &s3Ctrl, errMsg
-}
-
-func getBucketRegion(S3Svc *s3.S3, bucketName string) (string, error) {
-	req, output := S3Svc.GetBucketLocationRequest(&s3.GetBucketLocationInput{
-		Bucket: aws.String(bucketName),
-	})
-
-	err := req.Send()
-	if err != nil {
-		return "", err
-	}
-
-	if output.LocationConstraint == nil {
-		return "us-east-1", nil
-	}
-
-	return *output.LocationConstraint, nil
-}
-
-func (bh *BlobHandler) GetS3ReadPermissions(c echo.Context, bucket string) ([]string, bool, int, error) {
-	permissions, fullAccess, err := bh.GetUserS3ReadListPermission(c, bucket)
-	if err != nil {
-		//TEMP solution before error library is implimented and string check ups become redundant
-		httpStatus := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "this endpoint requires authentication information that is unavailable when authorization is disabled.") {
-			httpStatus = http.StatusForbidden
-		}
-		return nil, false, httpStatus, fmt.Errorf("error fetching user permissions: %s", err.Error())
-	}
-	if !fullAccess && len(permissions) == 0 {
-		return nil, false, http.StatusForbidden, fmt.Errorf("user does not have permission to read the %s bucket", bucket)
-	}
-	return permissions, fullAccess, http.StatusOK, nil
 }

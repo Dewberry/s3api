@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (bh *BlobHandler) GetSize(page *s3.ListObjectsV2Output, totalSize *uint64, fileCount *uint64) error {
+func GetListSize(page *s3.ListObjectsV2Output, totalSize *uint64, fileCount *uint64) error {
 	if page == nil {
 		return fmt.Errorf("input page is nil")
 	}
@@ -43,12 +43,12 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
+	permissions, fullAccess, statusCode, err := bh.getS3ReadPermissions(c, bucket)
 	if err != nil {
 		log.Error(err.Error())
 		return c.JSON(statusCode, err.Error())
 	}
-	if !fullAccess && !IsPermittedPrefix(bucket, prefix, permissions) {
+	if !fullAccess && !isPermittedPrefix(bucket, prefix, permissions) {
 		errMsg := fmt.Errorf("user does not have permission to read the %s prefix", prefix)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
@@ -70,7 +70,7 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	var totalSize uint64
 	var fileCount uint64
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, false, func(page *s3.ListObjectsV2Output) error {
-		return bh.GetSize(page, &totalSize, &fileCount)
+		return GetListSize(page, &totalSize, &fileCount)
 	})
 
 	if err != nil {
@@ -112,13 +112,13 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
-	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
+	permissions, fullAccess, statusCode, err := bh.getS3ReadPermissions(c, bucket)
 	if err != nil {
 		log.Error(err.Error())
 		return c.JSON(statusCode, err.Error())
 	}
 
-	if !fullAccess && !IsPermittedPrefix(bucket, key, permissions) {
+	if !fullAccess && !isPermittedPrefix(bucket, key, permissions) {
 		errMsg := fmt.Errorf("user does not have permission to read the %s key", key)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
@@ -155,13 +155,13 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
-	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
+	permissions, fullAccess, statusCode, err := bh.getS3ReadPermissions(c, bucket)
 	if err != nil {
 		log.Error(err.Error())
 		return c.JSON(statusCode, err.Error())
 	}
 
-	if !fullAccess && !IsPermittedPrefix(bucket, key, permissions) {
+	if !fullAccess && !isPermittedPrefix(bucket, key, permissions) {
 		errMsg := fmt.Errorf("user does not have permission to read the %s key", key)
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
@@ -190,4 +190,24 @@ func (s3Ctrl *S3Controller) GetMetaData(bucket, key string) (*s3.HeadObjectOutpu
 	}
 
 	return result, nil
+}
+
+func (s3Ctrl *S3Controller) KeyExists(bucket string, key string) (bool, error) {
+
+	_, err := s3Ctrl.S3Svc.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case "NotFound": // s3.ErrCodeNoSuchKey does not work, aws is missing this error code so we hardwire a string
+				return false, nil
+			default:
+				return false, fmt.Errorf("KeyExists: %s", err)
+			}
+		}
+		return false, fmt.Errorf("KeyExists: %s", err)
+	}
+	return true, nil
 }

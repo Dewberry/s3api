@@ -1,57 +1,14 @@
 package blobstore
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 
-	"github.com/Dewberry/s3api/auth"
-	"github.com/Dewberry/s3api/utils"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/labstack/echo/v4"
+	log "github.com/sirupsen/logrus"
 )
-
-func (s3Ctrl *S3Controller) KeyExists(bucket string, key string) (bool, error) {
-
-	_, err := s3Ctrl.S3Svc.HeadObject(&s3.HeadObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case "NotFound": // s3.ErrCodeNoSuchKey does not work, aws is missing this error code so we hardwire a string
-				return false, nil
-			default:
-				return false, fmt.Errorf("KeyExists: %s", err)
-			}
-		}
-		return false, fmt.Errorf("KeyExists: %s", err)
-	}
-	return true, nil
-}
-
-// function that will get the most recently uploaded file in a prefix
-// func (s3Ctrl *S3Controller) getMostRecentModTime(bucket, prefix string, permissions []string, fullAccess bool) (time.Time, error) {
-// 	// Initialize a time variable to store the most recent modification time
-// 	var mostRecent time.Time
-
-// 	// Call GetList to retrieve the list of objects with the specified prefix
-// 	response, err := s3Ctrl.GetList(bucket, prefix, false)
-// 	if err != nil {
-// 		return time.Time{}, err
-// 	}
-// 	// Iterate over the returned objects to find the most recent modification time
-// 	for _, item := range response.Contents {
-// 		if item.LastModified != nil && item.LastModified.After(mostRecent) {
-// 			mostRecent = *item.LastModified
-// 		}
-// 	}
-// 	return mostRecent, nil
-// }
 
 func arrayContains(a string, arr []string) bool {
 	for _, b := range arr {
@@ -82,70 +39,130 @@ func isIdenticalArray(array1, array2 []string) bool {
 	return true
 }
 
-func (bh *BlobHandler) CheckUserS3Permission(c echo.Context, bucket, prefix string, permissions []string) (int, error) {
-	if bh.Config.AuthLevel > 0 {
-		initAuth := os.Getenv("INIT_AUTH")
-		if initAuth == "0" {
-			errMsg := fmt.Errorf("this requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality")
-			return http.StatusForbidden, errMsg
-		}
-		claims, ok := c.Get("claims").(*auth.Claims)
-		if !ok {
-			return http.StatusInternalServerError, fmt.Errorf("could not get claims from request context")
-		}
-		roles := claims.RealmAccess["roles"]
-		ue := claims.Email
+// isPermittedPrefix checks if the prefix is within the user's permissions.
+func isPermittedPrefix(bucket, prefix string, permissions []string) bool {
+	prefixForChecking := fmt.Sprintf("/%s/%s", bucket, prefix)
 
-		// Check for required roles
-		isLimitedWriter := utils.StringInSlice(bh.Config.LimitedWriterRoleName, roles)
-		// Ensure the prefix ends with a slash
-		if !strings.HasSuffix(prefix, "/") {
-			prefix += "/"
+	// Check if any of the permissions indicate the prefixForChecking is a parent directory
+	for _, perm := range permissions {
+		// Add a trailing slash to permission if it represents a directory
+		if !strings.HasSuffix(perm, "/") {
+			perm += "/"
 		}
+		// Split the paths into components
+		prefixComponents := strings.Split(prefixForChecking, "/")
+		permComponents := strings.Split(perm, "/")
 
-		// We assume if someone is limited_writer, they should never be admin or super_writer
-		if isLimitedWriter {
-			if !bh.DB.CheckUserPermission(ue, bucket, prefix, permissions) {
-				return http.StatusForbidden, fmt.Errorf("forbidden")
+		// Compare each component
+		match := true
+		for i := 1; i < len(prefixComponents) && i < len(permComponents); i++ {
+			if permComponents[i] == "" || prefixComponents[i] == "" {
+				break
+			}
+			if prefixComponents[i] != permComponents[i] {
+				match = false
+				break
 			}
 		}
+
+		// If all components match up to the length of the permission path,
+		// and the permission path has no additional components, return true
+		if match {
+			return true
+		}
 	}
-	return 0, nil
+	return false
 }
 
-func (bh *BlobHandler) GetUserS3ReadListPermission(c echo.Context, bucket string) ([]string, bool, error) {
-	permissions := make([]string, 0)
-
-	if bh.Config.AuthLevel > 0 {
-		initAuth := os.Getenv("INIT_AUTH")
-		if initAuth == "0" {
-			errMsg := fmt.Errorf("this endpoint requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality")
-			return permissions, false, errMsg
-		}
-		fullAccess := false
-		claims, ok := c.Get("claims").(*auth.Claims)
-		if !ok {
-			return permissions, fullAccess, fmt.Errorf("could not get claims from request context")
-		}
-		roles := claims.RealmAccess["roles"]
-
-		// Check if user has the limited reader role
-		isLimitedReader := utils.StringInSlice(bh.Config.LimitedReaderRoleName, roles)
-
-		// If user is not a limited reader, assume they have full read access
-		if !isLimitedReader {
-			fullAccess = true // Indicating full access
-			return permissions, fullAccess, nil
-		}
-
-		// If user is a limited reader, fetch specific permissions
-		ue := claims.Email
-		permissions, err := bh.DB.GetUserAccessiblePrefixes(ue, bucket, []string{"read", "write"})
+// checkAndAdjustPrefix checks if the prefix is an object and adjusts the prefix accordingly.
+// Returns the adjusted prefix, an error message (if any), and the HTTP status code.
+func checkAndAdjustPrefix(s3Ctrl *S3Controller, bucket, prefix string) (string, string, int) {
+	// As of 6/12/24, unsure why ./ is included here, may be needed for an edge case, but could also cause problems
+	if prefix != "" && prefix != "./" && prefix != "/" {
+		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 		if err != nil {
-			return permissions, fullAccess, err
+			return "", fmt.Sprintf("error checking if object exists: %s", err.Error()), http.StatusInternalServerError
 		}
-		return permissions, fullAccess, nil
+		if isObject {
+			objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
+			if err != nil {
+				return "", fmt.Sprintf("error checking for object's metadata: %s", err.Error()), http.StatusInternalServerError
+			}
+			// This is because AWS considers empty prefixes with a .keep as an object, so we ignore and log
+			if *objMeta.ContentLength == 0 {
+				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
+			} else {
+				return "", fmt.Sprintf("`%s` is an object, not a prefix. Please see options for keys or pass a prefix", prefix), http.StatusTeapot
+			}
+		}
+		prefix = strings.Trim(prefix, "/") + "/"
+	}
+	return prefix, "", http.StatusOK
+}
+
+func validateEnvJSON(filePath string) error {
+	// Read the contents of the .env.json file
+	jsonData, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("error reading .env.json: %s", err.Error())
 	}
 
-	return permissions, true, nil
+	// Parse the JSON data into the AWSConfig struct
+	var awsConfig AWSConfig
+	if err := json.Unmarshal(jsonData, &awsConfig); err != nil {
+		return fmt.Errorf("error parsing .env.json: %s", err.Error())
+	}
+
+	// Check if there is at least one account defined
+	if len(awsConfig.Accounts) == 0 {
+		return fmt.Errorf("no AWS accounts defined in .env.json")
+	}
+
+	// Check if each account has the required fields
+	for i, account := range awsConfig.Accounts {
+		missingFields := []string{}
+		if account.AWS_ACCESS_KEY_ID == "" {
+			missingFields = append(missingFields, "AWS_ACCESS_KEY_ID")
+		}
+		if account.AWS_SECRET_ACCESS_KEY == "" {
+			missingFields = append(missingFields, "AWS_SECRET_ACCESS_KEY")
+		}
+
+		if len(missingFields) > 0 {
+			return fmt.Errorf("missing fields (%s) for AWS account %d in envJson file", strings.Join(missingFields, ", "), i+1)
+		}
+	}
+	if len(awsConfig.BucketAllowList) == 0 {
+		return fmt.Errorf("no buckets in the `bucket_allow_list`, please provide required buckets, or `*` for access to all buckets")
+	}
+	// If all checks pass, return nil (no error)
+	return nil
+}
+
+func newAWSConfig(envJson string) (AWSConfig, error) {
+	var awsConfig AWSConfig
+	err := validateEnvJSON(envJson)
+	if err != nil {
+		return awsConfig, fmt.Errorf(err.Error())
+	}
+	jsonData, err := os.ReadFile(envJson)
+	if err != nil {
+		return awsConfig, err
+	}
+
+	if err := json.Unmarshal(jsonData, &awsConfig); err != nil {
+		return awsConfig, err
+	}
+	return awsConfig, nil
+}
+
+func newMinioConfig() MinioConfig {
+	var mc MinioConfig
+	mc.S3Endpoint = os.Getenv("MINIO_S3_ENDPOINT")
+	mc.DisableSSL = os.Getenv("MINIO_S3_DISABLE_SSL")
+	mc.ForcePathStyle = os.Getenv("MINIO_S3_FORCE_PATH_STYLE")
+	mc.AccessKeyID = os.Getenv("MINIO_ACCESS_KEY_ID")
+	mc.Bucket = os.Getenv("AWS_S3_BUCKET")
+	mc.SecretAccessKey = os.Getenv("MINIO_SECRET_ACCESS_KEY")
+	return mc
 }

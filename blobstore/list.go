@@ -27,32 +27,6 @@ type ListResult struct {
 	ModifiedBy string    `json:"modified_by"`
 }
 
-// CheckAndAdjustPrefix checks if the prefix is an object and adjusts the prefix accordingly.
-// Returns the adjusted prefix, an error message (if any), and the HTTP status code.
-func CheckAndAdjustPrefix(s3Ctrl *S3Controller, bucket, prefix string) (string, string, int) {
-	// As of 6/12/24, unsure why ./ is included here, may be needed for an edge case, but could also cause problems
-	if prefix != "" && prefix != "./" && prefix != "/" {
-		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
-		if err != nil {
-			return "", fmt.Sprintf("error checking if object exists: %s", err.Error()), http.StatusInternalServerError
-		}
-		if isObject {
-			objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
-			if err != nil {
-				return "", fmt.Sprintf("error checking for object's metadata: %s", err.Error()), http.StatusInternalServerError
-			}
-			// This is because AWS considers empty prefixes with a .keep as an object, so we ignore and log
-			if *objMeta.ContentLength == 0 {
-				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
-			} else {
-				return "", fmt.Sprintf("`%s` is an object, not a prefix. Please see options for keys or pass a prefix", prefix), http.StatusTeapot
-			}
-		}
-		prefix = strings.Trim(prefix, "/") + "/"
-	}
-	return prefix, "", http.StatusOK
-}
-
 // HandleListByPrefix handles the API endpoint for listing objects by prefix in an S3 bucket.
 func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
@@ -65,7 +39,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
-	adjustedPrefix, errMsg, statusCode := CheckAndAdjustPrefix(s3Ctrl, bucket, prefix)
+	adjustedPrefix, errMsg, statusCode := checkAndAdjustPrefix(s3Ctrl, bucket, prefix)
 	if errMsg != "" {
 		log.Error(errMsg)
 		return c.JSON(statusCode, errMsg)
@@ -89,7 +63,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	}
 
 	var result []string
-	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
+	permissions, fullAccess, statusCode, err := bh.getS3ReadPermissions(c, bucket)
 	if err != nil {
 		log.Error(err.Error())
 		return c.JSON(statusCode, err.Error())
@@ -97,14 +71,14 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	processPage := func(page *s3.ListObjectsV2Output) error {
 		for _, cp := range page.CommonPrefixes {
 			// Handle directories (common prefixes)
-			if fullAccess || IsPermittedPrefix(bucket, *cp.Prefix, permissions) {
+			if fullAccess || isPermittedPrefix(bucket, *cp.Prefix, permissions) {
 				result = append(result, aws.StringValue(cp.Prefix))
 
 			}
 		}
 		for _, object := range page.Contents {
 			// Handle files
-			if fullAccess || IsPermittedPrefix(bucket, *object.Key, permissions) {
+			if fullAccess || isPermittedPrefix(bucket, *object.Key, permissions) {
 				result = append(result, aws.StringValue(object.Key))
 			}
 
@@ -134,7 +108,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
-	adjustedPrefix, errMsg, statusCode := CheckAndAdjustPrefix(s3Ctrl, bucket, prefix)
+	adjustedPrefix, errMsg, statusCode := checkAndAdjustPrefix(s3Ctrl, bucket, prefix)
 	if errMsg != "" {
 		log.Error(errMsg)
 		return c.JSON(statusCode, errMsg)
@@ -159,7 +133,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 	var results []ListResult
 	var count int
-	permissions, fullAccess, statusCode, err := bh.GetS3ReadPermissions(c, bucket)
+	permissions, fullAccess, statusCode, err := bh.getS3ReadPermissions(c, bucket)
 	if err != nil {
 		log.Error(err.Error())
 		return c.JSON(statusCode, err.Error())
@@ -167,7 +141,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	processPage := func(page *s3.ListObjectsV2Output) error {
 		for _, cp := range page.CommonPrefixes {
 			// Handle directories (common prefixes)
-			if fullAccess || IsPermittedPrefix(bucket, *cp.Prefix, permissions) {
+			if fullAccess || isPermittedPrefix(bucket, *cp.Prefix, permissions) {
 				dir := ListResult{
 					ID:         count,
 					Name:       filepath.Base(*cp.Prefix),
@@ -185,7 +159,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 		for _, object := range page.Contents {
 			// Handle files
-			if fullAccess || IsPermittedPrefix(bucket, *object.Key, permissions) {
+			if fullAccess || isPermittedPrefix(bucket, *object.Key, permissions) {
 				file := ListResult{
 					ID:         count,
 					Name:       filepath.Base(*object.Key),
@@ -278,39 +252,4 @@ func (s3Ctrl *S3Controller) GetListWithCallBack(bucket, prefix string, delimiter
 		return lastError // Return the last error encountered in the processPage function
 	}
 	return err // Return any errors encountered in the pagination process
-}
-
-// IsPermittedPrefix checks if the prefix is within the user's permissions.
-func IsPermittedPrefix(bucket, prefix string, permissions []string) bool {
-	prefixForChecking := fmt.Sprintf("/%s/%s", bucket, prefix)
-
-	// Check if any of the permissions indicate the prefixForChecking is a parent directory
-	for _, perm := range permissions {
-		// Add a trailing slash to permission if it represents a directory
-		if !strings.HasSuffix(perm, "/") {
-			perm += "/"
-		}
-		// Split the paths into components
-		prefixComponents := strings.Split(prefixForChecking, "/")
-		permComponents := strings.Split(perm, "/")
-
-		// Compare each component
-		match := true
-		for i := 1; i < len(prefixComponents) && i < len(permComponents); i++ {
-			if permComponents[i] == "" || prefixComponents[i] == "" {
-				break
-			}
-			if prefixComponents[i] != permComponents[i] {
-				match = false
-				break
-			}
-		}
-
-		// If all components match up to the length of the permission path,
-		// and the permission path has no additional components, return true
-		if match {
-			return true
-		}
-	}
-	return false
 }
