@@ -12,12 +12,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	log "github.com/sirupsen/logrus"
 )
 
 type S3Controller struct {
 	Sess    *session.Session
-	S3Svc   *s3.S3
+	S3Svc   s3iface.S3API
 	Buckets []string
 	S3Mock  bool
 }
