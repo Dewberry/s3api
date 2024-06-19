@@ -1,6 +1,7 @@
 package blobstore
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -69,12 +70,12 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	}
 	s3Mock, err := strconv.Atoi(s3MockStr)
 	if err != nil {
-		errMsg := fmt.Errorf("could not convert S3_MOCK env variable to integer: %v", err)
+		errMsg := fmt.Errorf("could not convert `S3_MOCK` env variable to integer: %v", err)
 		return &config, errMsg
 	}
 	// Check if the S3_MOCK environment variable is set to "true"
 	if s3Mock == 1 {
-		log.Info("Using MinIO")
+		log.Info("using MinIO")
 
 		// Load MinIO credentials from environment
 		mc := newMinioConfig()
@@ -99,12 +100,12 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 
 	// Using AWS S3
 	// Load AWS credentials from the provided .env.json file
-	log.Debug("looking for .env.json")
+	log.Debug("looking for `.env.json`")
 	awsConfig, err := newAWSConfig(envJson)
 
 	// Check if loading AWS credentials from .env.json failed
 	if err != nil {
-		errMsg := fmt.Errorf("env.json credentials extraction failed, please check `.env.json.example` for reference on formatting, %s", err.Error())
+		errMsg := fmt.Errorf("`env.json` credentials extraction failed, please check `.env.json.example` for reference on formatting, %s", err.Error())
 		return &config, errMsg
 	}
 
@@ -123,7 +124,6 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		s3SVC, sess, err := ac.aWSSessionManager()
 		if err != nil {
 			errMsg := fmt.Errorf("failed to create AWS session: %s", err.Error())
-			log.Error(errMsg.Error())
 			return &config, errMsg
 		}
 
@@ -162,7 +162,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		for bucket := range allowedBucketsMap {
 			missingBuckets = append(missingBuckets, bucket)
 		}
-		errMsg := fmt.Errorf("some buckets in the allow list were not found: %v", missingBuckets)
+		errMsg := fmt.Errorf("some buckets in the `bucket_allow_list` were not found: %v", missingBuckets)
 		return &config, errMsg
 	}
 
@@ -189,7 +189,7 @@ func (s3Ctrl *S3Controller) getBucketRegion(bucketName string) (string, error) {
 
 func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 	if bucket == "" {
-		err := fmt.Errorf("parameter `bucket` is required")
+		err := errors.New("parameter `bucket` is required")
 		return nil, err
 	}
 	var s3Ctrl S3Controller
@@ -207,7 +207,7 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 				// Check if the region is the same. If not, update the session and client
 				currentRegion := *s3Ctrl.Sess.Config.Region
 				if currentRegion != region {
-					log.Debugf("current region: %s region of bucket: %s, attempting to create a new controller", currentRegion, region)
+					log.Debugf("current region: %s, region of bucket: %s, attempting to create a new controller", currentRegion, region)
 
 					newSession, err := session.NewSession(&aws.Config{
 						Region:      aws.String(region),
@@ -228,6 +228,6 @@ func (bh *BlobHandler) GetController(bucket string) (*S3Controller, error) {
 			}
 		}
 	}
-	errMsg := fmt.Errorf("bucket '%s' not found", bucket)
+	errMsg := fmt.Errorf("`bucket` '%s' not found", bucket)
 	return &s3Ctrl, errMsg
 }

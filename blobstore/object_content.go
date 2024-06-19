@@ -3,9 +3,8 @@ package blobstore
 import (
 	"fmt"
 	"io"
-	"net/http"
-	"strings"
 
+	"github.com/Dewberry/s3api/configberry"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
@@ -35,44 +34,44 @@ func (s3Ctrl *S3Controller) FetchObjectContent(bucket string, key string) (io.Re
 func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		errMsg := fmt.Errorf("parameter 'key' is required")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `key` is required", nil)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
 	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
 	}
-	permissions, fullAccess, statusCode, err := bh.getS3ReadPermissions(c, bucket)
-	if err != nil {
-		log.Error(err.Error())
-		return c.JSON(statusCode, err.Error())
+
+	permissions, fullAccess, appErr := bh.getS3ReadPermissions(c, bucket)
+	if appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
 	}
 
 	if !fullAccess && !isPermittedPrefix(bucket, key, permissions) {
-		errMsg := fmt.Errorf("user does not have permission to read the %s key", key)
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusForbidden, errMsg.Error())
+		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the %s key", key), err)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
 	}
+
 	outPutBody, err := s3Ctrl.FetchObjectContent(bucket, key)
 	if err != nil {
-		errMsg := fmt.Errorf("error fetching object's content: %s", err.Error())
-		log.Error(errMsg.Error())
-		if strings.Contains(err.Error(), "not found") {
-			return c.JSON(http.StatusNotFound, errMsg.Error())
-		} else {
-			return c.JSON(http.StatusInternalServerError, errMsg.Error())
-		}
+		appErr := configberry.HandleAWSError(err, "error fetching object's content")
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
 	}
 	body, err := io.ReadAll(outPutBody)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		appErr := configberry.NewAppError(configberry.ForbiddenError, "error reading objects body", err)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
 	}
-	log.Info("HandleObjectContents: Successfully fetched object data for key:", key)
+	log.Info("Successfully fetched object data for key:", key)
 	//TODO: add contentType
-	return c.Blob(http.StatusOK, "", body)
+	return configberry.HandleSuccessfulResponse(c, body)
 }

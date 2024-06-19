@@ -2,11 +2,11 @@ package blobstore
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 
 	"github.com/Dewberry/s3api/auth"
+	"github.com/Dewberry/s3api/configberry"
 	"github.com/Dewberry/s3api/utils"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
@@ -14,35 +14,29 @@ import (
 
 //Utility Methods for Endpoint Handlers
 
-func (bh *BlobHandler) getS3ReadPermissions(c echo.Context, bucket string) ([]string, bool, int, error) {
-	permissions, fullAccess, err := bh.getUserS3ReadListPermission(c, bucket)
-	if err != nil {
-		//TEMP solution before error library is implimented and string check ups become redundant
-		httpStatus := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "this endpoint requires authentication information that is unavailable when authorization is disabled.") {
-			httpStatus = http.StatusForbidden
-		}
-		return nil, false, httpStatus, fmt.Errorf("error fetching user permissions: %s", err.Error())
+func (bh *BlobHandler) getS3ReadPermissions(c echo.Context, bucket string) ([]string, bool, *configberry.AppError) {
+	permissions, fullAccess, appError := bh.getUserS3ReadListPermission(c, bucket)
+	if appError != nil {
+		return nil, false, appError
 	}
 	if !fullAccess && len(permissions) == 0 {
-		return nil, false, http.StatusForbidden, fmt.Errorf("user does not have permission to read the %s bucket", bucket)
+		return nil, false, configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the %s bucket", bucket), nil)
 	}
-	return permissions, fullAccess, http.StatusOK, nil
+	return permissions, fullAccess, nil
 }
 
-func (bh *BlobHandler) getUserS3ReadListPermission(c echo.Context, bucket string) ([]string, bool, error) {
+func (bh *BlobHandler) getUserS3ReadListPermission(c echo.Context, bucket string) ([]string, bool, *configberry.AppError) {
 	permissions := make([]string, 0)
 
 	if bh.Config.AuthLevel > 0 {
 		initAuth := os.Getenv("INIT_AUTH")
 		if initAuth == "0" {
-			errMsg := fmt.Errorf("this endpoint requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality")
-			return permissions, false, errMsg
+			return permissions, false, configberry.NewAppError(configberry.ForbiddenError, "this endpoint requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality", nil)
 		}
 		fullAccess := false
 		claims, ok := c.Get("claims").(*auth.Claims)
 		if !ok {
-			return permissions, fullAccess, fmt.Errorf("could not get claims from request context")
+			return permissions, fullAccess, configberry.NewAppError(configberry.InternalServerError, "could not get claims from request context", nil)
 		}
 		roles := claims.RealmAccess["roles"]
 
@@ -59,7 +53,7 @@ func (bh *BlobHandler) getUserS3ReadListPermission(c echo.Context, bucket string
 		ue := claims.Email
 		permissions, err := bh.DB.GetUserAccessiblePrefixes(ue, bucket, []string{"read", "write"})
 		if err != nil {
-			return permissions, fullAccess, err
+			return permissions, fullAccess, configberry.HandleSQLError(err, "error getting common prefix that the user can read and write to")
 		}
 		return permissions, fullAccess, nil
 	}
@@ -67,16 +61,15 @@ func (bh *BlobHandler) getUserS3ReadListPermission(c echo.Context, bucket string
 	return permissions, true, nil
 }
 
-func (bh *BlobHandler) validateUserAccessToPrefix(c echo.Context, bucket, prefix string, permissions []string) (int, error) {
+func (bh *BlobHandler) validateUserAccessToPrefix(c echo.Context, bucket, prefix string, permissions []string) *configberry.AppError {
 	if bh.Config.AuthLevel > 0 {
 		initAuth := os.Getenv("INIT_AUTH")
 		if initAuth == "0" {
-			errMsg := fmt.Errorf("this requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality")
-			return http.StatusForbidden, errMsg
+			return configberry.NewAppError(configberry.ForbiddenError, "this endpoint requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality", nil)
 		}
 		claims, ok := c.Get("claims").(*auth.Claims)
 		if !ok {
-			return http.StatusInternalServerError, fmt.Errorf("could not get claims from request context")
+			return configberry.NewAppError(configberry.InternalServerError, "could not get claims from request context", nil)
 		}
 		roles := claims.RealmAccess["roles"]
 		ue := claims.Email
@@ -91,40 +84,43 @@ func (bh *BlobHandler) validateUserAccessToPrefix(c echo.Context, bucket, prefix
 		// We assume if someone is limited_writer, they should never be admin or super_writer
 		if isLimitedWriter {
 			if !bh.DB.CheckUserPermission(ue, bucket, prefix, permissions) {
-				return http.StatusForbidden, fmt.Errorf("forbidden")
+				return configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have %+q access to %s", permissions, prefix), nil)
 			}
 		}
 	}
-	return 0, nil
+	return nil
 }
 
 func (bh *BlobHandler) HandleCheckS3UserPermission(c echo.Context) error {
 	if bh.Config.AuthLevel == 0 {
 		log.Info("Checked user permissions successfully")
-		return c.JSON(http.StatusOK, true)
+		return configberry.HandleSuccessfulResponse(c, true)
 	}
 	initAuth := os.Getenv("INIT_AUTH")
 	if initAuth == "0" {
-		errMsg := fmt.Errorf("this endpoint requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusForbidden, errMsg.Error())
+		appErr := configberry.NewAppError(configberry.ForbiddenError, "this endpoint requires authentication information that is unavailable when authorization is disabled. Please enable authorization to use this functionality", nil)
+		log.Error(configberry.LogErrorFormatter(appErr, false))
+		return configberry.HandleErrorResponse(c, appErr)
 	}
-	prefix := c.QueryParam("prefix")
-	bucket := c.QueryParam("bucket")
-	operation := c.QueryParam("operation")
+
+	params := map[string]string{
+		"prefix":    c.QueryParam("prefix"),
+		"bucket":    c.QueryParam("bucket"),
+		"operation": c.QueryParam("operation"),
+	}
+	if appErr := configberry.CheckRequiredParams(params); appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, false))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
 	claims, ok := c.Get("claims").(*auth.Claims)
 	if !ok {
-		errMsg := fmt.Errorf("could not get claims from request context")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+		appErr := configberry.NewAppError(configberry.InternalServerError, "could not get claims from request context", nil)
+		log.Error(configberry.LogErrorFormatter(appErr, false))
+		return configberry.HandleErrorResponse(c, appErr)
 	}
 	userEmail := claims.Email
-	if operation == "" || prefix == "" || bucket == "" {
-		errMsg := fmt.Errorf("`prefix`,  `operation` and 'bucket are required params")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
-	isAllowed := bh.DB.CheckUserPermission(userEmail, bucket, prefix, []string{operation})
+
+	isAllowed := bh.DB.CheckUserPermission(userEmail, params["bucket"], params["prefix"], []string{params["operation"]})
 	log.Info("Checked user permissions successfully")
-	return c.JSON(http.StatusOK, isAllowed)
+	return configberry.HandleSuccessfulResponse(c, isAllowed)
 }

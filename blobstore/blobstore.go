@@ -2,11 +2,13 @@ package blobstore
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 
+	"github.com/Dewberry/s3api/configberry"
+	"github.com/aws/aws-sdk-go/service/s3"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -76,46 +78,48 @@ func isPermittedPrefix(bucket, prefix string, permissions []string) bool {
 
 // checkAndAdjustPrefix checks if the prefix is an object and adjusts the prefix accordingly.
 // Returns the adjusted prefix, an error message (if any), and the HTTP status code.
-func checkAndAdjustPrefix(s3Ctrl *S3Controller, bucket, prefix string) (string, string, int) {
+// Methods defined on `S3Ctrl` that return return a ConfigBerry `AppError`
+func (s3Ctrl *S3Controller) checkAndAdjustPrefix(bucket, prefix string) (string, *configberry.AppError) {
 	// As of 6/12/24, unsure why ./ is included here, may be needed for an edge case, but could also cause problems
 	if prefix != "" && prefix != "./" && prefix != "/" {
 		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 		if err != nil {
-			return "", fmt.Sprintf("error checking if object exists: %s", err.Error()), http.StatusInternalServerError
+			fmt.Println(err)
+			return "", configberry.HandleAWSError(err, "error checking if object exists")
 		}
 		if isObject {
 			objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
 			if err != nil {
-				return "", fmt.Sprintf("error checking for object's metadata: %s", err.Error()), http.StatusInternalServerError
+				return "", configberry.HandleAWSError(err, "error checking for object's metadata")
 			}
 			// This is because AWS considers empty prefixes with a .keep as an object, so we ignore and log
 			if *objMeta.ContentLength == 0 {
 				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
 			} else {
-				return "", fmt.Sprintf("`%s` is an object, not a prefix. Please see options for keys or pass a prefix", prefix), http.StatusTeapot
+				return "", configberry.NewAppError(configberry.TeapotError, fmt.Sprintf("`%s` is an object, not a prefix", prefix), nil)
 			}
 		}
 		prefix = strings.Trim(prefix, "/") + "/"
 	}
-	return prefix, "", http.StatusOK
+	return prefix, nil
 }
 
 func validateEnvJSON(filePath string) error {
 	// Read the contents of the .env.json file
 	jsonData, err := os.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("error reading .env.json: %s", err.Error())
+		return fmt.Errorf("error reading `.env.json`: %s", err.Error())
 	}
 
 	// Parse the JSON data into the AWSConfig struct
 	var awsConfig AWSConfig
 	if err := json.Unmarshal(jsonData, &awsConfig); err != nil {
-		return fmt.Errorf("error parsing .env.json: %s", err.Error())
+		return fmt.Errorf("error parsing `.env.json`: %s", err.Error())
 	}
 
 	// Check if there is at least one account defined
 	if len(awsConfig.Accounts) == 0 {
-		return fmt.Errorf("no AWS accounts defined in .env.json")
+		return errors.New("no AWS accounts defined in `.env.json`")
 	}
 
 	// Check if each account has the required fields
@@ -165,4 +169,20 @@ func newMinioConfig() MinioConfig {
 	mc.Bucket = os.Getenv("AWS_S3_BUCKET")
 	mc.SecretAccessKey = os.Getenv("MINIO_SECRET_ACCESS_KEY")
 	return mc
+}
+
+func GetListSize(page *s3.ListObjectsV2Output, totalSize *uint64, fileCount *uint64) error {
+	if page == nil {
+		return errors.New("input page is nil")
+	}
+
+	for _, file := range page.Contents {
+		if file.Size == nil {
+			return errors.New("file size is nil")
+		}
+		*totalSize += uint64(*file.Size)
+		*fileCount++
+	}
+
+	return nil
 }

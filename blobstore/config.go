@@ -46,7 +46,7 @@ func getIntEnvOrDefault(envKey string, defaultValue int) int {
 	}
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
-		log.Debugf("Error parsing %s, defaulting to %v: %v", envKey, defaultValue, err)
+		log.Errorf("error parsing %s, defaulting to %v: %v", envKey, defaultValue, err)
 		return defaultValue
 	}
 	return value

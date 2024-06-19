@@ -1,13 +1,12 @@
 package blobstore
 
 import (
-	"fmt"
-	"net/http"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Dewberry/s3api/configberry"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
@@ -25,167 +24,6 @@ type ListResult struct {
 	IsDir      bool      `json:"isdir"`
 	Modified   time.Time `json:"modified"`
 	ModifiedBy string    `json:"modified_by"`
-}
-
-// HandleListByPrefix handles the API endpoint for listing objects by prefix in an S3 bucket.
-func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
-	prefix := c.QueryParam("prefix")
-
-	bucket := c.QueryParam("bucket")
-	s3Ctrl, err := bh.GetController(bucket)
-	if err != nil {
-		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
-
-	adjustedPrefix, errMsg, statusCode := checkAndAdjustPrefix(s3Ctrl, bucket, prefix)
-	if errMsg != "" {
-		log.Error(errMsg)
-		return c.JSON(statusCode, errMsg)
-	}
-	prefix = adjustedPrefix
-
-	delimiterParam := c.QueryParam("delimiter")
-	delimiter := true
-	if delimiterParam != "" {
-		delimiter, err = strconv.ParseBool(delimiterParam)
-		if err != nil {
-			errMsg := fmt.Errorf("error parsing `delimiter` param: %s", err.Error())
-			log.Error(errMsg.Error())
-			return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-		}
-
-	}
-
-	if delimiter && prefix != "" && !strings.HasSuffix(prefix, "/") {
-		prefix = prefix + "/"
-	}
-
-	var result []string
-	permissions, fullAccess, statusCode, err := bh.getS3ReadPermissions(c, bucket)
-	if err != nil {
-		log.Error(err.Error())
-		return c.JSON(statusCode, err.Error())
-	}
-	processPage := func(page *s3.ListObjectsV2Output) error {
-		for _, cp := range page.CommonPrefixes {
-			// Handle directories (common prefixes)
-			if fullAccess || isPermittedPrefix(bucket, *cp.Prefix, permissions) {
-				result = append(result, aws.StringValue(cp.Prefix))
-
-			}
-		}
-		for _, object := range page.Contents {
-			// Handle files
-			if fullAccess || isPermittedPrefix(bucket, *object.Key, permissions) {
-				result = append(result, aws.StringValue(object.Key))
-			}
-
-		}
-		return nil
-	}
-	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
-	if err != nil {
-		errMsg := fmt.Errorf("error processing objects: %s", err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusInternalServerError, errMsg.Error())
-	}
-
-	log.Info("Successfully retrieved list by prefix:", prefix)
-	return c.JSON(http.StatusOK, result)
-}
-
-// HandleListByPrefixWithDetail retrieves a detailed list of objects in the specified S3 bucket with the given prefix.
-func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
-	prefix := c.QueryParam("prefix")
-
-	bucket := c.QueryParam("bucket")
-	s3Ctrl, err := bh.GetController(bucket)
-	if err != nil {
-		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
-
-	adjustedPrefix, errMsg, statusCode := checkAndAdjustPrefix(s3Ctrl, bucket, prefix)
-	if errMsg != "" {
-		log.Error(errMsg)
-		return c.JSON(statusCode, errMsg)
-	}
-	prefix = adjustedPrefix
-
-	delimiterParam := c.QueryParam("delimiter")
-	delimiter := true
-	if delimiterParam != "" {
-		delimiter, err = strconv.ParseBool(delimiterParam)
-		if err != nil {
-			errMsg := fmt.Errorf("error parsing `delimiter` param: %s", err.Error())
-			log.Error(errMsg.Error())
-			return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-		}
-
-	}
-
-	if delimiter && prefix != "" && !strings.HasSuffix(prefix, "/") {
-		prefix = prefix + "/"
-	}
-
-	var results []ListResult
-	var count int
-	permissions, fullAccess, statusCode, err := bh.getS3ReadPermissions(c, bucket)
-	if err != nil {
-		log.Error(err.Error())
-		return c.JSON(statusCode, err.Error())
-	}
-	processPage := func(page *s3.ListObjectsV2Output) error {
-		for _, cp := range page.CommonPrefixes {
-			// Handle directories (common prefixes)
-			if fullAccess || isPermittedPrefix(bucket, *cp.Prefix, permissions) {
-				dir := ListResult{
-					ID:         count,
-					Name:       filepath.Base(*cp.Prefix),
-					Size:       "",
-					Path:       *cp.Prefix,
-					Type:       "",
-					IsDir:      true,
-					ModifiedBy: "",
-				}
-				results = append(results, dir)
-				count++
-			}
-
-		}
-
-		for _, object := range page.Contents {
-			// Handle files
-			if fullAccess || isPermittedPrefix(bucket, *object.Key, permissions) {
-				file := ListResult{
-					ID:         count,
-					Name:       filepath.Base(*object.Key),
-					Size:       strconv.FormatInt(*object.Size, 10),
-					Path:       filepath.Dir(*object.Key),
-					Type:       filepath.Ext(*object.Key),
-					IsDir:      false,
-					Modified:   *object.LastModified,
-					ModifiedBy: "",
-				}
-				results = append(results, file)
-				count++
-			}
-
-		}
-		return nil
-	}
-	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
-	if err != nil {
-		errMsg := fmt.Errorf("error processing objects: %s", err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusInternalServerError, errMsg.Error())
-	}
-
-	log.Info("Successfully retrieved detailed list by prefix:", prefix)
-	return c.JSON(http.StatusOK, results)
 }
 
 // GetList retrieves a list of objects in the specified S3 bucket with the given prefix.
@@ -252,4 +90,166 @@ func (s3Ctrl *S3Controller) GetListWithCallBack(bucket, prefix string, delimiter
 		return lastError // Return the last error encountered in the processPage function
 	}
 	return err // Return any errors encountered in the pagination process
+}
+
+// HandleListByPrefix handles the API endpoint for listing objects by prefix in an S3 bucket.
+func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
+	prefix := c.QueryParam("prefix")
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	adjustedPrefix, appErr := s3Ctrl.checkAndAdjustPrefix(bucket, prefix)
+	if appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+	prefix = adjustedPrefix
+
+	delimiterParam := c.QueryParam("delimiter")
+	delimiter := true
+	if delimiterParam != "" {
+		delimiter, err = strconv.ParseBool(delimiterParam)
+		if err != nil {
+			appErr := configberry.NewAppError(configberry.ValidationError, "error parsing `delimiter` param", nil)
+			log.Error(configberry.LogErrorFormatter(appErr, true))
+			return configberry.HandleErrorResponse(c, appErr)
+		}
+
+	}
+
+	if delimiter && prefix != "" && !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
+
+	var results []string
+	permissions, fullAccess, appErr := bh.getS3ReadPermissions(c, bucket)
+	if appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	processPage := func(page *s3.ListObjectsV2Output) error {
+		for _, cp := range page.CommonPrefixes {
+			// Handle directories (common prefixes)
+			if fullAccess || isPermittedPrefix(bucket, *cp.Prefix, permissions) {
+				results = append(results, aws.StringValue(cp.Prefix))
+
+			}
+		}
+		for _, object := range page.Contents {
+			// Handle files
+			if fullAccess || isPermittedPrefix(bucket, *object.Key, permissions) {
+				results = append(results, aws.StringValue(object.Key))
+			}
+
+		}
+		return nil
+	}
+
+	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
+	if err != nil {
+		appErr := configberry.NewAppError(configberry.InternalServerError, "error processing objects", err)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	log.Info("Successfully retrieved list by prefix:", prefix)
+	return configberry.HandleSuccessfulResponse(c, results)
+}
+
+// HandleListByPrefixWithDetail retrieves a detailed list of objects in the specified S3 bucket with the given prefix.
+func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
+	prefix := c.QueryParam("prefix")
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	adjustedPrefix, appErr := s3Ctrl.checkAndAdjustPrefix(bucket, prefix)
+	if appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+	prefix = adjustedPrefix
+
+	delimiterParam := c.QueryParam("delimiter")
+	delimiter := true
+	if delimiterParam != "" {
+		delimiter, err = strconv.ParseBool(delimiterParam)
+		if err != nil {
+			appErr := configberry.NewAppError(configberry.ValidationError, "error parsing `delimiter` param", nil)
+			log.Error(configberry.LogErrorFormatter(appErr, true))
+			return configberry.HandleErrorResponse(c, appErr)
+		}
+
+	}
+
+	if delimiter && prefix != "" && !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
+
+	var results []ListResult
+	var count int
+	permissions, fullAccess, appErr := bh.getS3ReadPermissions(c, bucket)
+	if appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	processPage := func(page *s3.ListObjectsV2Output) error {
+		for _, cp := range page.CommonPrefixes {
+			// Handle directories (common prefixes)
+			if fullAccess || isPermittedPrefix(bucket, *cp.Prefix, permissions) {
+				dir := ListResult{
+					ID:         count,
+					Name:       filepath.Base(*cp.Prefix),
+					Size:       "",
+					Path:       *cp.Prefix,
+					Type:       "",
+					IsDir:      true,
+					ModifiedBy: "",
+				}
+				results = append(results, dir)
+				count++
+			}
+
+		}
+
+		for _, object := range page.Contents {
+			// Handle files
+			if fullAccess || isPermittedPrefix(bucket, *object.Key, permissions) {
+				file := ListResult{
+					ID:         count,
+					Name:       filepath.Base(*object.Key),
+					Size:       strconv.FormatInt(*object.Size, 10),
+					Path:       filepath.Dir(*object.Key),
+					Type:       filepath.Ext(*object.Key),
+					IsDir:      false,
+					Modified:   *object.LastModified,
+					ModifiedBy: "",
+				}
+				results = append(results, file)
+				count++
+			}
+
+		}
+		return nil
+	}
+	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
+	if err != nil {
+		appErr := configberry.NewAppError(configberry.InternalServerError, "error processing objects", err)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	log.Info("Successfully retrieved list by prefix:", prefix)
+	return configberry.HandleSuccessfulResponse(c, results)
 }

@@ -1,50 +1,16 @@
 package blobstore
 
 import (
+	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
+	"github.com/Dewberry/s3api/configberry"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
-
-func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
-	srcPrefix := c.QueryParam("src_prefix")
-	destPrefix := c.QueryParam("dest_prefix")
-	if srcPrefix == "" || destPrefix == "" {
-		errMsg := fmt.Errorf("parameters `src_key` and `dest_key` are required")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
-	if !strings.HasSuffix(srcPrefix, "/") {
-		srcPrefix = srcPrefix + "/"
-	}
-	if !strings.HasSuffix(destPrefix, "/") {
-		destPrefix = destPrefix + "/"
-	}
-
-	bucket := c.QueryParam("bucket")
-	s3Ctrl, err := bh.GetController(bucket)
-	if err != nil {
-		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
-	err = s3Ctrl.MovePrefix(bucket, srcPrefix, destPrefix)
-	if err != nil {
-		if strings.Contains(err.Error(), "source prefix not found") {
-			errMsg := fmt.Errorf("no objects found with source prefix: %s", srcPrefix)
-			log.Error(errMsg.Error())
-			return c.JSON(http.StatusNotFound, errMsg.Error())
-		}
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
-
-	return c.JSON(http.StatusOK, fmt.Sprintf("Successfully moved prefix from %s to %s", srcPrefix, destPrefix))
-}
 
 func (s3Ctrl *S3Controller) MovePrefix(bucket, srcPrefix, destPrefix string) error {
 	var objectsFound bool
@@ -67,7 +33,7 @@ func (s3Ctrl *S3Controller) MovePrefix(bucket, srcPrefix, destPrefix string) err
 			}
 			_, err := s3Ctrl.S3Svc.CopyObject(copyInput)
 			if err != nil {
-				return fmt.Errorf("error copying object %s to %s: %v", srcObjectKey, destObjectKey, err)
+				return err
 			}
 		}
 
@@ -75,59 +41,22 @@ func (s3Ctrl *S3Controller) MovePrefix(bucket, srcPrefix, destPrefix string) err
 		// Ensure that your application logic requires this before proceeding
 		err := s3Ctrl.DeleteList(page, bucket)
 		if err != nil {
-			return fmt.Errorf("error deleting from source prefix %s: %v", srcPrefix, err)
+			return err
 		}
 		return nil
 	}
 
 	err := s3Ctrl.GetListWithCallBack(bucket, srcPrefix, false, processPage)
 	if err != nil {
-		return fmt.Errorf("error processing objects for move: %v", err)
+		return err
 	}
 
 	// Check if objects were found after processing all pages
 	if !objectsFound {
-		return fmt.Errorf("source prefix not found")
+		return errors.New("source prefix not found")
 	}
 
 	return nil
-}
-
-func (bh *BlobHandler) HandleMoveObject(c echo.Context) error {
-	srcObjectKey := c.QueryParam("src_key")
-	destObjectKey := c.QueryParam("dest_key")
-	if srcObjectKey == "" || destObjectKey == "" {
-		errMsg := fmt.Errorf("paramters `src_key` and `dest_key` are required")
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
-
-	bucket := c.QueryParam("bucket")
-	s3Ctrl, err := bh.GetController(bucket)
-	if err != nil {
-		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
-	}
-
-	err = s3Ctrl.CopyObject(bucket, srcObjectKey, destObjectKey)
-	if err != nil {
-		if strings.Contains(err.Error(), "keys are identical; no action taken") {
-			log.Error(err.Error())
-			return c.JSON(http.StatusBadRequest, err.Error()) // 400 Bad Request
-		} else if strings.Contains(err.Error(), "already exists in the bucket; duplication will cause an overwrite") {
-			log.Error(err.Error())
-			return c.JSON(http.StatusConflict, err.Error()) // 409 Conflict
-		} else if strings.Contains(err.Error(), "does not exist") {
-			log.Error(err.Error())
-			return c.JSON(http.StatusNotFound, err.Error())
-		}
-		errMsg := fmt.Errorf("error when copying object: %s", err.Error())
-		log.Error(errMsg.Error())
-		return c.JSON(http.StatusInternalServerError, errMsg.Error())
-	}
-
-	return c.JSON(http.StatusOK, fmt.Sprintf("Succesfully moved object from %s to %s", srcObjectKey, destObjectKey))
 }
 
 func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey string) error {
@@ -138,15 +67,16 @@ func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey strin
 	// Check if the old key exists in the bucket
 	oldKeyExists, err := s3Ctrl.KeyExists(bucket, srcObjectKey)
 	if err != nil {
-		return fmt.Errorf("error checking if object %s exists: %s", destObjectKey, err.Error())
+		return err
 	}
+
 	if !oldKeyExists {
 		return fmt.Errorf("`srcObjectKey` " + srcObjectKey + " does not exist")
 	}
 	// Check if the new key already exists in the bucket
 	newKeyExists, err := s3Ctrl.KeyExists(bucket, destObjectKey)
 	if err != nil {
-		return fmt.Errorf("error checking if object %s exists: %s", destObjectKey, err.Error())
+		return err
 	}
 	if newKeyExists {
 		return fmt.Errorf(destObjectKey + " already exists in the bucket; duplication will cause an overwrite. Please rename dest_key to a different name")
@@ -161,7 +91,7 @@ func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey strin
 	// Copy the object to the new key (effectively renaming)
 	_, err = s3Ctrl.S3Svc.CopyObject(copyInput)
 	if err != nil {
-		return fmt.Errorf("error copying object" + srcObjectKey + "with the new key" + destObjectKey + ", " + err.Error())
+		return err
 	}
 
 	// Delete the source object
@@ -170,8 +100,71 @@ func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey strin
 		Key:    aws.String(srcObjectKey),
 	})
 	if err != nil {
-		return fmt.Errorf("error deleting old object " + srcObjectKey + " in bucket " + bucket + ", " + err.Error())
+		return err
 	}
 
 	return nil
+}
+
+func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
+	params := map[string]string{
+		"srcPrefix":  c.QueryParam("src_prefix"),
+		"destPrefix": c.QueryParam("dest_prefix"),
+	}
+	if appErr := configberry.CheckRequiredParams(params); appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, false))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	if !strings.HasSuffix(params["srcPrefix"], "/") {
+		params["srcPrefix"] = params["srcPrefix"] + "/"
+	}
+	if !strings.HasSuffix(params["destPrefix"], "/") {
+		params["destPrefix"] = params["destPrefix"] + "/"
+	}
+
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	err = s3Ctrl.MovePrefix(bucket, params["srcPrefix"], params["destPrefix"])
+	if err != nil {
+		appErr := configberry.HandleAWSError(err, "error moving prefix")
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	return configberry.HandleSuccessfulResponse(c, fmt.Sprintf("Successfully moved prefix from %s to %s", params["srcPrefix"], params["destPrefix"]))
+}
+
+func (bh *BlobHandler) HandleMoveObject(c echo.Context) error {
+	params := map[string]string{
+		"srcObjectKey":  c.QueryParam("src_key"),
+		"destObjectKey": c.QueryParam("dest_key"),
+	}
+	if appErr := configberry.CheckRequiredParams(params); appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, false))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		appErr := configberry.NewAppError(configberry.ValidationError, fmt.Sprintf("`bucket` %s is not available", bucket), err)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	err = s3Ctrl.CopyObject(bucket, params["srcObjectKey"], params["destObjectKey"])
+	if err != nil {
+		appErr := configberry.HandleAWSError(err, "error copying prefix")
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	return configberry.HandleSuccessfulResponse(c, fmt.Sprintf("Succesfully moved object from %s to %s", params["srcObjectKey"], params["destObjectKey"]))
 }

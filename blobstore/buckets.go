@@ -3,10 +3,9 @@ package blobstore
 // Not implemented
 
 import (
-	"fmt"
-	"net/http"
 	"sort"
 
+	"github.com/Dewberry/s3api/configberry"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
@@ -28,8 +27,7 @@ func (s3Ctrl *S3Controller) ListBuckets() (*s3.ListBucketsOutput, error) {
 	// Retrieve the list of buckets
 	result, err = s3Ctrl.S3Svc.ListBuckets(input)
 	if err != nil {
-		errMsg := fmt.Errorf("failed to call ListBuckets: %s", err.Error())
-		return nil, errMsg
+		return nil, err
 	}
 	return result, nil
 }
@@ -41,18 +39,19 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 	defer bh.Mu.Unlock()
 
 	// Check user's overall read access level
-	_, fullAccess, err := bh.getUserS3ReadListPermission(c, "")
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, fmt.Errorf("error fetching user permissions: %s", err.Error()))
+	_, fullAccess, appErr := bh.getUserS3ReadListPermission(c, "")
+	if appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
 	}
 
 	for _, controller := range bh.S3Controllers {
 		if bh.AllowAllBuckets {
 			result, err := controller.ListBuckets()
 			if err != nil {
-				errMsg := fmt.Errorf("error returning list of buckets, error: %s", err)
-				log.Error(errMsg)
-				return c.JSON(http.StatusInternalServerError, errMsg)
+				appErr := configberry.HandleAWSError(err, "error retunring list of buckets")
+				log.Error(configberry.LogErrorFormatter(appErr, true))
+				return configberry.HandleErrorResponse(c, appErr)
 			}
 			var mostRecentBucketList []string
 			for _, b := range result.Buckets {
@@ -67,9 +66,10 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 		for i, bucket := range controller.Buckets {
 			canRead := fullAccess
 			if !fullAccess {
-				permissions, _, err := bh.getUserS3ReadListPermission(c, bucket)
-				if err != nil {
-					return c.JSON(http.StatusInternalServerError, fmt.Errorf("error fetching user permissions: %s", err.Error()))
+				permissions, _, appErr := bh.getUserS3ReadListPermission(c, bucket)
+				if appErr != nil {
+					log.Error(configberry.LogErrorFormatter(appErr, true))
+					return configberry.HandleErrorResponse(c, appErr)
 				}
 				canRead = len(permissions) > 0
 			}
@@ -90,6 +90,5 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 	})
 
 	log.Info("Successfully retrieved list of buckets")
-
-	return c.JSON(http.StatusOK, allBuckets)
+	return configberry.HandleSuccessfulResponse(c, allBuckets)
 }

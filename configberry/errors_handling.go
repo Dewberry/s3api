@@ -26,9 +26,13 @@ var (
 	ValidationError     = ErrorType{Value: 2, Name: "Validation Error"}
 	NotFoundError       = ErrorType{Value: 3, Name: "Not Found Error"}
 	UnauthorizedError   = ErrorType{Value: 4, Name: "Unauthorized Error"}
-	InternalServerError = ErrorType{Value: 5, Name: "Internal Server Error"}
-	AWSError            = ErrorType{Value: 6, Name: "AWS Error"}
-	FatalError          = ErrorType{Value: 7, Name: "Fatal Error"}
+	ForbiddenError      = ErrorType{Value: 5, Name: "Forbidden Error"}
+	InternalServerError = ErrorType{Value: 6, Name: "Internal Server Error"}
+	AWSError            = ErrorType{Value: 7, Name: "AWS Error"}
+	FatalError          = ErrorType{Value: 8, Name: "Fatal Error"}
+	TeapotError         = ErrorType{Value: 9, Name: "Teapot Error"}
+	ConflictError       = ErrorType{Value: 10, Name: "Conflict Error"}
+	BadRequestError     = ErrorType{Value: 11, Name: "Bad Request Error"}
 )
 
 // AppError includes the error type, message, and the original error.
@@ -73,12 +77,18 @@ func HandleErrorResponse(c echo.Context, err *AppError) error {
 	statusCode := http.StatusInternalServerError // Default status
 
 	switch err.Type.Value {
-	case ValidationError.Value:
+	case ValidationError.Value, BadRequestError.Value:
 		statusCode = http.StatusBadRequest
 	case NotFoundError.Value:
 		statusCode = http.StatusNotFound
 	case UnauthorizedError.Value:
 		statusCode = http.StatusUnauthorized
+	case ForbiddenError.Value:
+		statusCode = http.StatusForbidden
+	case TeapotError.Value:
+		statusCode = http.StatusTeapot
+	case ConflictError.Value:
+		statusCode = http.StatusConflict
 	}
 	return c.JSON(statusCode, map[string]string{"Type": err.Type.Name, "Error": responseMessage})
 }

@@ -2,7 +2,6 @@ package blobstore
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -51,7 +50,7 @@ func (mc MinioConfig) validateMinioConfig() error {
 	}
 
 	if len(missingFields) > 0 {
-		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
+		return fmt.Errorf("missing fields:  %+q", missingFields)
 	}
 	return nil
 }
@@ -79,7 +78,7 @@ func (mc MinioConfig) minIOSessionManager() (*s3.S3, *session.Session, error) {
 			Bucket: aws.String(mc.Bucket),
 		})
 		if err != nil {
-			log.Errorf("Error creating bucket: %s", err.Error())
+			log.Errorf("error creating bucket: %s", err.Error())
 			return nil, nil, nil
 		}
 		log.Info("Bucket created successfully")
