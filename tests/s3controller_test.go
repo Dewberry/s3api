@@ -1,28 +1,41 @@
-package s3controller_test
+package blobstore
 
 import (
+	"os"
 	"testing"
 
 	"github.com/Dewberry/s3api/blobstore"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/aws/aws-sdk-go/aws/session"
-
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/stretchr/testify/assert"
 )
 
-// Define a mock struct that implements the s3iface.S3API interface
+// Ensure the environment variable is set before any other package initialization
+func init() {
+	os.Setenv("INIT_AUTH", "0")
+}
+
 type mockS3Client struct {
 	s3iface.S3API
 	ListBucketsOutput s3.ListBucketsOutput
 	ListBucketsError  error
 }
 
-// Mock implementation of the ListBuckets method
 func (m *mockS3Client) ListBuckets(*s3.ListBucketsInput) (*s3.ListBucketsOutput, error) {
 	return &m.ListBucketsOutput, m.ListBucketsError
+}
+
+func TestMain(m *testing.M) {
+	// Ensure the environment variable is unset after the tests
+	defer os.Unsetenv("INIT_AUTH")
+
+	// Run the tests
+	exitCode := m.Run()
+
+	// Exit with the code from running the tests
+	os.Exit(exitCode)
 }
 
 func TestListBuckets(t *testing.T) {
@@ -31,12 +44,8 @@ func TestListBuckets(t *testing.T) {
 	mockSvc := &mockS3Client{
 		ListBucketsOutput: s3.ListBucketsOutput{
 			Buckets: []*s3.Bucket{
-				{
-					Name: aws.String("test-bucket-1"),
-				},
-				{
-					Name: aws.String("test-bucket-2"),
-				},
+				{Name: aws.String("test-bucket-1")},
+				{Name: aws.String("test-bucket-2")},
 			},
 		},
 		ListBucketsError: nil,
