@@ -52,7 +52,7 @@
 		},
 		{
 			"key": "non_existent_key",
-			"value": "",
+			"value": "non_existent_key",
 			"type": "any",
 			"enabled": true
 		},
