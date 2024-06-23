@@ -83,6 +83,13 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
+	adjustedPrefix, appErr := s3Ctrl.checkAndAdjustPrefix(bucket, prefix)
+	if appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+	prefix = adjustedPrefix
+
 	var totalSize uint64
 	var scriptBuilder strings.Builder
 	createdDirs := make(map[string]bool)

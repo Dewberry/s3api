@@ -108,13 +108,6 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
-	if !strings.HasSuffix(params["srcPrefix"], "/") {
-		params["srcPrefix"] = params["srcPrefix"] + "/"
-	}
-	if !strings.HasSuffix(params["destPrefix"], "/") {
-		params["destPrefix"] = params["destPrefix"] + "/"
-	}
-
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
@@ -122,6 +115,19 @@ func (bh *BlobHandler) HandleMovePrefix(c echo.Context) error {
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
+	adjustedPrefix, appErr := s3Ctrl.checkAndAdjustPrefix(bucket, params["srcPrefix"])
+	if appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+	params["srcPrefix"] = adjustedPrefix
+	fmt.Println(params["srcPrefix"])
+	adjustedPrefix, appErr = s3Ctrl.checkAndAdjustPrefix(bucket, params["destPrefix"])
+	if appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+	params["destPrefix"] = adjustedPrefix
 
 	err = s3Ctrl.MovePrefix(bucket, params["srcPrefix"], params["destPrefix"])
 	if err != nil {

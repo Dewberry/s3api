@@ -56,7 +56,7 @@
 								"body": {
 									"mode": "file",
 									"file": {
-										"src": "missing_huc8s.xlsx"
+										"src": "postman-cloud:///1ef2e68b-caf8-4270-80ad-9e03a8f77311"
 									}
 								},
 								"url": {
@@ -116,7 +116,7 @@
 								"body": {
 									"mode": "file",
 									"file": {
-										"src": "missing_huc8s.xlsx"
+										"src": "postman-cloud:///1ef2e68b-caf8-4270-80ad-9e03a8f77311"
 									}
 								},
 								"url": {
@@ -1026,7 +1026,7 @@
 								"body": {
 									"mode": "file",
 									"file": {
-										"src": "missing_huc8s.xlsx"
+										"src": "postman-cloud:///1ef2e68b-caf8-4270-80ad-9e03a8f77311"
 									}
 								},
 								"url": {
@@ -1630,7 +1630,7 @@
 					"name": "Generate Download Script",
 					"item": [
 						{
-							"name": "Generate Download Script",
+							"name": "Generate Download Script -200,400",
 							"event": [
 								{
 									"listen": "test",
@@ -1684,6 +1684,52 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Generate Download Script -200,400 Copy",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 418 if prefix is an object\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(418);",
+											"    }",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/prefix/download/script?prefix={{key}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"download",
+										"script"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
@@ -1718,7 +1764,7 @@
 								"body": {
 									"mode": "file",
 									"file": {
-										"src": "missing_huc8s.xlsx"
+										"src": "postman-cloud:///1ef2e68b-caf8-4270-80ad-9e03a8f77311"
 									}
 								},
 								"url": {
@@ -1742,6 +1788,122 @@
 										{
 											"key": "override",
 											"value": "false"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Move Prefix  - 418",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 418 because src_prefix is an object\", function () {",
+											"    pm.response.to.have.status(418);",
+											"});",
+											"",
+											"",
+											"//might need more testing when this is multibucketd "
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{baseUrl}}/prefix/move?bucket={{bucket}}&src_prefix={{prefix}}{{key}}&dest_prefix={{prefix}}{{prefix}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"move"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "src_prefix",
+											"value": "{{prefix}}{{key}}"
+										},
+										{
+											"key": "dest_prefix",
+											"value": "{{prefix}}{{prefix}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Move Prefix  - 418",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 418 because src_prefix is an object\", function () {",
+											"    pm.response.to.have.status(418);",
+											"});",
+											"",
+											"",
+											"//might need more testing when this is multibucketd "
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{baseUrl}}/prefix/move?bucket={{bucket}}&src_prefix={{prefix}}{{key}}&dest_prefix={{prefix}}{{key}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"move"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "src_prefix",
+											"value": "{{prefix}}{{key}}"
+										},
+										{
+											"key": "dest_prefix",
+											"value": "{{prefix}}{{key}}"
 										}
 									]
 								}
@@ -2047,6 +2209,108 @@
 										{
 											"key": "prefix",
 											"value": "{{non_existent_key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Upload Object - config",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "file",
+									"file": {
+										"src": "postman-cloud:///1ef2e68b-caf8-4270-80ad-9e03a8f77311"
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/object/upload?key={{key}}&bucket={{bucket}}&override=false",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "override",
+											"value": "false"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Prefix - 418",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 418 if prefix is object\", function () {\r",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {\r",
+											"        pm.response.to.have.status(418);\r",
+											"    }\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/prefix/delete?prefix={{key}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{key}}"
 										},
 										{
 											"key": "bucket",
