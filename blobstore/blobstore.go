@@ -84,8 +84,7 @@ func (s3Ctrl *S3Controller) checkAndAdjustPrefix(bucket, prefix string) (string,
 	if prefix != "" && prefix != "./" && prefix != "/" {
 		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
 		if err != nil {
-			fmt.Println(err)
-			return "", configberry.HandleAWSError(err, "error checking if object exists")
+			return "", configberry.HandleAWSError(err, "error checking if prefix is an object")
 		}
 		if isObject {
 			objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)

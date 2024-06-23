@@ -3,68 +3,20 @@
 	"name": "S3API",
 	"values": [
 		{
+			"key": "baseUrl",
+			"value": "localhost:5005",
+			"type": "default",
+			"enabled": true
+		},
+		{
 			"key": "s3_api_root_url",
 			"value": "localhost:5005",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "auth_url",
-			"value": "https://auth.dewberryanalytics.com/auth/realms",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "auth_username",
-			"value": "akopti@dewberry.com",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "auth_password",
-			"value": "{{auth_password}}",
-			"type": "secret",
-			"enabled": true
-		},
-		{
-			"key": "auth_client_id",
-			"value": "s3api",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "auth_client_secret",
-			"value": "{{KEYCLOAK_SECRET}}",
-			"type": "secret",
-			"enabled": true
-		},
-		{
-			"key": "auth_grant_type",
-			"value": "password",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "bearer_token",
-			"value": "",
-			"type": "secret",
-			"enabled": true
-		},
-		{
-			"key": "e2eObjName",
-			"value": "missing_huc8s.xlsx",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "e2ePathToObj",
-			"value": "e2e_testing/",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "e2eoverride",
-			"value": "false",
+			"key": "url",
+			"value": "localhost:5005",
 			"type": "default",
 			"enabled": true
 		},
@@ -91,9 +43,33 @@
 			"value": "",
 			"type": "any",
 			"enabled": true
+		},
+		{
+			"key": "key",
+			"value": "missing_huc8s.xlsx",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "non_existent_key",
+			"value": "",
+			"type": "any",
+			"enabled": true
+		},
+		{
+			"key": "prefix",
+			"value": "temp/",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "operation",
+			"value": "write",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2023-10-02T16:40:29.335Z",
-	"_postman_exported_using": "Postman/10.18.9"
+	"_postman_exported_at": "2024-06-23T21:30:45.668Z",
+	"_postman_exported_using": "Postman/11.2.13"
 }

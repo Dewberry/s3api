@@ -22,7 +22,6 @@ func (s3Ctrl *S3Controller) GetMetaData(bucket, key string) (*s3.HeadObjectOutpu
 	if err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }
 
@@ -61,7 +60,12 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
-
+	adjustedPrefix, appErr := s3Ctrl.checkAndAdjustPrefix(bucket, prefix)
+	if appErr != nil {
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
+	prefix = adjustedPrefix
 	permissions, fullAccess, appErr := bh.getS3ReadPermissions(c, bucket)
 	if appErr != nil {
 		log.Error(configberry.LogErrorFormatter(appErr, true))
@@ -70,20 +74,6 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 
 	if !fullAccess && !isPermittedPrefix(bucket, prefix, permissions) {
 		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the %s prefix", prefix), err)
-		log.Error(configberry.LogErrorFormatter(appErr, true))
-		return configberry.HandleErrorResponse(c, appErr)
-	}
-
-	// Check if the prefix points directly to an object
-	isObject, err := s3Ctrl.KeyExists(bucket, prefix)
-	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error checking if prefix is an object", err)
-		log.Error(configberry.LogErrorFormatter(appErr, true))
-		return configberry.HandleErrorResponse(c, appErr)
-	}
-
-	if isObject {
-		appErr := configberry.NewAppError(configberry.TeapotError, fmt.Sprintf("the provided prefix %s points to a single object rather than a collection", prefix), err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -149,7 +139,7 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 
 	result, err := s3Ctrl.GetMetaData(bucket, key)
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, "error getting metadata")
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error getting metadata for %s", key))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}

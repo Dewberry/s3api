@@ -64,15 +64,7 @@ func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey strin
 	if srcObjectKey == destObjectKey {
 		return fmt.Errorf("source `%s` and destination `%s` keys are identical; no action taken", srcObjectKey, destObjectKey)
 	}
-	// Check if the old key exists in the bucket
-	oldKeyExists, err := s3Ctrl.KeyExists(bucket, srcObjectKey)
-	if err != nil {
-		return err
-	}
 
-	if !oldKeyExists {
-		return fmt.Errorf("`srcObjectKey` " + srcObjectKey + " does not exist")
-	}
 	// Check if the new key already exists in the bucket
 	newKeyExists, err := s3Ctrl.KeyExists(bucket, destObjectKey)
 	if err != nil {
@@ -150,6 +142,11 @@ func (bh *BlobHandler) HandleMoveObject(c echo.Context) error {
 		log.Error(configberry.LogErrorFormatter(appErr, false))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
+	if params["srcObjectKey"] == params["destObjectKey"] {
+		appErr := configberry.NewAppError(configberry.ValidationError, fmt.Sprintf("source `%s` and destination `%s` keys are identical; no action taken", params["srcObjectKey"], params["destObjectKey"]), nil)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+	}
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
@@ -157,6 +154,18 @@ func (bh *BlobHandler) HandleMoveObject(c echo.Context) error {
 		appErr := configberry.NewAppError(configberry.ValidationError, fmt.Sprintf("`bucket` %s is not available", bucket), err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
+	}
+
+	newKeyExists, err := s3Ctrl.KeyExists(bucket, params["destObjectKey"])
+	if err != nil {
+		return err
+	}
+
+	if newKeyExists {
+		appErr := configberry.NewAppError(configberry.ConflictError, fmt.Sprintf("%s already exists in the bucket; duplication will cause an overwrite. Please rename dest_key to a different name", params["destObjectKey"]), err)
+		log.Error(configberry.LogErrorFormatter(appErr, true))
+		return configberry.HandleErrorResponse(c, appErr)
+
 	}
 
 	err = s3Ctrl.CopyObject(bucket, params["srcObjectKey"], params["destObjectKey"])

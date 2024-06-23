@@ -2,6 +2,7 @@ package configberry
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -143,22 +144,37 @@ func HandleSQLError(err error, errMsg string) *AppError {
 // HandleAWSError processes AWS-specific errors and returns an appropriate AppError.
 // referencing https://github.com/aws/aws-sdk-go/blob/70ea45043fd9021c223e79de5755bc1b4b3af0aa/models/apis/cloudformation/2010-05-15/api-2.json
 func HandleAWSError(err error, errMsg string) *AppError {
-	if aerr, ok := err.(awserr.Error); ok {
-		formattedMessage := fmt.Sprintf("%s: %s (AWS Error Code: %s)", errMsg, aerr.Message(), aerr.Code())
-		switch aerr.Code() {
+	originalErr := err
+	var awsErr awserr.Error
+
+	// Attempt to find the AWS error in the error chain
+	if errors.As(err, &awsErr) {
+		formattedMessage := fmt.Sprintf("%s: %s (AWS Error Code: %s)", errMsg, awsErr.Message(), awsErr.Code())
+
+		// Check if the original error already contains context and avoid repetition
+		if !strings.Contains(errMsg, awsErr.Message()) {
+			formattedMessage = fmt.Sprintf("%s: %s (AWS Error Code: %s)", errMsg, awsErr.Message(), awsErr.Code())
+		}
+		switch awsErr.Code() {
 		case "AccessDenied", "InvalidCredentials":
-			return NewAppError(UnauthorizedError, formattedMessage, err)
-		case "NotFound":
-			return NewAppError(NotFoundError, formattedMessage, err)
-		case "NotUpdatable", "InvalidRequest", "AlreadyExists", "ResourceConflict", "Throttling", "ServiceLimitExceeded", "NotStabilized", "GeneralServiceException", "NetworkFailure", "InvalidTypeConfiguration", "NonCompliant", "Unknown", "UnsupportedTarget":
-			return NewAppError(AWSError, formattedMessage, err)
+			return NewAppError(UnauthorizedError, formattedMessage, originalErr)
+		case "NotFound", "NoSuchKey":
+			return NewAppError(NotFoundError, formattedMessage, originalErr)
+		case "AlreadyExists", "ResourceConflict":
+			return NewAppError(ConflictError, formattedMessage, originalErr)
+		case "NotUpdatable", "InvalidRequest", "Throttling", "ServiceLimitExceeded", "NotStabilized", "GeneralServiceException", "NetworkFailure", "InvalidTypeConfiguration", "NonCompliant", "Unknown", "UnsupportedTarget":
+			return NewAppError(AWSError, formattedMessage, originalErr)
 		case "ServiceInternalError", "InternalFailure", "HandlerInternalFailure":
-			return NewAppError(InternalServerError, formattedMessage, err)
+			return NewAppError(InternalServerError, formattedMessage, originalErr)
+		case "InvalidPart":
+			return NewAppError(BadRequestError, formattedMessage, originalErr)
 		default:
-			return NewAppError(AWSError, formattedMessage, err)
+			return NewAppError(AWSError, formattedMessage, originalErr)
 		}
 	}
-	return NewAppError(AWSError, errMsg, err)
+
+	// If no AWS error is found, return a generic AppError
+	return NewAppError(AWSError, errMsg, originalErr)
 }
 
 // CheckRequiredParams checks if the required parameters are present and returns an error if any are missing.

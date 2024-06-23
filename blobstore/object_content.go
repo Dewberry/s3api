@@ -12,13 +12,6 @@ import (
 )
 
 func (s3Ctrl *S3Controller) FetchObjectContent(bucket string, key string) (io.ReadCloser, error) {
-	keyExist, err := s3Ctrl.KeyExists(bucket, key)
-	if err != nil {
-		return nil, err
-	}
-	if !keyExist {
-		return nil, fmt.Errorf("object %s not found", key)
-	}
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
@@ -67,7 +60,7 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 	}
 	body, err := io.ReadAll(outPutBody)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.ForbiddenError, "error reading objects body", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, "error reading objects body", err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}

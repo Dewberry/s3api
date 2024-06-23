@@ -12,6 +12,25 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func (s3Ctrl *S3Controller) DeleteObjectIfExists(bucket, key string) error {
+	// Check if the object exists
+	if _, err := s3Ctrl.GetMetaData(bucket, key); err != nil {
+		return err
+	}
+
+	// Delete the object
+	deleteInput := &s3.DeleteObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}
+	_, err := s3Ctrl.S3Svc.DeleteObject(deleteInput)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s3Ctrl *S3Controller) DeleteList(page *s3.ListObjectsV2Output, bucket string) error {
 	if len(page.Contents) == 0 {
 		return nil // No objects to delete in this page
@@ -81,28 +100,9 @@ func (bh *BlobHandler) HandleDeleteObject(c echo.Context) error {
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
-	// If the key is not a folder, proceed with deleting a single object
-	keyExist, err := s3Ctrl.KeyExists(bucket, key)
+	err = s3Ctrl.DeleteObjectIfExists(bucket, key)
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, "error checking if object exists")
-		log.Error(configberry.LogErrorFormatter(appErr, true))
-		return configberry.HandleErrorResponse(c, appErr)
-	}
-
-	if !keyExist {
-		appErr := configberry.NewAppError(configberry.NotFoundError, fmt.Sprintf("object %s not found", key), nil)
-		log.Error(configberry.LogErrorFormatter(appErr, true))
-		return configberry.HandleErrorResponse(c, appErr)
-	}
-
-	deleteInput := &s3.DeleteObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	}
-
-	_, err = s3Ctrl.S3Svc.DeleteObject(deleteInput)
-	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, fmt.Sprintf("error deleting object. %s", err.Error()), nil)
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error deleting object %s", key))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}

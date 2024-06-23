@@ -18,6 +18,9 @@ import (
 
 func (s3Ctrl *S3Controller) GetDownloadPresignedURL(bucket, key string, expDays int) (string, error) {
 	duration := time.Duration(expDays) * 24 * time.Hour
+	if _, err := s3Ctrl.GetMetaData(bucket, key); err != nil { //this is to check if the object exists or not, it will return an AWS error
+		return "", err
+	}
 	req, _ := s3Ctrl.S3Svc.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
@@ -53,21 +56,9 @@ func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
-	keyExist, err := s3Ctrl.KeyExists(bucket, key)
-	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error checking if object exists", err)
-		log.Error(configberry.LogErrorFormatter(appErr, true))
-		return configberry.HandleErrorResponse(c, appErr)
-	}
-	if !keyExist {
-		appErr := configberry.NewAppError(configberry.NotFoundError, fmt.Sprintf("object %s not found", key), err)
-		log.Error(configberry.LogErrorFormatter(appErr, true))
-		return configberry.HandleErrorResponse(c, appErr)
-	}
-
 	url, err := s3Ctrl.GetDownloadPresignedURL(bucket, key, bh.Config.DefaultDownloadPresignedUrlExpiration)
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, "error getting presigned URL")
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error getting presigned download URL for object %s", key))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}

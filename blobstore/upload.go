@@ -125,14 +125,41 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 // function to retrieve presigned url for a normal one time upload. You can only upload 5GB files at a time.
 func (s3Ctrl *S3Controller) GetUploadPresignedURL(bucket string, key string, expMin int) (string, error) {
 	duration := time.Duration(expMin) * time.Minute
-	req, _ := s3Ctrl.S3Svc.PutObjectRequest(&s3.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
+	var urlStr string
+	var err error
+	if s3Ctrl.S3Mock {
+		// Create a temporary S3 client with the modified endpoint
+		//this is done  so that the presigned url starts with localhost:9000 instead of
+		//minio:9000 which would cause an error due to cors origin policy
+		tempS3Svc, err := session.NewSession(&aws.Config{
+			Endpoint:         aws.String("http://localhost:9000"),
+			Region:           s3Ctrl.S3Svc.Config.Region,
+			Credentials:      s3Ctrl.S3Svc.Config.Credentials,
+			S3ForcePathStyle: aws.Bool(true),
+		})
+		if err != nil {
+			return "", fmt.Errorf("error creating temporary s3 session: %s", err.Error())
+		}
 
-	urlStr, err := req.Presign(duration)
-	if err != nil {
-		return "", err
+		// Generate the request using the temporary client
+		req, _ := s3.New(tempS3Svc).PutObjectRequest(&s3.PutObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+		})
+		urlStr, err = req.Presign(duration)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		// Generate the request using the original client
+		req, _ := s3Ctrl.S3Svc.PutObjectRequest(&s3.PutObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+		})
+		urlStr, err = req.Presign(duration)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return urlStr, nil
@@ -297,7 +324,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 
 	err = s3Ctrl.UploadS3Obj(bucket, key, body)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error uploading S3 object", err)
+		appErr := configberry.HandleAWSError(err, "error uploading S3 object")
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 
@@ -354,10 +381,11 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
+
 	//if the user did not provided both upload_id and part_number then we returned normal presigned URL
 	presignedURL, err := s3Ctrl.GetUploadPresignedURL(bucket, key, bh.Config.DefaultUploadPresignedUrlExpiration)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error generating presigned URL", err)
+		appErr := configberry.HandleAWSError(err, "error generating presigned URL")
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -391,7 +419,7 @@ func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 
 	uploadID, err := s3Ctrl.GetMultiPartUploadID(bucket, key)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error retrieving multipart Upload ID", err)
+		appErr := configberry.HandleAWSError(err, "error retrieving multipart Upload ID")
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -440,7 +468,7 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 
 	_, err = s3Ctrl.CompleteMultipartUpload(bucket, key, req.UploadID, s3Parts)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, fmt.Sprintf("error completing the multipart Upload for key %s", key), err)
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error completing the multipart Upload for key %s", key))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
