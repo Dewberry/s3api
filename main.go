@@ -73,7 +73,8 @@ func main() {
 
 	bh, err := blobstore.NewBlobHandler(envJson, authLvl)
 	if err != nil {
-		log.Fatalf("error initializing a new blobhandler: %v", err)
+		appErr := configberry.NewAppError(configberry.FatalError, "error initializing a new blobhandler", err)
+		log.Fatal(configberry.LogErrorFormatter(appErr, true))
 	}
 
 	e := echo.New()
