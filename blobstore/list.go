@@ -245,7 +245,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	}
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error processing objects", err)
+		appErr := configberry.HandleAWSError(err, "error processing objects")
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}

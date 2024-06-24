@@ -370,7 +370,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		}
 		presignedURL, err := s3Ctrl.GetUploadPartPresignedURL(bucket, key, uploadID, int64(partNumber), bh.Config.DefaultUploadPresignedUrlExpiration)
 		if err != nil {
-			appErr := configberry.NewAppError(configberry.InternalServerError, "error generating presigned part URL", err)
+			appErr := configberry.HandleAWSError(err, "error generating presigned part URL")
 			log.Error(configberry.LogErrorFormatter(appErr, true))
 			return configberry.HandleErrorResponse(c, appErr)
 		}
@@ -508,7 +508,7 @@ func (bh *BlobHandler) HandleAbortMultipartUpload(c echo.Context) error {
 
 	err = s3Ctrl.AbortMultipartUpload(bucket, key, uploadID)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, fmt.Sprintf("error aborting the multipart Upload for key %s", key), err)
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error aborting the multipart Upload for key %s", key))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}

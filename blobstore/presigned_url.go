@@ -174,7 +174,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 
 	href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, 1)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, fmt.Sprintf("error generating presigned URL for %s", txtBatFileName), err)
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error generating presigned URL for %s", txtBatFileName))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}

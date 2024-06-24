@@ -235,7 +235,7 @@ func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
 	// Delete the objects using the deleteKeys function
 	err = s3Ctrl.DeleteKeys(bucket, keys)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error deleting objects", err)
+		appErr := configberry.HandleAWSError(err, "error deleting objects")
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}

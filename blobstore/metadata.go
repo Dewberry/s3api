@@ -85,7 +85,7 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	})
 
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error processing objects", err)
+		appErr := configberry.HandleAWSError(err, "error processing objects")
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
