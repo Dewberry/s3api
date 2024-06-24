@@ -68,7 +68,7 @@ func (s3Ctrl *S3Controller) DeleteKeys(bucket string, key []string) error {
 		exists, err := s3Ctrl.KeyExists(bucket, p)
 		if err != nil {
 			// Wrap error with awserr based on the specific error type
-			var awsErr error
+			var awsErr awserr.Error
 			if errors.As(err, &awsErr) {
 				// If it's an awserr.Error, return it directly
 				return awsErr
