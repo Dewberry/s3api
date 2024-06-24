@@ -23,6 +23,7 @@ type mockS3Client struct {
 	DeleteObjectError      error
 	DeleteObjectsError     error
 	HeadObjectError        error
+	HeadObjectOutput       *s3.HeadObjectOutput
 	ListObjectsV2PagesFunc func(input *s3.ListObjectsV2Input, fn func(*s3.ListObjectsV2Output, bool) bool) error
 }
 
@@ -38,8 +39,8 @@ func (m *mockS3Client) DeleteObjects(*s3.DeleteObjectsInput) (*s3.DeleteObjectsO
 	return &s3.DeleteObjectsOutput{}, m.DeleteObjectsError
 }
 
-func (m *mockS3Client) HeadObject(*s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
-	return &s3.HeadObjectOutput{}, m.HeadObjectError
+func (m *mockS3Client) HeadObject(input *s3.HeadObjectInput) (*s3.HeadObjectOutput, error) {
+	return m.HeadObjectOutput, m.HeadObjectError
 }
 
 func (m *mockS3Client) ListObjectsV2Pages(input *s3.ListObjectsV2Input, fn func(*s3.ListObjectsV2Output, bool) bool) error {
@@ -370,4 +371,102 @@ func TestGetListWithCallBackProcessError(t *testing.T) {
 
 	require.Error(t, err)
 	require.Equal(t, processError, err)
+}
+
+func TestGetMetaData(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		HeadObjectOutput: &s3.HeadObjectOutput{
+			ContentLength: aws.Int64(1234),
+			ContentType:   aws.String("text/plain"),
+		},
+		HeadObjectError: nil,
+	}
+
+	s3Ctrl := blobstore.S3Controller{
+		Sess:  &session.Session{},
+		S3Svc: mockSvc,
+	}
+
+	result, err := s3Ctrl.GetMetaData("test-bucket", "test-key")
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, int64(1234), *result.ContentLength)
+	require.Equal(t, "text/plain", *result.ContentType)
+}
+
+func TestGetMetaDataError(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		HeadObjectError: awserr.New("HeadObjectError", "Mocked error", nil),
+	}
+
+	s3Ctrl := blobstore.S3Controller{
+		Sess:  &session.Session{},
+		S3Svc: mockSvc,
+	}
+
+	result, err := s3Ctrl.GetMetaData("test-bucket", "test-key")
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Equal(t, "HeadObjectError: Mocked error", err.Error())
+}
+
+func TestKeyExists(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		HeadObjectError: nil,
+	}
+
+	s3Ctrl := blobstore.S3Controller{
+		Sess:  &session.Session{},
+		S3Svc: mockSvc,
+	}
+
+	exists, err := s3Ctrl.KeyExists("test-bucket", "test-key")
+
+	require.NoError(t, err)
+	require.True(t, exists)
+}
+
+func TestKeyExistsNotFound(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		HeadObjectError: awserr.New("NotFound", "Mocked not found error", nil),
+	}
+
+	s3Ctrl := blobstore.S3Controller{
+		Sess:  &session.Session{},
+		S3Svc: mockSvc,
+	}
+
+	exists, err := s3Ctrl.KeyExists("test-bucket", "test-key")
+
+	require.NoError(t, err)
+	require.False(t, exists)
+}
+
+func TestKeyExistsError(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		HeadObjectError: awserr.New("HeadObjectError", "Mocked error", nil),
+	}
+
+	s3Ctrl := blobstore.S3Controller{
+		Sess:  &session.Session{},
+		S3Svc: mockSvc,
+	}
+
+	exists, err := s3Ctrl.KeyExists("test-bucket", "test-key")
+
+	require.Error(t, err)
+	require.False(t, exists)
+	require.Equal(t, "HeadObjectError: Mocked error", err.Error())
 }
