@@ -34,7 +34,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 
 	resp, err := s3Ctrl.S3Svc.CreateMultipartUpload(params)
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating multipart upload for object with `key` %s, %w", key, err)
 	}
 
 	// Create the variables that will track upload progress
@@ -69,7 +69,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 
 			result, err := s3Ctrl.S3Svc.UploadPart(params)
 			if err != nil {
-				return err
+				return fmt.Errorf("error creating uploading part %v, %w", params, err)
 			}
 
 			totalBytes += int64(buffer.Len())
@@ -98,7 +98,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 
 	result, err := s3Ctrl.S3Svc.UploadPart(params2)
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating uploading part %v, %w", params2, err)
 	}
 
 	totalBytes += int64(buffer.Len())
@@ -116,7 +116,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 	}
 	_, err = s3Ctrl.S3Svc.CompleteMultipartUpload(completeParams)
 	if err != nil {
-		return err
+		return fmt.Errorf("error completing multipart upload %w", err)
 	}
 
 	return nil
@@ -125,14 +125,41 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 // function to retrieve presigned url for a normal one time upload. You can only upload 5GB files at a time.
 func (s3Ctrl *S3Controller) GetUploadPresignedURL(bucket string, key string, expMin int) (string, error) {
 	duration := time.Duration(expMin) * time.Minute
-	req, _ := s3Ctrl.S3Svc.PutObjectRequest(&s3.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
+	var urlStr string
+	var err error
+	if s3Ctrl.S3Mock {
+		// Create a temporary S3 client with the modified endpoint
+		//this is done  so that the presigned url starts with localhost:9000 instead of
+		//minio:9000 which would cause an error due to cors origin policy
+		tempS3Svc, err := session.NewSession(&aws.Config{
+			Endpoint:         aws.String("http://localhost:9000"),
+			Region:           s3Ctrl.S3Svc.Config.Region,
+			Credentials:      s3Ctrl.S3Svc.Config.Credentials,
+			S3ForcePathStyle: aws.Bool(true),
+		})
+		if err != nil {
+			return "", fmt.Errorf("error creating temporary s3 session: %s", err.Error())
+		}
 
-	urlStr, err := req.Presign(duration)
-	if err != nil {
-		return "", err
+		// Generate the request using the temporary client
+		req, _ := s3.New(tempS3Svc).PutObjectRequest(&s3.PutObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+		})
+		urlStr, err = req.Presign(duration)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		// Generate the request using the original client
+		req, _ := s3Ctrl.S3Svc.PutObjectRequest(&s3.PutObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+		})
+		urlStr, err = req.Presign(duration)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return urlStr, nil
@@ -233,7 +260,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	// Add overwrite check and parameter
 	key := c.QueryParam("key")
 	if key == "" {
-		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `key` is required", nil)
+		appErr := configberry.NewAppError(configberry.ValidationError, parameterKeyRequired, nil)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -241,7 +268,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -282,12 +309,12 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 
 	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, "error checking if object exists`")
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error checking if object with `key` %s already exists`", key))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 	if keyExist && !override {
-		appErr := configberry.NewAppError(configberry.ConflictError, fmt.Sprintf("object %s already exists and override is set to %t", key, override), err)
+		appErr := configberry.NewAppError(configberry.ConflictError, fmt.Sprintf("object with `key` %s already exists and `override` is set to %t", key, override), err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -297,13 +324,13 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 
 	err = s3Ctrl.UploadS3Obj(bucket, key, body)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error uploading S3 object", err)
+		appErr := configberry.HandleAWSError(err, "error uploading S3 object")
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 
 	}
 
-	log.Infof("Successfully uploaded file with key: %s", key)
+	log.Infof("Successfully uploaded object with `key`: %s", key)
 	return configberry.HandleSuccessfulResponse(c, "Successfully uploaded file")
 }
 
@@ -311,7 +338,7 @@ func (bh *BlobHandler) HandleMultipartUpload(c echo.Context) error {
 func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `key` is required", nil)
+		appErr := configberry.NewAppError(configberry.ValidationError, parameterKeyRequired, nil)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -319,7 +346,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -343,7 +370,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		}
 		presignedURL, err := s3Ctrl.GetUploadPartPresignedURL(bucket, key, uploadID, int64(partNumber), bh.Config.DefaultUploadPresignedUrlExpiration)
 		if err != nil {
-			appErr := configberry.NewAppError(configberry.InternalServerError, "error generating presigned part URL", err)
+			appErr := configberry.HandleAWSError(err, fmt.Sprintf("error generating presigned part URL for object with `key` %s", key))
 			log.Error(configberry.LogErrorFormatter(appErr, true))
 			return configberry.HandleErrorResponse(c, appErr)
 		}
@@ -354,15 +381,16 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
+
 	//if the user did not provided both upload_id and part_number then we returned normal presigned URL
 	presignedURL, err := s3Ctrl.GetUploadPresignedURL(bucket, key, bh.Config.DefaultUploadPresignedUrlExpiration)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error generating presigned URL", err)
+		appErr := configberry.HandleAWSError(err, (fmt.Sprintf("error generating presigned URL for object with `key` %s", key)))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
-	log.Infof("successfully generated presigned URL for key: %s", key)
+	log.Infof("successfully generated presigned URL for object with `key`: %s", key)
 	return configberry.HandleSuccessfulResponse(c, presignedURL)
 }
 
@@ -370,7 +398,7 @@ func (bh *BlobHandler) HandleGetPresignedUploadURL(c echo.Context) error {
 func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `key` is required", nil)
+		appErr := configberry.NewAppError(configberry.ValidationError, parameterKeyRequired, nil)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -378,7 +406,7 @@ func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -391,7 +419,7 @@ func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 
 	uploadID, err := s3Ctrl.GetMultiPartUploadID(bucket, key)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error retrieving multipart Upload ID", err)
+		appErr := configberry.HandleAWSError(err, "error retrieving multipart Upload ID")
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -403,7 +431,7 @@ func (bh *BlobHandler) HandleGetMultipartUploadID(c echo.Context) error {
 func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `key` is required", nil)
+		appErr := configberry.NewAppError(configberry.ValidationError, parameterKeyRequired, nil)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -411,7 +439,7 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -425,7 +453,7 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 	var req completeUploadRequest
 
 	if err := c.Bind(&req); err != nil {
-		appErr := configberry.NewAppError(configberry.BadRequestError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.BadRequestError, parseingBodyRequestError, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -440,7 +468,7 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 
 	_, err = s3Ctrl.CompleteMultipartUpload(bucket, key, req.UploadID, s3Parts)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, fmt.Sprintf("error completing the multipart Upload for key %s", key), err)
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error completing the multipart Upload for object with `key` %s", key))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -452,7 +480,7 @@ func (bh *BlobHandler) HandleCompleteMultipartUpload(c echo.Context) error {
 func (bh *BlobHandler) HandleAbortMultipartUpload(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `key` is required", nil)
+		appErr := configberry.NewAppError(configberry.ValidationError, parameterKeyRequired, nil)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -460,7 +488,7 @@ func (bh *BlobHandler) HandleAbortMultipartUpload(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -480,10 +508,10 @@ func (bh *BlobHandler) HandleAbortMultipartUpload(c echo.Context) error {
 
 	err = s3Ctrl.AbortMultipartUpload(bucket, key, uploadID)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, fmt.Sprintf("error aborting the multipart Upload for key %s", key), err)
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error aborting the multipart Upload for key %s", key))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
-	log.Infof("succesfully aborted multipart upload for key %s", key)
+	log.Infof("succesfully aborted multipart upload for object with `key` %s", key)
 	return configberry.HandleSuccessfulResponse(c, "succesfully aborted multipart upload")
 }

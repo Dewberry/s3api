@@ -49,7 +49,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 		if bh.AllowAllBuckets {
 			result, err := controller.ListBuckets()
 			if err != nil {
-				appErr := configberry.HandleAWSError(err, "error retunring list of buckets")
+				appErr := configberry.HandleAWSError(err, "error listing buckets")
 				log.Error(configberry.LogErrorFormatter(appErr, true))
 				return configberry.HandleErrorResponse(c, appErr)
 			}

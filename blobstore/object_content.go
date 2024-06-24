@@ -12,13 +12,6 @@ import (
 )
 
 func (s3Ctrl *S3Controller) FetchObjectContent(bucket string, key string) (io.ReadCloser, error) {
-	keyExist, err := s3Ctrl.KeyExists(bucket, key)
-	if err != nil {
-		return nil, err
-	}
-	if !keyExist {
-		return nil, fmt.Errorf("object %s not found", key)
-	}
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
@@ -34,7 +27,7 @@ func (s3Ctrl *S3Controller) FetchObjectContent(bucket string, key string) (io.Re
 func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `key` is required", nil)
+		appErr := configberry.NewAppError(configberry.ValidationError, parameterKeyRequired, nil)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -42,7 +35,7 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -54,24 +47,24 @@ func (bh *BlobHandler) HandleObjectContents(c echo.Context) error {
 	}
 
 	if !fullAccess && !isPermittedPrefix(bucket, key, permissions) {
-		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the %s key", key), err)
+		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read object with the `key` %s", key), err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
 	outPutBody, err := s3Ctrl.FetchObjectContent(bucket, key)
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, "error fetching object's content")
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error fetching object's content with `key` %s", key))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 	body, err := io.ReadAll(outPutBody)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.ForbiddenError, "error reading objects body", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, fmt.Sprintf("error reading object's body with `key` %s", key), err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
-	log.Info("Successfully fetched object data for key:", key)
+	log.Info("successfully fetched object data for object with `key`:", key)
 	//TODO: add contentType
 	return configberry.HandleSuccessfulResponse(c, body)
 }

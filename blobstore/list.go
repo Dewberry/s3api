@@ -98,7 +98,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -115,7 +115,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	if delimiterParam != "" {
 		delimiter, err = strconv.ParseBool(delimiterParam)
 		if err != nil {
-			appErr := configberry.NewAppError(configberry.ValidationError, "error parsing `delimiter` param", nil)
+			appErr := configberry.NewAppError(configberry.ValidationError, parsingDelimeterParamError, nil)
 			log.Error(configberry.LogErrorFormatter(appErr, true))
 			return configberry.HandleErrorResponse(c, appErr)
 		}
@@ -153,7 +153,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error processing objects", err)
+		appErr := configberry.HandleAWSError(err, listingObjectsAndPrefixError)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -168,7 +168,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -185,7 +185,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	if delimiterParam != "" {
 		delimiter, err = strconv.ParseBool(delimiterParam)
 		if err != nil {
-			appErr := configberry.NewAppError(configberry.ValidationError, "error parsing `delimiter` param", nil)
+			appErr := configberry.NewAppError(configberry.ValidationError, parsingDelimeterParamError, nil)
 			log.Error(configberry.LogErrorFormatter(appErr, true))
 			return configberry.HandleErrorResponse(c, appErr)
 		}
@@ -245,11 +245,11 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	}
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error processing objects", err)
+		appErr := configberry.HandleAWSError(err, listingObjectsAndPrefixError)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
-	log.Info("Successfully retrieved list by prefix:", prefix)
+	log.Info("successfully retrieved list by prefix:", prefix)
 	return configberry.HandleSuccessfulResponse(c, results)
 }

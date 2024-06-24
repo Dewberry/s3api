@@ -11,7 +11,7 @@ import (
 )
 
 func (bh *BlobHandler) HandlePing(c echo.Context) error {
-	return configberry.HandleSuccessfulResponse(c, "connection without Auth is healthy")
+	return configberry.HandleSuccessfulResponse(c, "connection without `Auth` is healthy")
 }
 
 func (bh *BlobHandler) HandlePingWithAuth(c echo.Context) error {

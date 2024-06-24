@@ -1,1626 +1,68 @@
 {
 	"info": {
-		"_postman_id": "0a073b9d-5085-4565-9fc1-afe9a1aa4ee6",
-		"name": "E2E Testing Collection",
+		"_postman_id": "db98bd13-6aa3-4624-80fa-66e7d7801aff",
+		"name": "S3API E2E Test",
+		"description": "Collection to test all S3 API endpoints.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "18773467",
-		"_collection_link": "https://universal-comet-524706.postman.co/workspace/Dewberry~fe115dcb-2f48-4ca3-a618-e462c6ac4255/collection/18773467-0a073b9d-5085-4565-9fc1-afe9a1aa4ee6?action=share&source=collection_link&creator=18773467"
+		"_collection_link": "https://universal-comet-524706.postman.co/workspace/Dewberry~fe115dcb-2f48-4ca3-a618-e462c6ac4255/collection/18773467-db98bd13-6aa3-4624-80fa-66e7d7801aff?action=share&source=collection_link&creator=18773467"
 	},
 	"item": [
 		{
-			"name": "Ping Endpoints",
+			"name": "Object",
 			"item": [
 				{
-					"name": "GET /ping",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test('ping without auth success', function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/ping",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"ping"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "GET /ping_with_auth",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test('ping with auth did not work as expected', function () {\r",
-									"    pm.response.to.have.status(401);\r",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/ping_with_auth",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"ping_with_auth"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Login",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var jsonData = JSON.parse(responseBody);\r",
-									"postman.setEnvironmentVariable(\"bearer_token\", jsonData.access_token);\r",
-									"\r",
-									"pm.test(\"Logging in\", function () {\r",
-									"    if(pm.response.code !== 200){\r",
-									"        console.log(\"Error body: \", pm.response.text());\r",
-									"    }\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "urlencoded",
-							"urlencoded": [
-								{
-									"key": "username",
-									"value": "{{auth_username}}",
-									"type": "text"
-								},
-								{
-									"key": "password",
-									"value": "{{auth_password}}",
-									"type": "text"
-								},
-								{
-									"key": "client_id",
-									"value": "{{auth_client_id}}",
-									"type": "text"
-								},
-								{
-									"key": "grant_type",
-									"value": "{{auth_grant_type}}",
-									"type": "text"
-								},
-								{
-									"key": "client_secret",
-									"value": "{{auth_client_secret}}",
-									"type": "text"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{auth_url}}/testing/protocol/openid-connect/token",
-							"host": [
-								"{{auth_url}}"
-							],
-							"path": [
-								"testing",
-								"protocol",
-								"openid-connect",
-								"token"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "GET /ping_with_auth 2",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Logging in\", function () {\r",
-									"    if(pm.response.code !== 200){\r",
-									"        console.log(\"Error body: \", pm.response.text());\r",
-									"        console.log('Bearer Token:', pm.environment.get('bearer_token'));\r",
-									"    }\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/ping_with_auth",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"ping_with_auth"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "list_buckets",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Listing buckets\", function () {\r",
-									"    if(pm.response.code !== 200){\r",
-									"        console.log(\"Error body: \", pm.response.text());\r",
-									"        console.log('Bearer Token:', pm.environment.get('bearer_token'));\r",
-									"    }\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/list_buckets",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"list_buckets"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "successful run",
-			"item": [
-				{
-					"name": "1/object/upload",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "",
-									"type": "file",
-									"src": "missing_huc8s.xlsx"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"upload"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2ePathToObj}}{{e2eObjName}}"
-								},
-								{
-									"key": "override",
-									"value": "{{e2eoverride}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "2/object/exists",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/exists?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"exists"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2ePathToObj}}{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "3/object/metadata",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/metadata?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"metadata"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2ePathToObj}}{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "4/object/content",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/content?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"content"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2ePathToObj}}{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "5/object/download",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/download?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"download"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2ePathToObj}}{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "6/prefix/size",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/size?prefix={{e2ePathToObj}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"prefix",
-								"size"
-							],
-							"query": [
-								{
-									"key": "prefix",
-									"value": "{{e2ePathToObj}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "7/object/move",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"move"
-							],
-							"query": [
-								{
-									"key": "src_key",
-									"value": "{{e2ePathToObj}}{{e2eObjName}}"
-								},
-								{
-									"key": "dest_key",
-									"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "8/prefix/list",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/list?prefix={{e2ePathToObj}}&delimiter={{e2eoverride}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"prefix",
-								"list"
-							],
-							"query": [
-								{
-									"key": "prefix",
-									"value": "{{e2ePathToObj}}"
-								},
-								{
-									"key": "delimiter",
-									"value": "{{e2eoverride}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "9/prefix/list_with_details",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/list_with_details?prefix={{e2ePathToObj}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"prefix",
-								"list_with_details"
-							],
-							"query": [
-								{
-									"key": "prefix",
-									"value": "{{e2ePathToObj}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "10.2/prefix/download_script",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/download/script?prefix={{e2ePathToObj}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"prefix",
-								"download",
-								"script"
-							],
-							"query": [
-								{
-									"key": "prefix",
-									"value": "{{e2ePathToObj}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "11/object/upload 2",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "",
-									"type": "file",
-									"src": "missing_huc8s.xlsx"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"upload"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2ePathToObj}}{{e2eObjName}}"
-								},
-								{
-									"key": "override",
-									"value": "{{e2eoverride}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "12/prefix/move",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/move?src_prefix={{e2ePathToObj}}{{e2ePathToObj}}&dest_prefix={{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"prefix",
-								"move"
-							],
-							"query": [
-								{
-									"key": "src_prefix",
-									"value": "{{e2ePathToObj}}{{e2ePathToObj}}"
-								},
-								{
-									"key": "dest_prefix",
-									"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "13/object/delete",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/delete?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"delete"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2ePathToObj}}{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "14/prefix/delete",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/prefix/delete?prefix={{e2ePathToObj}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"prefix",
-								"delete"
-							],
-							"query": [
-								{
-									"key": "prefix",
-									"value": "{{e2ePathToObj}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "15/object/upload 3",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "",
-									"type": "file",
-									"src": "missing_huc8s.xlsx"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}1&override={{e2eoverride}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"upload"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2ePathToObj}}{{e2eObjName}}1"
-								},
-								{
-									"key": "override",
-									"value": "{{e2eoverride}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "16/object/upload 4",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "",
-									"type": "file",
-									"src": "missing_huc8s.xlsx"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}2&override={{e2eoverride}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"upload"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2ePathToObj}}{{e2eObjName}}2"
-								},
-								{
-									"key": "override",
-									"value": "{{e2eoverride}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "17/delete_keys",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n    \"keys\": [\"{{e2ePathToObj}}{{e2eObjName}}1\", \"{{e2ePathToObj}}{{e2eObjName}}2\"]\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{s3_api_root_url}}/delete_keys?bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"delete_keys"
-							],
-							"query": [
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "18/object/presigned_upload",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/presigned_upload?key={{e2eObjName}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"presigned_upload"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "19/object/multipart_upload_id",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var jsonData = pm.response.json();\r",
-									"pm.environment.set(\"uploadId\", jsonData);\r",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/multipart_upload_id?key={{e2eObjName}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"multipart_upload_id"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "19/object/presigned_upload_multipart",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var jsonData = pm.response.json()//.replace('minio', 'localhost');\r",
-									"pm.environment.set(\"presignedUploadUrl\", jsonData);\r",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/presigned_upload?key={{e2eObjName}}&bucket={{bucket}}&upload_id={{uploadId}}&part_number=1",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"presigned_upload"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								},
-								{
-									"key": "upload_id",
-									"value": "{{uploadId}}"
-								},
-								{
-									"key": "part_number",
-									"value": "1"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "presigned_url_test",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// Extract ETag from the response header\r",
-									"var etag = pm.response.headers.get(\"ETag\");\r",
-									"\r",
-									"\r",
-									"// Remove extra quotation marks if present\r",
-									"etag = etag.replace(/\"/g, '');\r",
-									"\r",
-									"\r",
-									"// Set the ETag as an environment variable\r",
-									"pm.environment.set(\"etag\", etag);\r",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"protocolProfileBehavior": {
-						"disabledSystemHeaders": {}
-					},
-					"request": {
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "",
-									"type": "file",
-									"src": "missing_huc8s.xlsx"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{presignedUploadUrl}}",
-							"host": [
-								"{{presignedUploadUrl}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "20/object/complete_multipart_upload",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n    \"uploadId\": \"{{uploadId}}\",\r\n    \"parts\": [{\r\n        \"partNumber\":1,\r\n        \"eTag\":\"{{etag}}\"\r\n    }]\r\n}\r\n",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/complete_multipart_upload?key={{e2eObjName}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"complete_multipart_upload"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "20/object/multipart_upload_id",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var jsonData = pm.response.json();\r",
-									"pm.environment.set(\"uploadId\", jsonData);\r",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/multipart_upload_id?key={{e2eObjName}}&bucket={{bucket}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"multipart_upload_id"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "21/object/abort_multipart_upload",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearer_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{s3_api_root_url}}/object/abort_multipart_upload?key={{e2eObjName}}&bucket={{bucket}}&upload_id={{uploadId}}",
-							"host": [
-								"{{s3_api_root_url}}"
-							],
-							"path": [
-								"object",
-								"abort_multipart_upload"
-							],
-							"query": [
-								{
-									"key": "key",
-									"value": "{{e2eObjName}}"
-								},
-								{
-									"key": "bucket",
-									"value": "{{bucket}}"
-								},
-								{
-									"key": "upload_id",
-									"value": "{{uploadId}}"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			],
-			"event": [
-				{
-					"listen": "prerequest",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							""
-						]
-					}
-				},
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							"pm.test('successfully executed endpoint', function () {",
-							"    pm.response.to.have.status(200);",
-							"});"
-						]
-					}
-				}
-			]
-		},
-		{
-			"name": "unsuccesful runs",
-			"item": [
-				{
-					"name": "SuccesfulTestingInput",
+					"name": "upload object",
 					"item": [
 						{
-							"name": "1/object/upload",
+							"name": "Upload Object - 200,400",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											""
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if override is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('override') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if file is missing\", function () {",
+											"    if(pm.request.body.file === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
 										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
 								"method": "POST",
-								"header": [],
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
 								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "",
-											"type": "file",
-											"src": "missing_huc8s.xlsx"
-										}
-									]
+									"mode": "file",
+									"file": {
+										"src": "missing_huc8s.xlsx"
+									}
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}&bucket={{bucket}}",
+									"raw": "{{baseUrl}}/object/upload?key={{key}}&bucket={{bucket}}&override=false",
 									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"object",
@@ -1629,15 +71,15 @@
 									"query": [
 										{
 											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}"
-										},
-										{
-											"key": "override",
-											"value": "{{e2eoverride}}"
+											"value": "{{key}}"
 										},
 										{
 											"key": "bucket",
 											"value": "{{bucket}}"
+										},
+										{
+											"key": "override",
+											"value": "false"
 										}
 									]
 								}
@@ -1645,54 +87,42 @@
 							"response": []
 						},
 						{
-							"name": "1/object/upload Copy",
+							"name": "Upload Object - 409",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											""
+											"",
+											"pm.test(\"Status code is 409 if key is a conflict\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(409);",
+											"    }",
+											"});"
 										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
 								"method": "POST",
-								"header": [],
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
 								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "",
-											"type": "file",
-											"src": "missing_huc8s.xlsx"
-										}
-									]
+									"mode": "file",
+									"file": {
+										"src": "missing_huc8s.xlsx"
+									}
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}2&override={{e2eoverride}}&bucket={{bucket}}",
+									"raw": "{{baseUrl}}/object/upload?key={{key}}&bucket={{bucket}}&override=false",
 									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"object",
@@ -1701,452 +131,65 @@
 									"query": [
 										{
 											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
-										},
-										{
-											"key": "override",
-											"value": "{{e2eoverride}}"
+											"value": "{{key}}"
 										},
 										{
 											"key": "bucket",
 											"value": "{{bucket}}"
+										},
+										{
+											"key": "override",
+											"value": "false"
 										}
 									]
 								}
 							},
 							"response": []
-						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Succesfully uploaded test data', function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								]
-							}
 						}
 					]
 				},
 				{
-					"name": "UnprocessableEntity",
+					"name": "Get Metadata",
 					"item": [
 						{
-							"name": "1/object/upload",
+							"name": "Get Object Metadata - 200, 400",
 							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
 								{
 									"listen": "prerequest",
 									"script": {
 										"exec": [
 											""
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
 								},
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "",
-											"type": "file",
-											"src": "missing_huc8s.xlsx"
-										}
-									]
-								},
-								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?override={{e2eoverride}}&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"object",
-										"upload"
-									],
-									"query": [
-										{
-											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}",
-											"disabled": true
-										},
-										{
-											"key": "override",
-											"value": "{{e2eoverride}}"
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "11/object/upload 2",
-							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											""
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Status code is 400 if key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
 										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"exec": [
-											"let keyValue = pm.environment.get(\"e2ekey\"); \r",
-											"if (keyValue === \"invalid\") {\r",
-											"    pm.request.url.query.remove(\"override\");\r",
-											"}"
-										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "",
-											"type": "file",
-											"src": "missing_huc8s.xlsx"
-										}
-									]
-								},
-								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"object",
-										"upload"
-									],
-									"query": [
-										{
-											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}"
-										},
-										{
-											"key": "override",
-											"value": "{{e2eoverride}}",
-											"disabled": true
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "15/object/upload 3",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "",
-											"type": "file",
-											"src": "missing_huc8s.xlsx"
-										}
-									]
-								},
-								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"object",
-										"upload"
-									],
-									"query": [
-										{
-											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}1",
-											"disabled": true
-										},
-										{
-											"key": "override",
-											"value": "{{e2eoverride}}",
-											"disabled": true
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "2/object/exists",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/exists?bucket={{bucket}}",
+									"raw": "{{baseUrl}}/object/metadata?bucket={{bucket}}&key={{key}}",
 									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"object",
-										"exists"
-									],
-									"query": [
-										{
-											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}",
-											"disabled": true
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "8/prefix/list",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/list?bucket=",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"prefix",
-										"list"
-									],
-									"query": [
-										{
-											"key": "prefix",
-											"value": "{{e2ePathToObj}}",
-											"disabled": true
-										},
-										{
-											"key": "delimiter",
-											"value": "{{e2eoverride}}",
-											"disabled": true
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "6/prefix/size",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/size?bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"prefix",
-										"size"
-									],
-									"query": [
-										{
-											"key": "prefix",
-											"value": "{{e2ePathToObj}}",
-											"disabled": true
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "3/object/metadata",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/object/metadata?bukcet={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"object",
@@ -2154,49 +197,106 @@
 									],
 									"query": [
 										{
-											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}",
-											"disabled": true
+											"key": "bucket",
+											"value": "{{bucket}}"
 										},
 										{
-											"key": "bukcet",
-											"value": "{{bucket}}"
+											"key": "key",
+											"value": "{{key}}"
 										}
 									]
-								}
+								},
+								"description": "Get metadata for a valid object key."
 							},
 							"response": []
 						},
 						{
-							"name": "4/object/content",
+							"name": "Get Object Metadata - 404",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/object/metadata?bucket={{bucket}}&key={{non_existent_key}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"metadata"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "key",
+											"value": "{{non_existent_key}}"
+										}
+									]
+								},
+								"description": "Get metadata for a non-existent key."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Get Content",
+					"item": [
+						{
+							"name": "Get Content - 200, 400",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											""
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
 										],
 										"type": "text/javascript"
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/content?bucket={{bucket}}",
+									"raw": "{{baseUrl}}/object/content?key={{key}}&bucket={{bucket}}",
 									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"object",
@@ -2205,8 +305,7 @@
 									"query": [
 										{
 											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}",
-											"disabled": true
+											"value": "{{key}}"
 										},
 										{
 											"key": "bucket",
@@ -2218,35 +317,393 @@
 							"response": []
 						},
 						{
-							"name": "5/object/download",
+							"name": "Get Content - 404",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
 											""
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/download?bucket={{bucket}}",
+									"raw": "{{baseUrl}}/object/content?key={{non_existent_key}}&bucket={{bucket}}",
 									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"content"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{non_existent_key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Move Object",
+					"item": [
+						{
+							"name": "Move Object - 404",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404 for object not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\"src_key\": \"{{src_key}}\", \"dest_key\": \"{{dest_key}}\"}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/object/move?bucket={{bucket}}&src_key={{non_existent_key}}&dest_key={{key}}/{{key}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"move"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "src_key",
+											"value": "{{non_existent_key}}"
+										},
+										{
+											"key": "dest_key",
+											"value": "{{key}}/{{key}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Move Object - 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400 for identical keys\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\"src_key\": \"{{src_key}}\", \"dest_key\": \"{{dest_key}}\"}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/object/move?bucket={{bucket}}&src_key={{key}}/{{key}}&dest_key={{key}}/{{key}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"move"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "src_key",
+											"value": "{{key}}/{{key}}"
+										},
+										{
+											"key": "dest_key",
+											"value": "{{key}}/{{key}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Move Object - 200,400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if src_key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('src_key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if dest_key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('dest_key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\"src_key\": \"{{src_key}}\", \"dest_key\": \"{{dest_key}}\"}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/object/move?bucket={{bucket}}&src_key={{key}}&dest_key={{prefix}}{{key}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"move"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "src_key",
+											"value": "{{key}}"
+										},
+										{
+											"key": "dest_key",
+											"value": "{{prefix}}{{key}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Move Object - 409",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400 for conflict with the dest_key\", function () {",
+											"    pm.response.to.have.status(409);",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\"src_key\": \"{{src_key}}\", \"dest_key\": \"{{dest_key}}\"}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/object/move?bucket={{bucket}}&src_key={{key}}&dest_key={{prefix}}{{key}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"move"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "src_key",
+											"value": "{{key}}"
+										},
+										{
+											"key": "dest_key",
+											"value": "{{prefix}}{{key}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Move Object - proc",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"//no script test this is a procedural call for further endpoints",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\"src_key\": \"{{src_key}}\", \"dest_key\": \"{{dest_key}}\"}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/object/move?bucket={{bucket}}&src_key={{prefix}}{{key}}&dest_key={{key}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"move"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "src_key",
+											"value": "{{prefix}}{{key}}"
+										},
+										{
+											"key": "dest_key",
+											"value": "{{key}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Download Object",
+					"item": [
+						{
+							"name": "Download Object - 200,400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/object/download?key={{key}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
 									],
 									"path": [
 										"object",
@@ -2255,8 +712,7 @@
 									"query": [
 										{
 											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}",
-											"disabled": true
+											"value": "{{key}}"
 										},
 										{
 											"key": "bucket",
@@ -2268,153 +724,38 @@
 							"response": []
 						},
 						{
-							"name": "17/delete_keys",
+							"name": "Download Object - 404",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
+											"pm.test(\"Status code is 404 for object not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
 											""
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "DELETE",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"keys\": []\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{s3_api_root_url}}/delete_keys?bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"delete_keys"
-									],
-									"query": [
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "14/prefix/delete",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "DELETE",
+								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/delete?bucket={{bucket}}",
+									"raw": "{{baseUrl}}/object/download?key={{non_existent_key}}&bucket={{bucket}}",
 									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"prefix",
-										"delete"
-									],
-									"query": [
-										{
-											"key": "prefix",
-											"value": "{{e2ePathToObj}}",
-											"disabled": true
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "7/object/move",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "PUT",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/object/move?bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"object",
-										"move"
+										"download"
 									],
 									"query": [
 										{
-											"key": "src_key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}",
-											"disabled": true
-										},
-										{
-											"key": "dest_key",
-											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}",
-											"disabled": true
+											"key": "key",
+											"value": "{{non_existent_key}}"
 										},
 										{
 											"key": "bucket",
@@ -2424,37 +765,38 @@
 								}
 							},
 							"response": []
-						},
+						}
+					]
+				},
+				{
+					"name": "Delete Object",
+					"item": [
 						{
-							"name": "13/object/delete",
+							"name": "Delete Object - 404",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											""
+											"",
+											"pm.test(\"Status code is 404 if key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(404);",
+											"    }",
+											"});"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/delete?bucket={{bucket}}",
+									"raw": "{{baseUrl}}/object/delete?key={{non_existent_key}}&bucket={{bucket}}",
 									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"object",
@@ -2463,8 +805,7 @@
 									"query": [
 										{
 											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}",
-											"disabled": true
+											"value": "{{non_existent_key}}"
 										},
 										{
 											"key": "bucket",
@@ -2476,35 +817,854 @@
 							"response": []
 						},
 						{
-							"name": "10.2/prefix/download/script",
+							"name": "Delete Object - 200,400",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											""
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/object/delete?key={{key}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"delete"
+									],
+									"query": [
 										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
+											"key": "key",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
 										}
 									]
-								},
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Object Exists",
+					"item": [
+						{
+							"name": "Check Object Exists - 200, 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/download/script?bucket={{bucket}}",
+									"raw": "{{baseUrl}}/object/exists?key={{key}}&bucket={{bucket}}",
 									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"exists"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Presigned upload",
+					"item": [
+						{
+							"name": "Get Presigned Upload URL - 200,400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Presigned URL is returned\", function () {",
+											"    var presignedUrl = pm.response.text().trim();",
+											"    pm.environment.set(\"presigned_url\", presignedUrl);",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/object/presigned_upload?key={{key}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"presigned_upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "use upload presigned URL -200",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"// Get the presigned URL from the environment variable\r",
+											"var presignedUrl = pm.environment.get(\"presigned_url\");\r",
+											"\r",
+											"// Remove surrounding quotes if present\r",
+											"if (presignedUrl.startsWith('\"') && presignedUrl.endsWith('\"')) {\r",
+											"    presignedUrl = presignedUrl.substring(1, presignedUrl.length - 1);\r",
+											"}\r",
+											"\r",
+											"// Set the trimmed presigned URL back to the environment variable\r",
+											"pm.environment.set(\"presigned_url\", presignedUrl);\r",
+											"\r",
+											"// Set the URL of the request to the trimmed presigned URL\r",
+											"pm.request.url.update(presignedUrl);\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "file",
+									"file": {
+										"src": "missing_huc8s.xlsx"
+									}
+								},
+								"url": {
+									"raw": "{{presigned_url}}",
+									"host": [
+										"{{presigned_url}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Multipart Upload ID - 200,400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"",
+											"var jsonData = pm.response.json();",
+											"pm.environment.set(\"uploadId\", jsonData);"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/object/multipart_upload_id?key={{key}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"multipart_upload_id"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Presigned Upload URL - 200,400 Copy",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"",
+											"var jsonData = pm.response.json()//.replace('minio', 'localhost');",
+											"pm.environment.set(\"presignedUploadUrl\", jsonData);",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/object/presigned_upload?key={{key}}&bucket={{bucket}}&upload_id={{uploadId}}&part_number=1",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"presigned_upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "upload_id",
+											"value": "{{uploadId}}"
+										},
+										{
+											"key": "part_number",
+											"value": "1"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "presigned_url_test",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"// Extract ETag from the response header\r",
+											"var etag = pm.response.headers.get(\"ETag\");\r",
+											"\r",
+											"\r",
+											"// Remove extra quotation marks if present\r",
+											"etag = etag.replace(/\"/g, '');\r",
+											"\r",
+											"\r",
+											"// Set the ETag as an environment variable\r",
+											"pm.environment.set(\"etag\", etag);\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {}
+							},
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "",
+											"type": "file",
+											"src": "FFRMS/missing_huc8s.xlsx"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{presignedUploadUrl}}",
+									"host": [
+										"{{presignedUploadUrl}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Complete the Multipart Upload",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"uploadId\": \"{{uploadId}}\",\r\n    \"parts\": [{\r\n        \"partNumber\":1,\r\n        \"eTag\":\"{{etag}}\"\r\n    }]\r\n}\r\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/object/complete_multipart_upload?key={{key}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"complete_multipart_upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Multipart Upload ID -  config",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"",
+											"pm.test(\"Upload ID is returned\", function () {",
+											"    var uploadId = pm.response.text().trim();",
+											"    pm.environment.set(\"upload_id\", uploadId.replace(/\"/g, ''));",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/object/multipart_upload_id?key={{key}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"multipart_upload_id"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Abort Multipart Upload",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if key is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('key') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if upload_id is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('upload_id') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\"key\": \"{{key}}\", \"bucket\": \"{{bucket}}\", \"uploadID\": \"{{uploadID}}\"}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/object/abort_multipart_upload?key={{key}}&bucket={{bucket}}&upload_id={{upload_id}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"object",
+										"abort_multipart_upload"
+									],
+									"query": [
+										{
+											"key": "key",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "upload_id",
+											"value": "{{upload_id}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Prefix",
+			"item": [
+				{
+					"name": "List Prefix",
+					"item": [
+						{
+							"name": "List Prefix - 200,400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/prefix/list?bucket={{bucket}}&delimiter=true",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"list"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{prefix}}",
+											"disabled": true
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "delimiter",
+											"value": "true"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Prefix - 418",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"",
+											"pm.test(\"Status code is 418 if prefix is poimting to an object\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(418);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/prefix/list?prefix={{key}}&bucket={{bucket}}&delimiter=true",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"list"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "delimiter",
+											"value": "true"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "List Prefix With Detail",
+					"item": [
+						{
+							"name": "List Prefix with Details - 200,400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/prefix/list_with_details?prefix={{prefix}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"list_with_details"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{prefix}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Prefix - 418",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"",
+											"pm.test(\"Status code is 418 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(418);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/prefix/list_with_details?bucket={{bucket}}&prefix={{key}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"list_with_details"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "prefix",
+											"value": "{{key}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Generate Download Script",
+					"item": [
+						{
+							"name": "Generate Download Script -200,400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if prefix is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('prefix') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"",
+											"",
+											"//unable to test size overload"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/prefix/download/script?prefix={{prefix}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
 									],
 									"path": [
 										"prefix",
@@ -2514,8 +1674,7 @@
 									"query": [
 										{
 											"key": "prefix",
-											"value": "{{e2ePathToObj}}",
-											"disabled": true
+											"value": "{{prefix}}"
 										},
 										{
 											"key": "bucket",
@@ -2527,126 +1686,41 @@
 							"response": []
 						},
 						{
-							"name": "12/prefix/move",
+							"name": "Generate Download Script - 418",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
+											"pm.test(\"Status code is 418 if prefix is an object\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(418);",
+											"    }",
+											"});",
 											""
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "PUT",
+								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/move?bucket={{bucket}}",
+									"raw": "{{baseUrl}}/prefix/download/script?prefix={{key}}&bucket={{bucket}}",
 									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"prefix",
-										"move"
-									],
-									"query": [
-										{
-											"key": "src_prefix",
-											"value": "{{e2ePathToObj}}{{e2ePathToObj}}",
-											"disabled": true
-										},
-										{
-											"key": "dest_prefix",
-											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}",
-											"disabled": true
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Unprocessable entity executed endpoint', function () {",
-									"    pm.response.to.have.status(422);",
-									"});"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "NotFound",
-					"item": [
-						{
-							"name": "14/prefix/delete",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/delete?prefix=invalid&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"prefix",
-										"delete"
+										"download",
+										"script"
 									],
 									"query": [
 										{
 											"key": "prefix",
-											"value": "invalid"
+											"value": "{{key}}"
 										},
 										{
 											"key": "bucket",
@@ -2656,594 +1730,47 @@
 								}
 							},
 							"response": []
-						},
-						{
-							"name": "13/object/delete",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/object/delete?key=invalid&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"object",
-										"delete"
-									],
-									"query": [
-										{
-											"key": "key",
-											"value": "invalid"
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "4/object/content",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/object/content?key=invalid&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"object",
-										"content"
-									],
-									"query": [
-										{
-											"key": "key",
-											"value": "invalid"
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "17/delete_keys",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "DELETE",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n    \"keys\": [\"invalid\"]\r\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{s3_api_root_url}}/delete_keys?bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"delete_keys"
-									],
-									"query": [
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "5/object/download",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/object/download?key=invalid&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"object",
-										"download"
-									],
-									"query": [
-										{
-											"key": "key",
-											"value": "invalid"
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "3/object/metadata",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/object/metadata?key=invalid&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"object",
-										"metadata"
-									],
-									"query": [
-										{
-											"key": "key",
-											"value": "invalid"
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "7/object/move",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "PUT",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/object/move?src_key=invalid&dest_key={{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"object",
-										"move"
-									],
-									"query": [
-										{
-											"key": "src_key",
-											"value": "invalid"
-										},
-										{
-											"key": "dest_key",
-											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2eObjName}}"
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "12/prefix/move",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "PUT",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/move?src_prefix=invalid&dest_prefix={{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"prefix",
-										"move"
-									],
-									"query": [
-										{
-											"key": "src_prefix",
-											"value": "invalid"
-										},
-										{
-											"key": "dest_prefix",
-											"value": "{{e2ePathToObj}}{{e2ePathToObj}}{{e2ePathToObj}}"
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "6/size",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/size?prefix=invalid&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"prefix",
-										"size"
-									],
-									"query": [
-										{
-											"key": "prefix",
-											"value": "invalid"
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('successfully attempted a not found', function () {",
-									"    pm.response.to.have.status(404);",
-									"});"
-								]
-							}
 						}
 					]
 				},
 				{
-					"name": "BadRequest",
+					"name": "Move Prefix",
 					"item": [
 						{
-							"name": "/object/move",
+							"name": "Upload Object - config",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
 											""
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "PUT",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2eObjName}}&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"object",
-										"move"
-									],
-									"query": [
-										{
-											"key": "src_key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}"
-										},
-										{
-											"key": "dest_key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}"
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "17/delete_keys",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "DELETE",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "key:{\"stuff,\"}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{s3_api_root_url}}/delete_keys?bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"delete_keys"
-									],
-									"query": [
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "1/object/upload Copy",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
 								"method": "POST",
-								"header": [],
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
 								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "",
-											"value": "",
-											"type": "text",
-											"disabled": true
-										}
-									]
+									"mode": "file",
+									"file": {
+										"src": "missing_huc8s.xlsx"
+									}
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}&bucket={{bucket}}",
+									"raw": "{{baseUrl}}/object/upload?key={{prefix}}{{key}}&bucket={{bucket}}&override=false",
 									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"object",
@@ -3252,95 +1779,73 @@
 									"query": [
 										{
 											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}"
-										},
-										{
-											"key": "override",
-											"value": "{{e2eoverride}}"
+											"value": "{{prefix}}{{key}}"
 										},
 										{
 											"key": "bucket",
 											"value": "{{bucket}}"
+										},
+										{
+											"key": "override",
+											"value": "false"
 										}
 									]
 								}
 							},
 							"response": []
-						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
 						},
 						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('Bad Request Success', function () {",
-									"    pm.response.to.have.status(400);",
-									"});"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "conflict",
-					"item": [
-						{
-							"name": "/object/move 2",
+							"name": "Move Prefix  - 418",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											""
+											"pm.test(\"Status code is 418 because src_prefix is an object\", function () {",
+											"    pm.response.to.have.status(418);",
+											"});",
+											"",
+											"",
+											"//might need more testing when this is multibucketd "
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
 								"method": "PUT",
-								"header": [],
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/move?src_key={{e2ePathToObj}}{{e2eObjName}}&dest_key={{e2ePathToObj}}{{e2eObjName}}2&bucket={{bucket}}",
+									"raw": "{{baseUrl}}/prefix/move?bucket={{bucket}}&src_prefix={{prefix}}{{key}}&dest_prefix={{prefix}}{{prefix}}",
 									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
-										"object",
+										"prefix",
 										"move"
 									],
 									"query": [
 										{
-											"key": "src_key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}"
-										},
-										{
-											"key": "dest_key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
-										},
-										{
 											"key": "bucket",
 											"value": "{{bucket}}"
+										},
+										{
+											"key": "src_prefix",
+											"value": "{{prefix}}{{key}}"
+										},
+										{
+											"key": "dest_prefix",
+											"value": "{{prefix}}{{prefix}}"
 										}
 									]
 								}
@@ -3348,239 +1853,162 @@
 							"response": []
 						},
 						{
-							"name": "1/object/upload",
+							"name": "Move Prefix  - 418",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											""
+											"pm.test(\"Status code is 418 because src_prefix is an object\", function () {",
+											"    pm.response.to.have.status(418);",
+											"});",
+											"",
+											"",
+											"//might need more testing when this is multibucketd "
 										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "POST",
-								"header": [],
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
 								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "",
-											"type": "file",
-											"src": [
-												"missing_huc8s.xlsx",
-												"missing_huc8s.xlsx"
-											]
-										}
-									]
+									"mode": "raw",
+									"raw": ""
 								},
 								"url": {
-									"raw": "{{s3_api_root_url}}/object/upload?key={{e2ePathToObj}}{{e2eObjName}}&override={{e2eoverride}}&bucket={{bucket}}",
+									"raw": "{{baseUrl}}/prefix/move?bucket={{bucket}}&src_prefix={{prefix}}{{key}}&dest_prefix={{prefix}}{{key}}",
 									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
-										"object",
-										"upload"
+										"prefix",
+										"move"
 									],
 									"query": [
 										{
-											"key": "key",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}"
-										},
-										{
-											"key": "override",
-											"value": "{{e2eoverride}}"
-										},
-										{
 											"key": "bucket",
 											"value": "{{bucket}}"
+										},
+										{
+											"key": "src_prefix",
+											"value": "{{prefix}}{{key}}"
+										},
+										{
+											"key": "dest_prefix",
+											"value": "{{prefix}}{{key}}"
 										}
 									]
 								}
 							},
 							"response": []
-						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
 						},
 						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('conflict Success', function () {",
-									"    pm.response.to.have.status(409);",
-									"});"
-								]
-							}
+							"name": "Move Prefix  - 200,400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if src_prefix is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('src_prefix') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if dest_prefix is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('dest_prefix') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"",
+											"//might need more testing when this is multibucketd "
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{baseUrl}}/prefix/move?bucket={{bucket}}&src_prefix={{prefix}}&dest_prefix={{prefix}}{{prefix}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"move"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										},
+										{
+											"key": "src_prefix",
+											"value": "{{prefix}}"
+										},
+										{
+											"key": "dest_prefix",
+											"value": "{{prefix}}{{prefix}}"
+										}
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
 				{
-					"name": "TeaPot",
+					"name": "Get Prefix Size",
 					"item": [
 						{
-							"name": "8/prefix/list",
+							"name": "Get Size - 200,400",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											""
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if prefix is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('prefix') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
 										],
 										"type": "text/javascript"
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/list?prefix={{e2ePathToObj}}{{e2eObjName}}2&delimiter={{e2eoverride}}&bucket={{bucket}}",
+									"raw": "{{baseUrl}}/prefix/size?prefix={{prefix}}&bucket={{bucket}}",
 									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"prefix",
-										"list"
-									],
-									"query": [
-										{
-											"key": "prefix",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
-										},
-										{
-											"key": "delimiter",
-											"value": "{{e2eoverride}}"
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "9/prefix/list_with_details",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/list_with_details?prefix={{e2ePathToObj}}{{e2eObjName}}2&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
-									],
-									"path": [
-										"prefix",
-										"list_with_details"
-									],
-									"query": [
-										{
-											"key": "prefix",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
-										},
-										{
-											"key": "bucket",
-											"value": "{{bucket}}"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "6/prefix/size",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/size?prefix={{e2ePathToObj}}{{e2eObjName}}2&bucket={{bucket}}",
-									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"prefix",
@@ -3589,7 +2017,97 @@
 									"query": [
 										{
 											"key": "prefix",
-											"value": "{{e2ePathToObj}}{{e2eObjName}}2"
+											"value": "{{prefix}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Size - 418",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"\r",
+											"pm.test(\"Status code is 418 if prefix is poimting to an object\", function () {\r",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {\r",
+											"        pm.response.to.have.status(418);\r",
+											"    }\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/prefix/size?prefix={{key}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"size"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Size - 404",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"\r",
+											"pm.test(\"Status code is 404 if prefix is not found\", function () {\r",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {\r",
+											"        pm.response.to.have.status(404);\r",
+											"    }\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/prefix/size?prefix={{prefix}}22&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"size"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{prefix}}22"
 										},
 										{
 											"key": "bucket",
@@ -3600,63 +2118,44 @@
 							},
 							"response": []
 						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('TeaPot error Success', function () {",
-									"    pm.response.to.have.status(418);",
-									"});"
-								]
-							}
-						}
 					]
 				},
 				{
-					"name": "clean up",
+					"name": "Delete Prefix",
 					"item": [
 						{
-							"name": "14/prefix/delete",
+							"name": "Delete Prefix - 200,400",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											""
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if prefix is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('prefix') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearer_token}}",
-											"type": "string"
-										}
-									]
-								},
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{s3_api_root_url}}/prefix/delete?prefix={{e2ePathToObj}}&bucket={{bucket}}",
+									"raw": "{{baseUrl}}/prefix/delete?prefix={{prefix}}&bucket={{bucket}}",
 									"host": [
-										"{{s3_api_root_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"prefix",
@@ -3665,7 +2164,95 @@
 									"query": [
 										{
 											"key": "prefix",
-											"value": "{{e2ePathToObj}}"
+											"value": "{{prefix}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Prefix - 404",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404 if bucket is missing\", function () {\r",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {\r",
+											"        pm.response.to.have.status(404);\r",
+											"    }\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/prefix/delete?prefix={{non_existent_key}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{non_existent_key}}"
+										},
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Prefix - 418",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 418 if prefix is object\", function () {\r",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {\r",
+											"        pm.response.to.have.status(418);\r",
+											"    }\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/prefix/delete?prefix={{key}}&bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"prefix",
+										"delete"
+									],
+									"query": [
+										{
+											"key": "prefix",
+											"value": "{{key}}"
 										},
 										{
 											"key": "bucket",
@@ -3677,34 +2264,254 @@
 							"response": []
 						}
 					]
-				}
-			],
-			"event": [
-				{
-					"listen": "prerequest",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							""
-						]
-					}
-				},
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"exec": [
-							""
-						]
-					}
 				}
 			]
-		}
-	],
-	"variable": [
+		},
 		{
-			"key": "presignedUploadUrl",
-			"value": "\"\""
+			"name": "Universal",
+			"item": [
+				{
+					"name": "Delete Keys",
+					"item": [
+						{
+							"name": "Delete Keys - 200,400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Status code is 400 if bucket is missing\", function () {",
+											"    if(pm.request.url.query.indexOf('bucket') === -1) {",
+											"        pm.response.to.have.status(400);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\"keys\": [\"{{key}}\"]}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/delete_keys?bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"delete_keys"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Keys - 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\"keys\": []}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/delete_keys?bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"delete_keys"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Keys - 404",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\"keys\":[\"{{non_existent_key}}\"]}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/delete_keys?bucket={{bucket}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"delete_keys"
+									],
+									"query": [
+										{
+											"key": "bucket",
+											"value": "{{bucket}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Multi-Bucket",
+			"item": [
+				{
+					"name": "List Buckets",
+					"item": [
+						{
+							"name": "List Buckets",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/list_buckets",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"list_buckets"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Check User Permission",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/check_user_permission?bucket={{bucket}}&prefix={{prefix}}&operation={{operation}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"check_user_permission"
+							],
+							"query": [
+								{
+									"key": "bucket",
+									"value": "{{bucket}}"
+								},
+								{
+									"key": "prefix",
+									"value": "{{prefix}}"
+								},
+								{
+									"key": "operation",
+									"value": "{{operation}}"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	]
 }

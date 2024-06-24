@@ -86,6 +86,39 @@ func (mc MinioConfig) minIOSessionManager() (*s3.S3, *session.Session, error) {
 		log.Info("Bucket already exists")
 	}
 
+	// Create the policy as a byte array
+	policyBytes := []byte(`{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": [
+            "*"
+        ]
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::test-bucket/*"
+      ]
+    }
+  ]}`)
+
+	// Set the policy on the bucket
+	_, err = s3SVC.PutBucketPolicy(&s3.PutBucketPolicyInput{
+		Bucket: aws.String(mc.Bucket),
+		Policy: aws.String(string(policyBytes)),
+	})
+	if err != nil {
+		log.Errorf("error setting bucket policy: %s", err.Error())
+		// Handle error appropriately
+	} else {
+		log.Info("Bucket policy set successfully")
+	}
+
 	return s3SVC, sess, nil
 }
 
