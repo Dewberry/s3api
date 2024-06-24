@@ -76,6 +76,37 @@ func TestCheckUserPermissionError(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestCheckUserPermissionNoAccess(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	pgDB := &auth.PostgresDB{Handle: db}
+
+	userEmail := "test@example.com"
+	bucket := "restricted-bucket"
+	prefix := "restricted-prefix"
+	operations := []string{"read", "write"}
+
+	query := regexp.QuoteMeta(`
+	SELECT EXISTS (
+		SELECT 1
+		FROM permissions,
+			 UNNEST(allowed_s3_prefixes) AS allowed_prefix
+		WHERE user_email = $1
+		  AND operation = ANY($2)
+		  AND $3 LIKE allowed_prefix || '%'
+	);
+	`)
+	mock.ExpectQuery(query).
+		WithArgs(userEmail, pq.Array(operations), "/"+bucket+"/"+prefix).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+	hasPermission := pgDB.CheckUserPermission(userEmail, bucket, prefix, operations)
+	require.False(t, hasPermission)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestGetUserAccessiblePrefixes(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -141,5 +172,38 @@ func TestGetUserAccessiblePrefixesError(t *testing.T) {
 	prefixes, err := pgDB.GetUserAccessiblePrefixes(userEmail, bucket, operations)
 	require.Error(t, err)
 	require.Nil(t, prefixes)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetUserAccessiblePrefixesNoAccess(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	pgDB := &auth.PostgresDB{Handle: db}
+
+	userEmail := "test@example.com"
+	bucket := "restricted-bucket"
+	operations := []string{"read", "write"}
+
+	query := regexp.QuoteMeta(`
+        WITH unnested_permissions AS (
+            SELECT DISTINCT unnest(allowed_s3_prefixes) AS allowed_prefix
+            FROM permissions
+            WHERE user_email = $1 AND operation = ANY($3)
+        )
+        SELECT allowed_prefix
+        FROM unnested_permissions
+        WHERE allowed_prefix LIKE $2 || '/%'
+        ORDER BY allowed_prefix;
+    `)
+	rows := sqlmock.NewRows([]string{"allowed_prefix"})
+	mock.ExpectQuery(query).
+		WithArgs(userEmail, "/"+bucket, pq.Array(operations)).
+		WillReturnRows(rows)
+
+	prefixes, err := pgDB.GetUserAccessiblePrefixes(userEmail, bucket, operations)
+	require.NoError(t, err)
+	require.Empty(t, prefixes)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
