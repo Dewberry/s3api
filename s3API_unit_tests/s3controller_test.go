@@ -4,23 +4,16 @@
 package test
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/Dewberry/s3api/blobstore"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
-
-// Ensure the environment variable is set before any other package initialization
-func init() {
-	fmt.Println("test package init()")
-	os.Setenv("INIT_AUTH", "0") // Assuming you're using this flag
-}
 
 type mockS3Client struct {
 	s3iface.S3API
@@ -32,20 +25,9 @@ func (m *mockS3Client) ListBuckets(*s3.ListBucketsInput) (*s3.ListBucketsOutput,
 	return &m.ListBucketsOutput, m.ListBucketsError
 }
 
-func TestMain(m *testing.M) {
-	// Ensure the environment variable is unset after the tests
-	defer os.Unsetenv("INIT_AUTH")
-
-	// Run the tests
-	exitCode := m.Run()
-
-	// Exit with the code from running the tests
-	os.Exit(exitCode)
-}
-
 func TestListBuckets(t *testing.T) {
-	// Create a mock S3 client with predefined output and error
 	t.Setenv("INIT_AUTH", "0")
+
 	mockSvc := &mockS3Client{
 		ListBucketsOutput: s3.ListBucketsOutput{
 			Buckets: []*s3.Bucket{
@@ -56,19 +38,36 @@ func TestListBuckets(t *testing.T) {
 		ListBucketsError: nil,
 	}
 
-	// Initialize the S3Controller with the mock S3 client
 	s3Ctrl := blobstore.S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
 
-	// Call the ListBuckets method
 	result, err := s3Ctrl.ListBuckets()
 
-	// Validate the results
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Len(t, result.Buckets, 2)
-	assert.Equal(t, "test-bucket-1", *result.Buckets[0].Name)
-	assert.Equal(t, "test-bucket-2", *result.Buckets[1].Name)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, result.Buckets, 2)
+	require.Equal(t, "test-bucket-1", *result.Buckets[0].Name)
+	require.Equal(t, "test-bucket-2", *result.Buckets[1].Name)
+}
+
+func TestListBucketsError(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		ListBucketsOutput: s3.ListBucketsOutput{},
+		ListBucketsError:  awserr.New("ListBucketsError", "Mocked error", nil),
+	}
+
+	s3Ctrl := blobstore.S3Controller{
+		Sess:  &session.Session{},
+		S3Svc: mockSvc,
+	}
+
+	result, err := s3Ctrl.ListBuckets()
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Equal(t, "ListBucketsError: Mocked error", err.Error())
 }
