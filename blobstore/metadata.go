@@ -20,7 +20,7 @@ func (s3Ctrl *S3Controller) GetMetaData(bucket, key string) (*s3.HeadObjectOutpu
 
 	result, err := s3Ctrl.S3Svc.HeadObject(input)
 	if err != nil {
-		return nil, fmt.Errorf("error getting object's metadata %s, %w", key, err)
+		return nil, err
 	}
 	return result, nil
 }
@@ -37,10 +37,10 @@ func (s3Ctrl *S3Controller) KeyExists(bucket string, key string) (bool, error) {
 			case "NotFound": // s3.ErrCodeNoSuchKey does not work, aws is missing this error code so we hardwire a string
 				return false, nil
 			default:
-				return false, fmt.Errorf("error checking if object %s exists, %w", key, err)
+				return false, err
 			}
 		}
-		return false, fmt.Errorf("error checking if object %s exists, %w", key, err)
+		return false, err
 	}
 	return true, nil
 }
@@ -49,14 +49,14 @@ func (s3Ctrl *S3Controller) KeyExists(bucket string, key string) (bool, error) {
 func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
-		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `prefix` is required", nil)
+		appErr := configberry.NewAppError(configberry.ValidationError, parameterPrefixRequired, nil)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -73,7 +73,7 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	}
 
 	if !fullAccess && !isPermittedPrefix(bucket, prefix, permissions) {
-		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the %s prefix", prefix), err)
+		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the `prefix` %s", prefix), err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -85,12 +85,12 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 	})
 
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, "error processing objects")
+		appErr := configberry.HandleAWSError(err, listingObjectsAndPrefixError)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 	if fileCount == 0 {
-		appErr := configberry.NewAppError(configberry.NotFoundError, fmt.Sprintf("prefix %s not found", prefix), err)
+		appErr := configberry.NewAppError(configberry.NotFoundError, fmt.Sprintf("`prefix` %s not found", prefix), err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 
@@ -105,14 +105,14 @@ func (bh *BlobHandler) HandleGetSize(c echo.Context) error {
 		Prefix:    prefix,
 	}
 
-	log.Info("Successfully retrieved size for prefix:", prefix)
+	log.Infof("Successfully retrieved size for `prefix` %s", prefix)
 	return configberry.HandleSuccessfulResponse(c, response)
 }
 
 func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `key` is required", nil)
+		appErr := configberry.NewAppError(configberry.ValidationError, parameterKeyRequired, nil)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -120,7 +120,7 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -132,7 +132,7 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 	}
 
 	if !fullAccess && !isPermittedPrefix(bucket, key, permissions) {
-		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the %s key", key), err)
+		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read object with `key` %s ", key), err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -144,14 +144,14 @@ func (bh *BlobHandler) HandleGetMetaData(c echo.Context) error {
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
-	log.Info("successfully retrieved metadata for key:", key)
+	log.Infof("successfully retrieved metadata for `key` %s exists", key)
 	return configberry.HandleSuccessfulResponse(c, result)
 }
 
 func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 	key := c.QueryParam("key")
 	if key == "" {
-		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `key` is required", nil)
+		appErr := configberry.NewAppError(configberry.ValidationError, parameterKeyRequired, nil)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -159,7 +159,7 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -171,18 +171,18 @@ func (bh *BlobHandler) HandleGetObjExist(c echo.Context) error {
 	}
 
 	if !fullAccess && !isPermittedPrefix(bucket, key, permissions) {
-		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the %s key", key), err)
+		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read object with `key` %s", key), err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
 	result, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, "error checking if object exists")
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error checking if object with `key` %s exists", key))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
-	log.Info("successfully retrieved metadata for key:", key)
+	log.Infof("successfully checked if object with `key` %s exists", key)
 	return configberry.HandleSuccessfulResponse(c, result)
 }

@@ -167,9 +167,9 @@ func HandleAWSError(err error, errMsg string) *AppError {
 			return NewAppError(ConflictError, formattedMessage, originalErr)
 		case "NotUpdatable", "InvalidRequest", "Throttling", "ServiceLimitExceeded", "NotStabilized", "GeneralServiceException", "NetworkFailure", "InvalidTypeConfiguration", "NonCompliant", "Unknown", "UnsupportedTarget":
 			return NewAppError(AWSError, formattedMessage, originalErr)
-		case "ServiceInternalError", "InternalFailure", "HandlerInternalFailure":
+		case "ServiceInternalError", "InternalFailure", "HandlerInternalFailure", "S3KeyCheckError":
 			return NewAppError(InternalServerError, formattedMessage, originalErr)
-		case "InvalidPart":
+		case "InvalidPart", "InvalidParameter":
 			return NewAppError(BadRequestError, formattedMessage, originalErr)
 		case "EntityTooLarge":
 			return NewAppError(EntityTooLargeError, formattedMessage, originalErr)
@@ -191,7 +191,7 @@ func CheckRequiredParams(params map[string]string) *AppError {
 		}
 	}
 	if len(missingParams) > 0 {
-		errMsg := fmt.Sprintf("The following required parameters are missing: %s", strings.Join(missingParams, ", "))
+		errMsg := fmt.Sprintf("The following required parameters are missing: `%s", strings.Join(missingParams, "`, `"))
 		return NewAppError(ValidationError, errMsg, nil)
 	}
 	return nil

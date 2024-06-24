@@ -3,7 +3,6 @@ package blobstore
 // Not implemented
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/Dewberry/s3api/configberry"
@@ -28,7 +27,7 @@ func (s3Ctrl *S3Controller) ListBuckets() (*s3.ListBucketsOutput, error) {
 	// Retrieve the list of buckets
 	result, err = s3Ctrl.S3Svc.ListBuckets(input)
 	if err != nil {
-		return nil, fmt.Errorf("error listing buckets: %w", err)
+		return nil, err
 	}
 	return result, nil
 }
@@ -50,7 +49,7 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 		if bh.AllowAllBuckets {
 			result, err := controller.ListBuckets()
 			if err != nil {
-				appErr := configberry.HandleAWSError(err, "error retunring list of buckets")
+				appErr := configberry.HandleAWSError(err, "error listing buckets")
 				log.Error(configberry.LogErrorFormatter(appErr, true))
 				return configberry.HandleErrorResponse(c, appErr)
 			}

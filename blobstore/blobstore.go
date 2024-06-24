@@ -185,3 +185,12 @@ func GetListSize(page *s3.ListObjectsV2Output, totalSize *uint64, fileCount *uin
 
 	return nil
 }
+
+//repetitive errors refactored:
+
+const unableToGetController string = "unable to get `s3controller`"
+const parameterKeyRequired string = "parameter `key` is required"
+const parameterPrefixRequired string = "parameter `prefix` is required"
+const parseingBodyRequestError string = "error parsing request body"
+const parsingDelimeterParamError string = "error parsing `delimiter` param"
+const listingObjectsAndPrefixError string = "error listing objects and common prefixes"

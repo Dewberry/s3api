@@ -20,7 +20,7 @@ import (
 func (s3Ctrl *S3Controller) GetDownloadPresignedURL(bucket, key string, expDays int) (string, error) {
 	duration := time.Duration(expDays) * 24 * time.Hour
 	if _, err := s3Ctrl.GetMetaData(bucket, key); err != nil { //this is to check if the object exists or not, it will return an AWS error
-		return "", fmt.Errorf("error checking if object %s exists, %w", key, err)
+		return "", fmt.Errorf("error checking if object with `key` %s exists, %w", key, err)
 	}
 	req, _ := s3Ctrl.S3Svc.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),
@@ -33,14 +33,14 @@ func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
 	key := c.QueryParam("key")
 	if key == "" {
-		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `key` is required", nil)
+		appErr := configberry.NewAppError(configberry.ValidationError, parameterKeyRequired, nil)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -52,14 +52,14 @@ func (bh *BlobHandler) HandleGetPresignedDownloadURL(c echo.Context) error {
 	}
 
 	if !fullAccess && !isPermittedPrefix(bucket, key, permissions) {
-		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the %s key", key), err)
+		appErr := configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the object with `key` %s", key), err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
 	url, err := s3Ctrl.GetDownloadPresignedURL(bucket, key, bh.Config.DefaultDownloadPresignedUrlExpiration)
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error getting presigned download URL for object %s", key))
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error getting presigned download URL for object eith `key` %s", key))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -72,14 +72,14 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
 	prefix := c.QueryParam("prefix")
 	if prefix == "" {
-		appErr := configberry.NewAppError(configberry.ValidationError, "parameter `prefix` is required", nil)
+		appErr := configberry.NewAppError(configberry.ValidationError, parameterPrefixRequired, nil)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -134,7 +134,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 				fullPath := filepath.Join(basePrefix, relativePath)
 				presignedURL, err := s3Ctrl.GetDownloadPresignedURL(bucket, *item.Key, bh.Config.DefaultDownloadPresignedUrlExpiration)
 				if err != nil {
-					return fmt.Errorf("error generating presigned URL for object %s: %v", *item.Key, err)
+					return fmt.Errorf("error generating presigned URL for object with `key` %s: %v", *item.Key, err)
 				}
 				url, err := url.QueryUnescape(presignedURL)
 				if err != nil { //ServiceInternalError
@@ -150,7 +150,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	// Call GetList with the processPage function
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, false, processPage)
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, "error processing objects")
+		appErr := configberry.HandleAWSError(err, listingObjectsAndPrefixError)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -167,14 +167,14 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 		ContentType: aws.String("binary/octet-stream"),
 	})
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, fmt.Sprintf("error uploading %s to S3", txtBatFileName), err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, fmt.Sprintf("error uploading object with `key` %s to S3", txtBatFileName), err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
 	href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, 1)
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error generating presigned URL for %s", txtBatFileName))
+		appErr := configberry.HandleAWSError(err, fmt.Sprintf("error generating presigned URL for object with `key` %s", txtBatFileName))
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}

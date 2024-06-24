@@ -1,7 +1,6 @@
 package blobstore
 
 import (
-	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -60,7 +59,7 @@ func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool) (*s3.
 		return false // Stop pagination
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error listing objects: %w", err)
+		return nil, err
 	}
 
 	return response, nil
@@ -90,7 +89,7 @@ func (s3Ctrl *S3Controller) GetListWithCallBack(bucket, prefix string, delimiter
 	if lastError != nil {
 		return lastError // Return the last error encountered in the processPage function
 	}
-	return fmt.Errorf("error listing objects: %w", err) // Return any errors encountered in the pagination process
+	return err // Return any errors encountered in the pagination process
 }
 
 // HandleListByPrefix handles the API endpoint for listing objects by prefix in an S3 bucket.
@@ -99,7 +98,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -116,7 +115,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 	if delimiterParam != "" {
 		delimiter, err = strconv.ParseBool(delimiterParam)
 		if err != nil {
-			appErr := configberry.NewAppError(configberry.ValidationError, "error parsing `delimiter` param", nil)
+			appErr := configberry.NewAppError(configberry.ValidationError, parsingDelimeterParamError, nil)
 			log.Error(configberry.LogErrorFormatter(appErr, true))
 			return configberry.HandleErrorResponse(c, appErr)
 		}
@@ -154,7 +153,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, "error processing objects")
+		appErr := configberry.HandleAWSError(err, listingObjectsAndPrefixError)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -169,7 +168,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "unable to get S3 controller", err)
+		appErr := configberry.NewAppError(configberry.InternalServerError, unableToGetController, err)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
@@ -186,7 +185,7 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	if delimiterParam != "" {
 		delimiter, err = strconv.ParseBool(delimiterParam)
 		if err != nil {
-			appErr := configberry.NewAppError(configberry.ValidationError, "error parsing `delimiter` param", nil)
+			appErr := configberry.NewAppError(configberry.ValidationError, parsingDelimeterParamError, nil)
 			log.Error(configberry.LogErrorFormatter(appErr, true))
 			return configberry.HandleErrorResponse(c, appErr)
 		}
@@ -246,11 +245,11 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 	}
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, delimiter, processPage)
 	if err != nil {
-		appErr := configberry.HandleAWSError(err, "error processing objects")
+		appErr := configberry.HandleAWSError(err, listingObjectsAndPrefixError)
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
-	log.Info("Successfully retrieved list by prefix:", prefix)
+	log.Info("successfully retrieved list by prefix:", prefix)
 	return configberry.HandleSuccessfulResponse(c, results)
 }

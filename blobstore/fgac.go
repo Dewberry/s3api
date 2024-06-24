@@ -20,7 +20,7 @@ func (bh *BlobHandler) getS3ReadPermissions(c echo.Context, bucket string) ([]st
 		return nil, false, appError
 	}
 	if !fullAccess && len(permissions) == 0 {
-		return nil, false, configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the %s bucket", bucket), nil)
+		return nil, false, configberry.NewAppError(configberry.ForbiddenError, fmt.Sprintf("user does not have permission to read the %s `bucket`", bucket), nil)
 	}
 	return permissions, fullAccess, nil
 }
@@ -36,7 +36,7 @@ func (bh *BlobHandler) getUserS3ReadListPermission(c echo.Context, bucket string
 		fullAccess := false
 		claims, ok := c.Get("claims").(*auth.Claims)
 		if !ok {
-			return permissions, fullAccess, configberry.NewAppError(configberry.InternalServerError, "could not get claims from request context", nil)
+			return permissions, fullAccess, configberry.NewAppError(configberry.InternalServerError, "could not get `claims` from request context", nil)
 		}
 		roles := claims.RealmAccess["roles"]
 
@@ -53,7 +53,7 @@ func (bh *BlobHandler) getUserS3ReadListPermission(c echo.Context, bucket string
 		ue := claims.Email
 		permissions, err := bh.DB.GetUserAccessiblePrefixes(ue, bucket, []string{"read", "write"})
 		if err != nil {
-			return permissions, fullAccess, configberry.HandleSQLError(err, "error getting common prefix that the user can read and write to")
+			return permissions, fullAccess, configberry.HandleSQLError(err, "error getting `prefix` that the user can read and write to")
 		}
 		return permissions, fullAccess, nil
 	}
@@ -69,7 +69,7 @@ func (bh *BlobHandler) validateUserAccessToPrefix(c echo.Context, bucket, prefix
 		}
 		claims, ok := c.Get("claims").(*auth.Claims)
 		if !ok {
-			return configberry.NewAppError(configberry.InternalServerError, "could not get claims from request context", nil)
+			return configberry.NewAppError(configberry.InternalServerError, "could not get `claims` from request context", nil)
 		}
 		roles := claims.RealmAccess["roles"]
 		ue := claims.Email
@@ -114,7 +114,7 @@ func (bh *BlobHandler) HandleCheckS3UserPermission(c echo.Context) error {
 	}
 	claims, ok := c.Get("claims").(*auth.Claims)
 	if !ok {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "could not get claims from request context", nil)
+		appErr := configberry.NewAppError(configberry.InternalServerError, "could not get `claims` from request context", nil)
 		log.Error(configberry.LogErrorFormatter(appErr, false))
 		return configberry.HandleErrorResponse(c, appErr)
 	}
