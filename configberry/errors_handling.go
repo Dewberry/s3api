@@ -34,6 +34,7 @@ var (
 	TeapotError         = ErrorType{Value: 9, Name: "Teapot Error"}
 	ConflictError       = ErrorType{Value: 10, Name: "Conflict Error"}
 	BadRequestError     = ErrorType{Value: 11, Name: "Bad Request Error"}
+	EntityTooLargeError = ErrorType{Value: 12, Name: "Entity Too Large Error"}
 )
 
 // AppError includes the error type, message, and the original error.
@@ -90,6 +91,8 @@ func HandleErrorResponse(c echo.Context, err *AppError) error {
 		statusCode = http.StatusTeapot
 	case ConflictError.Value:
 		statusCode = http.StatusConflict
+	case EntityTooLargeError.Value:
+		statusCode = http.StatusRequestEntityTooLarge
 	}
 	return c.JSON(statusCode, map[string]string{"Type": err.Type.Name, "Error": responseMessage})
 }
@@ -168,6 +171,8 @@ func HandleAWSError(err error, errMsg string) *AppError {
 			return NewAppError(InternalServerError, formattedMessage, originalErr)
 		case "InvalidPart":
 			return NewAppError(BadRequestError, formattedMessage, originalErr)
+		case "EntityTooLarge":
+			return NewAppError(EntityTooLargeError, formattedMessage, originalErr)
 		default:
 			return NewAppError(AWSError, formattedMessage, originalErr)
 		}

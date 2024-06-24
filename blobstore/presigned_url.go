@@ -10,6 +10,7 @@ import (
 
 	"github.com/Dewberry/s3api/configberry"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/labstack/echo/v4"
@@ -117,7 +118,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 				if item.Size != nil {
 					totalSize += uint64(*item.Size)
 					if totalSize > uint64(bh.Config.DefaultScriptDownloadSizeLimit*1024*1024*1024) {
-						return fmt.Errorf("size limit of %d GB exceeded", bh.Config.DefaultScriptDownloadSizeLimit)
+						return awserr.New("EntityTooLarge", "Script size exceeds limit", fmt.Errorf("size limit of %d GB exceeded", bh.Config.DefaultScriptDownloadSizeLimit))
 					}
 
 				}
@@ -136,8 +137,8 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 					return fmt.Errorf("error generating presigned URL for object %s: %v", *item.Key, err)
 				}
 				url, err := url.QueryUnescape(presignedURL)
-				if err != nil {
-					return fmt.Errorf("error unescaping URL encoding: %v", err)
+				if err != nil { //ServiceInternalError
+					return awserr.New("ServiceInternalError", "Script size exceeds limit", fmt.Errorf("error unescaping URL encoding: %v", err))
 				}
 				encodedURL := strings.ReplaceAll(url, " ", "%20")
 				scriptBuilder.WriteString(fmt.Sprintf("if exist \"%s\" (echo skipping existing file) else (curl -v -o \"%s\" \"%s\")\n", fullPath, fullPath, encodedURL))
@@ -149,7 +150,7 @@ func (bh *BlobHandler) HandleGenerateDownloadScript(c echo.Context) error {
 	// Call GetList with the processPage function
 	err = s3Ctrl.GetListWithCallBack(bucket, prefix, false, processPage)
 	if err != nil {
-		appErr := configberry.NewAppError(configberry.InternalServerError, "error processing objects", err)
+		appErr := configberry.HandleAWSError(err, "error processing objects")
 		log.Error(configberry.LogErrorFormatter(appErr, true))
 		return configberry.HandleErrorResponse(c, appErr)
 	}

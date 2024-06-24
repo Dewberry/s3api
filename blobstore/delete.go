@@ -129,12 +129,9 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 		return configberry.HandleErrorResponse(c, appErr)
 	}
 
-	adjustedPrefix, appErr := s3Ctrl.checkAndAdjustPrefix(bucket, prefix)
-	if appErr != nil {
-		log.Error(configberry.LogErrorFormatter(appErr, true))
-		return configberry.HandleErrorResponse(c, appErr)
+	if !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
 	}
-	prefix = adjustedPrefix
 
 	var objectsFound bool
 
