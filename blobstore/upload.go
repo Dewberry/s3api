@@ -34,7 +34,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 
 	resp, err := s3Ctrl.S3Svc.CreateMultipartUpload(params)
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating multipart upload for object %s, %w", key, err)
 	}
 
 	// Create the variables that will track upload progress
@@ -69,7 +69,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 
 			result, err := s3Ctrl.S3Svc.UploadPart(params)
 			if err != nil {
-				return err
+				return fmt.Errorf("error creating uploading part %v, %w", params, err)
 			}
 
 			totalBytes += int64(buffer.Len())
@@ -98,7 +98,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 
 	result, err := s3Ctrl.S3Svc.UploadPart(params2)
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating uploading part %v, %w", params2, err)
 	}
 
 	totalBytes += int64(buffer.Len())
@@ -116,7 +116,7 @@ func (s3Ctrl *S3Controller) UploadS3Obj(bucket string, key string, body io.ReadC
 	}
 	_, err = s3Ctrl.S3Svc.CompleteMultipartUpload(completeParams)
 	if err != nil {
-		return err
+		return fmt.Errorf("error completing multipart upload %w", err)
 	}
 
 	return nil

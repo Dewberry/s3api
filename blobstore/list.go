@@ -1,6 +1,7 @@
 package blobstore
 
 import (
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -59,7 +60,7 @@ func (s3Ctrl *S3Controller) GetList(bucket, prefix string, delimiter bool) (*s3.
 		return false // Stop pagination
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error listing objects: %w", err)
 	}
 
 	return response, nil
@@ -89,7 +90,7 @@ func (s3Ctrl *S3Controller) GetListWithCallBack(bucket, prefix string, delimiter
 	if lastError != nil {
 		return lastError // Return the last error encountered in the processPage function
 	}
-	return err // Return any errors encountered in the pagination process
+	return fmt.Errorf("error listing objects: %w", err) // Return any errors encountered in the pagination process
 }
 
 // HandleListByPrefix handles the API endpoint for listing objects by prefix in an S3 bucket.

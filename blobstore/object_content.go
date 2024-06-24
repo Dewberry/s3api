@@ -18,7 +18,7 @@ func (s3Ctrl *S3Controller) FetchObjectContent(bucket string, key string) (io.Re
 	}
 	output, err := s3Ctrl.S3Svc.GetObject(input)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting object's content %s, %w", key, err)
 	}
 
 	return output.Body, nil

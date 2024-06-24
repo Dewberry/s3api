@@ -33,7 +33,7 @@ func (s3Ctrl *S3Controller) MovePrefix(bucket, srcPrefix, destPrefix string) err
 			}
 			_, err := s3Ctrl.S3Svc.CopyObject(copyInput)
 			if err != nil {
-				return err
+				return fmt.Errorf("error copying list, %w", err)
 			}
 		}
 
@@ -41,7 +41,7 @@ func (s3Ctrl *S3Controller) MovePrefix(bucket, srcPrefix, destPrefix string) err
 		// Ensure that your application logic requires this before proceeding
 		err := s3Ctrl.DeleteList(page, bucket)
 		if err != nil {
-			return err
+			return fmt.Errorf("error deleting list, %w", err)
 		}
 		return nil
 	}
@@ -83,7 +83,7 @@ func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey strin
 	// Copy the object to the new key (effectively renaming)
 	_, err = s3Ctrl.S3Svc.CopyObject(copyInput)
 	if err != nil {
-		return err
+		return fmt.Errorf("error copying object %s, %w", srcObjectKey, err)
 	}
 
 	// Delete the source object
@@ -92,7 +92,7 @@ func (s3Ctrl *S3Controller) CopyObject(bucket, srcObjectKey, destObjectKey strin
 		Key:    aws.String(srcObjectKey),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("error deleting object %s, %w", srcObjectKey, err)
 	}
 
 	return nil

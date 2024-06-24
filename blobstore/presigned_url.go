@@ -20,7 +20,7 @@ import (
 func (s3Ctrl *S3Controller) GetDownloadPresignedURL(bucket, key string, expDays int) (string, error) {
 	duration := time.Duration(expDays) * 24 * time.Hour
 	if _, err := s3Ctrl.GetMetaData(bucket, key); err != nil { //this is to check if the object exists or not, it will return an AWS error
-		return "", err
+		return "", fmt.Errorf("error checking if object %s exists, %w", key, err)
 	}
 	req, _ := s3Ctrl.S3Svc.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: aws.String(bucket),

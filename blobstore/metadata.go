@@ -20,7 +20,7 @@ func (s3Ctrl *S3Controller) GetMetaData(bucket, key string) (*s3.HeadObjectOutpu
 
 	result, err := s3Ctrl.S3Svc.HeadObject(input)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting object's metadata %s, %w", key, err)
 	}
 	return result, nil
 }
@@ -37,10 +37,10 @@ func (s3Ctrl *S3Controller) KeyExists(bucket string, key string) (bool, error) {
 			case "NotFound": // s3.ErrCodeNoSuchKey does not work, aws is missing this error code so we hardwire a string
 				return false, nil
 			default:
-				return false, err
+				return false, fmt.Errorf("error checking if object %s exists, %w", key, err)
 			}
 		}
-		return false, err
+		return false, fmt.Errorf("error checking if object %s exists, %w", key, err)
 	}
 	return true, nil
 }

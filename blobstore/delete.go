@@ -15,7 +15,7 @@ import (
 func (s3Ctrl *S3Controller) DeleteObjectIfExists(bucket, key string) error {
 	// Check if the object exists
 	if _, err := s3Ctrl.GetMetaData(bucket, key); err != nil {
-		return err
+		return fmt.Errorf("error getting metadata for the process of deleting object %s, %w", key, err)
 	}
 
 	// Delete the object
@@ -25,7 +25,7 @@ func (s3Ctrl *S3Controller) DeleteObjectIfExists(bucket, key string) error {
 	}
 	_, err := s3Ctrl.S3Svc.DeleteObject(deleteInput)
 	if err != nil {
-		return err
+		return fmt.Errorf("error deleting object %s, %w", key, err)
 	}
 
 	return nil
@@ -50,7 +50,7 @@ func (s3Ctrl *S3Controller) DeleteList(page *s3.ListObjectsV2Output, bucket stri
 		},
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("error deleting objects while attempting delete list, %w", err)
 	}
 
 	return nil
@@ -76,7 +76,7 @@ func (s3Ctrl *S3Controller) DeleteKeys(bucket string, key []string) error {
 
 	_, err := s3Ctrl.S3Svc.DeleteObjects(input)
 	if err != nil {
-		return err
+		return fmt.Errorf("error deleting objects while attempting delete list, %w", err)
 	}
 	return nil
 }
