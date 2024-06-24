@@ -11,7 +11,8 @@ import (
 
 	"github.com/Dewberry/s3api/auth"
 	"github.com/Dewberry/s3api/blobstore"
-	envcheck "github.com/Dewberry/s3api/env-checker"
+	"github.com/Dewberry/s3api/configberry"
+	"github.com/Dewberry/s3api/utils"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -19,19 +20,23 @@ import (
 )
 
 func main() {
-	if err := envcheck.CheckEnvVariablesExist(envcheck.REQUIRED_ENV_VAR); err != nil {
-		log.Fatal(err)
-	}
 	log.SetFormatter(&log.JSONFormatter{})
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
 		logLevel = "info"
 	}
+	err := configberry.CheckEnvVariablesExist(utils.REQUIRED_ENV_VAR)
+	if err != nil {
+		appErr := configberry.NewAppError(configberry.FatalError, "Critical configuration error: ", err)
+		log.Fatal(configberry.LogErrorFormatter(appErr, true))
+	}
+
 	level, err := log.ParseLevel(logLevel)
 	if err != nil {
 		log.WithError(err).Error("Invalid log level")
 		level = log.InfoLevel
 	}
+
 	log.SetLevel(level)
 	log.SetReportCaller(true)
 	log.Infof("level level set to: %s", level)
@@ -68,7 +73,8 @@ func main() {
 
 	bh, err := blobstore.NewBlobHandler(envJson, authLvl)
 	if err != nil {
-		log.Fatalf("error initializing a new blobhandler: %v", err)
+		appErr := configberry.NewAppError(configberry.FatalError, "error initializing a new blobhandler", err)
+		log.Fatal(configberry.LogErrorFormatter(appErr, true))
 	}
 
 	e := echo.New()
@@ -79,8 +85,8 @@ func main() {
 		AllowOrigins:     []string{"*"},
 	}))
 
-	e.GET("/ping_with_auth", auth.Authorize(bh.PingWithAuth, allUsers...))
-	e.GET("/ping", bh.Ping)
+	e.GET("/ping_with_auth", auth.Authorize(bh.HandlePingWithAuth, allUsers...))
+	e.GET("/ping", bh.HandlePing)
 
 	// object content
 	e.GET("/object/metadata", auth.Authorize(bh.HandleGetMetaData, allUsers...))
@@ -97,23 +103,22 @@ func main() {
 	// prefix
 	e.GET("/prefix/list", auth.Authorize(bh.HandleListByPrefix, allUsers...))
 	e.GET("/prefix/list_with_details", auth.Authorize(bh.HandleListByPrefixWithDetail, allUsers...))
-	// e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	e.GET("/prefix/download/script", auth.Authorize(bh.HandleGenerateDownloadScript, allUsers...))
 	e.PUT("/prefix/move", auth.Authorize(bh.HandleMovePrefix, admin...))
 	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeletePrefix, admin...))
 	e.GET("/prefix/size", auth.Authorize(bh.HandleGetSize, allUsers...))
-
 	// universal
 	e.DELETE("/delete_keys", auth.Authorize(bh.HandleDeleteObjectsByList, admin...))
-
 	// multi-bucket
 	e.GET("/list_buckets", auth.Authorize(bh.HandleListBuckets, allUsers...))
+	//auth
+	e.GET("/check_user_permission", auth.Authorize(bh.HandleCheckS3UserPermission, writers...))
+
+	//deprecated endpoints (code can be found in /utils/deprecated.txt)
+	// e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	// multi-bucket -- not implemented
 	// e.PUT("/object/cross-bucket/copy", auth.Authorize(bh., writers...))
 	// e.PUT("/prefix/cross-bucket/copy", auth.Authorize(bh., writers...))
-
-	//auth
-	e.GET("/check_user_permission", auth.Authorize(bh.HandleCheckS3UserPermission, writers...))
 
 	// Start server
 	go func() {

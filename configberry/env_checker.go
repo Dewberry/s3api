@@ -1,11 +1,9 @@
-package envcheck
+package configberry
 
 import (
 	"fmt"
 	"os"
 )
-
-var REQUIRED_ENV_VAR = []string{"S3API_SERVICE_PORT", "KEYCLOAK_PUBLIC_KEYS_URL"}
 
 func CheckEnvVariablesExist(envVars []string) error {
 	var missingVars []string
@@ -18,8 +16,8 @@ func CheckEnvVariablesExist(envVars []string) error {
 	}
 
 	if len(missingVars) > 0 {
-		errMsg := fmt.Sprintf("The following environment variables are missing: %v", missingVars)
-		return fmt.Errorf(errMsg)
+		errMsg := fmt.Errorf("the following environment variables are missing: %v", missingVars)
+		return errMsg
 	}
 
 	return nil

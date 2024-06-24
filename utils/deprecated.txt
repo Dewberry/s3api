@@ -1,0 +1,332 @@
+deprecated files that might be used in teh future:
+
+
+//function that will get the most recently uploaded file in a prefix
+func (s3Ctrl *S3Controller) getMostRecentModTime(bucket, prefix string, permissions []string, fullAccess bool) (time.Time, error) {
+	// Initialize a time variable to store the most recent modification time
+	var mostRecent time.Time
+
+	// Call GetList to retrieve the list of objects with the specified prefix
+	response, err := s3Ctrl.GetList(bucket, prefix, false)
+	if err != nil {
+		return time.Time{}, err
+	}
+	// Iterate over the returned objects to find the most recent modification time
+	for _, item := range response.Contents {
+		if item.LastModified != nil && item.LastModified.After(mostRecent) {
+			mostRecent = *item.LastModified
+		}
+	}
+	return mostRecent, nil
+}
+
+
+//buckets.go:
+func (bh *BlobHandler) HandleCreateBucket(c echo.Context) error {
+	bucketName := c.QueryParam("name")
+
+	if bucketName == "" {
+		err := fmt.Errorf("request must include a `name` parameter")
+		log.Info("HandleCreateBucket: " + err.Error())
+		return c.JSON(http.StatusBadRequest, err.Error())
+	}
+
+	// Check if the bucket already exists
+	buckets, err := bh.listBuckets()
+	if err != nil {
+		log.Info("HandleCreateBucket: Error listing buckets:", err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	for _, b := range buckets.Buckets {
+		if aws.StringValue(b.Name) == bucketName {
+			err := fmt.Errorf("bucket with the name `%s` already exists", bucketName)
+			log.Info("HandleCreateBucket: " + err.Error())
+			return c.JSON(http.StatusConflict, err.Error())
+		}
+	}
+
+	// Create the S3 bucket
+	err = bh.createBucket(bucketName)
+	if err != nil {
+		log.Info("HandleCreateBucket: Error creating bucket:", err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	log.Info("HandleCreateBucket: Successfully created bucket:", bucketName)
+	return c.JSON(http.StatusOK, "Bucket created successfully")
+}
+
+func (bh *BlobHandler) HandleDeleteBucket(c echo.Context) error {
+	bucketName := c.QueryParam("name")
+
+	if bucketName == "" {
+		err := fmt.Errorf("request must include a `name` parameter")
+		log.Info("HandleDeleteBucket: " + err.Error())
+		return c.JSON(http.StatusBadRequest, err.Error())
+	}
+
+	// Delete the S3 bucket
+	err := bh.deleteBucket(bucketName)
+	if err != nil {
+		log.Info("HandleDeleteBucket: Error deleting bucket:", err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	log.Info("HandleDeleteBucket: Successfully deleted bucket:", bucketName)
+	return c.JSON(http.StatusOK, "Bucket deleted successfully")
+}
+
+func (bh *BlobHandler) HandleGetBucketACL(c echo.Context) error {
+	bucketName := c.QueryParam("name")
+
+	if bucketName == "" {
+		err := fmt.Errorf("request must include a `name` parameter")
+		log.Info("HandleGetBucketACL: " + err.Error())
+		return c.JSON(http.StatusBadRequest, err.Error())
+	}
+
+	// Get the bucket ACL
+	acl, err := bh.getBucketACL(bucketName)
+	if err != nil {
+		log.Info("HandleGetBucketACL: Error getting bucket ACL:", err.Error())
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	log.Info("HandleGetBucketACL: Successfully retrieved ACL for bucket:", bucketName)
+	return c.JSON(http.StatusOK, acl)
+}
+
+func (bh *BlobHandler) createBucket(bucketName string) error {
+	// Set up input parameters for the CreateBucket API
+	input := &s3.CreateBucketInput{
+		Bucket: aws.String(bucketName),
+	}
+
+	// Create the bucket
+	_, err := bh.S3Svc.CreateBucket(input)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// deleteBucket deletes the specified S3 bucket.
+func (bh *BlobHandler) deleteBucket(bucketName string) error {
+	// Set up input parameters for the DeleteBucket API
+	input := &s3.DeleteBucketInput{
+		Bucket: aws.String(bucketName),
+	}
+
+	// Delete the bucket
+	_, err := bh.S3Svc.DeleteBucket(input)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// getBucketACL retrieves the ACL (Access Control List) for the specified bucket.
+func (bh *BlobHandler) getBucketACL(bucketName string) (*s3.GetBucketAclOutput, error) {
+	// Set up input parameters for the GetBucketAcl API
+	input := &s3.GetBucketAclInput{
+		Bucket: aws.String(bucketName),
+	}
+
+	// Get the bucket ACL
+	result, err := bh.S3Svc.GetBucketAcl(input)
+	if err != nil {
+		return nil, err
+	}
+
+		return result, nil
+	}
+
+
+/presigned_url.go
+func (bh *BlobHandler) HandleGetPresignedURLMultiObj(c echo.Context) error {
+	prefix := c.QueryParam("prefix")
+	if prefix == "" {
+		errMsg := fmt.Errorf("request must include a `prefix` parameter")
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+
+	bucket := c.QueryParam("bucket")
+	s3Ctrl, err := bh.GetController(bucket)
+	if err != nil {
+		errMsg := fmt.Errorf("`bucket` %s is not available, %s", bucket, err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
+	}
+
+	if !strings.HasSuffix(prefix, "/") {
+		prefix = prefix + "/"
+	}
+
+	response, err := s3Ctrl.GetList(bucket, prefix, false)
+	if err != nil {
+		errMsg := fmt.Errorf("error getting list: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+	if *response.KeyCount == 0 {
+		errMsg := fmt.Errorf("the specified prefix %s does not exist in S3", prefix)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusNotFound, errMsg.Error())
+	}
+	//check if size is below 5GB
+	var size, fileCount uint64
+	err = GetListSize(response, &size, &fileCount)
+	if err != nil {
+		errMsg := fmt.Errorf("error getting size: %s", err.Error())
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+
+	limit := uint64(1024 * 1024 * 1024 * bh.Config.DefaultZipDownloadSizeLimit)
+	if size >= limit {
+		errMsg := fmt.Errorf("request entity is larger than %v GB, current prefix size is: %v GB", bh.Config.DefaultZipDownloadSizeLimit, float64(size)/(1024*1024*1024))
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusRequestEntityTooLarge, errMsg.Error())
+	}
+
+	filename := fmt.Sprintf("%s.%s", strings.TrimSuffix(prefix, "/"), "tar.gz")
+	outputFile := filepath.Join(bh.Config.DefaultTempPrefix, filename)
+
+	// Check if the tar.gz file already exists in S3
+	tarFileResponse, err := s3Ctrl.GetList(bucket, outputFile, false)
+	if err != nil {
+		errMsg := fmt.Errorf("error checking if tar.gz file exists in S3: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+
+	if len(tarFileResponse.Contents) > 0 {
+		log.Debug("the prefix was once downloaded, checking if it is outdated")
+		// Tar.gz file exists, now compare modification dates
+		mostRecentModTime, err := s3Ctrl.getMostRecentModTime(bucket, prefix)
+		if err != nil {
+			errMsg := fmt.Errorf("error getting most recent modification time: %s", err)
+			log.Error(errMsg.Error())
+			return c.JSON(http.StatusInternalServerError, errMsg.Error())
+		}
+
+		if tarFileResponse.Contents[0].LastModified.After(mostRecentModTime) {
+			log.Debug("folder already downloaded and is current")
+
+			// Existing tar.gz file is up-to-date, return pre-signed URL
+			href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, bh.Config.DefaultDownloadPresignedUrlExpiration)
+			if err != nil {
+				errMsg := fmt.Errorf("error getting presigned: %s", err)
+				log.Error(errMsg.Error())
+				return c.JSON(http.StatusInternalServerError, errMsg.Error())
+			}
+			return c.JSON(http.StatusOK, string(href))
+		}
+		log.Debug("folder already downloaded but is outdated starting the zip process")
+	}
+
+	err = s3Ctrl.tarS3Files(response, bucket, outputFile, prefix)
+	if err != nil {
+		errMsg := fmt.Errorf("error tarring S3 files: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+
+	href, err := s3Ctrl.GetDownloadPresignedURL(bucket, outputFile, bh.Config.DefaultDownloadPresignedUrlExpiration)
+	if err != nil {
+		errMsg := fmt.Errorf("error getting presigned URL: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(http.StatusInternalServerError, errMsg.Error())
+	}
+
+	log.Info("successfully generated presigned URL for prefix:", prefix)
+	return c.JSON(http.StatusOK, string(href))
+}
+
+func (s3Ctrl *S3Controller) tarS3Files(r *s3.ListObjectsV2Output, bucket string, outputFile string, prefix string) (err error) {
+	uploader := s3manager.NewUploader(s3Ctrl.Sess)
+	pr, pw := io.Pipe()
+
+	gzipWriter := gzip.NewWriter(pw)
+	tarWriter := tar.NewWriter(gzipWriter)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		log.Debug("start writing files to:", outputFile)
+		_, err := uploader.Upload(&s3manager.UploadInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(outputFile),
+			Body:   pr,
+		})
+		if err != nil {
+			log.Errorf("failed to upload tar.gz file to S3: %s", err)
+			return
+		}
+		log.Debug("completed writing files to:", outputFile)
+	}()
+
+	for _, item := range r.Contents {
+		filePath := filepath.Join(strings.TrimPrefix(aws.StringValue(item.Key), prefix))
+		copyObj := aws.StringValue(item.Key)
+		log.Debugf("copying %s to %s", copyObj, outputFile)
+
+		getResp, err := s3Ctrl.S3Svc.GetObject(&s3.GetObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(copyObj),
+		})
+		if err != nil {
+			log.Errorf("failed to download file: %s, error: %s", copyObj, err)
+			return err
+		}
+		defer getResp.Body.Close()
+
+		header := &tar.Header{
+			Name: filePath,
+			Size: *getResp.ContentLength,
+			Mode: int64(0644),
+		}
+
+		err = tarWriter.WriteHeader(header)
+		if err != nil {
+			log.Errorf("failed to write tar header for file: %s, error: %s", copyObj, err)
+			return err
+		}
+
+		_, err = io.Copy(tarWriter, getResp.Body)
+		if err != nil {
+			log.Errorf("failed to write file content to tar for file: %s, error: %s", copyObj, err)
+			return err
+		}
+		log.Debugf("completed copying: %s", copyObj)
+	}
+
+	err = tarWriter.Close()
+	if err != nil {
+		log.Error("tar close failure:", err)
+		return err
+	}
+
+	err = gzipWriter.Close()
+	if err != nil {
+		log.Error("gzip close failure:", err)
+		return err
+	}
+
+	err = pw.Close()
+	if err != nil {
+		log.Error("pipe writer close failure:", err)
+		return err
+	}
+
+	wg.Wait()
+
+	log.Debug("completed tar of file successfully")
+	return nil
+}
