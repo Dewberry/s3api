@@ -1,6 +1,10 @@
-package blobstore
+//go:build test
+// +build test
+
+package test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -14,7 +18,8 @@ import (
 
 // Ensure the environment variable is set before any other package initialization
 func init() {
-	os.Setenv("INIT_AUTH", "0")
+	fmt.Println("test package init()")
+	os.Setenv("INIT_AUTH", "0") // Assuming you're using this flag
 }
 
 type mockS3Client struct {
