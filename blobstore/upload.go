@@ -133,8 +133,8 @@ func (s3Ctrl *S3Controller) GetUploadPresignedURL(bucket string, key string, exp
 		//minio:9000 which would cause an error due to cors origin policy
 		tempS3Svc, err := session.NewSession(&aws.Config{
 			Endpoint:         aws.String("http://localhost:9000"),
-			Region:           s3Ctrl.S3Svc.Config.Region,
-			Credentials:      s3Ctrl.S3Svc.Config.Credentials,
+			Region:           s3Ctrl.Sess.Config.Region,
+			Credentials:      s3Ctrl.Sess.Config.Credentials,
 			S3ForcePathStyle: aws.Bool(true),
 		})
 		if err != nil {
