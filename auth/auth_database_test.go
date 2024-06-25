@@ -1,7 +1,7 @@
 //go:build test
 // +build test
 
-package test
+package auth
 
 import (
 	"database/sql"
@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/Dewberry/s3api/auth"
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +18,7 @@ func TestCheckUserPermission(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	pgDB := &auth.PostgresDB{Handle: db}
+	pgDB := &PostgresDB{Handle: db}
 
 	userEmail := "test@example.com"
 	bucket := "test-bucket"
@@ -50,7 +49,7 @@ func TestCheckUserPermissionError(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	pgDB := &auth.PostgresDB{Handle: db}
+	pgDB := &PostgresDB{Handle: db}
 
 	userEmail := "test@example.com"
 	bucket := "test-bucket"
@@ -81,7 +80,7 @@ func TestCheckUserPermissionNoAccess(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	pgDB := &auth.PostgresDB{Handle: db}
+	pgDB := &PostgresDB{Handle: db}
 
 	userEmail := "test@example.com"
 	bucket := "restricted-bucket"
@@ -112,7 +111,7 @@ func TestGetUserAccessiblePrefixes(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	pgDB := &auth.PostgresDB{Handle: db}
+	pgDB := &PostgresDB{Handle: db}
 
 	userEmail := "test@example.com"
 	bucket := "test-bucket"
@@ -148,7 +147,7 @@ func TestGetUserAccessiblePrefixesError(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	pgDB := &auth.PostgresDB{Handle: db}
+	pgDB := &PostgresDB{Handle: db}
 
 	userEmail := "test@example.com"
 	bucket := "test-bucket"
@@ -180,7 +179,7 @@ func TestGetUserAccessiblePrefixesNoAccess(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	pgDB := &auth.PostgresDB{Handle: db}
+	pgDB := &PostgresDB{Handle: db}
 
 	userEmail := "test@example.com"
 	bucket := "restricted-bucket"

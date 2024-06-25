@@ -1,7 +1,7 @@
 //go:build test
 // +build test
 
-package test
+package blobstore
 
 import (
 	"errors"
@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Dewberry/s3api/blobstore"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/client/metadata"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -41,7 +41,32 @@ type mockS3Client struct {
 	CompleteMultipartUploadOutput *s3.CompleteMultipartUploadOutput
 	CompleteMultipartUploadError  error
 	AbortMultipartUploadError     error
+	GetBucketLocationInput        *s3.GetBucketLocationInput
+	GetBucketLocationOutput       *s3.GetBucketLocationOutput
+	GetBucketLocationError        error
 	ListObjectsV2PagesFunc        func(input *s3.ListObjectsV2Input, fn func(*s3.ListObjectsV2Output, bool) bool) error
+}
+
+func (m *mockS3Client) GetBucketLocationRequest(input *s3.GetBucketLocationInput) (*request.Request, *s3.GetBucketLocationOutput) {
+	req := request.New(
+		aws.Config{},
+		metadata.ClientInfo{},
+		request.Handlers{},
+		nil,
+		&request.Operation{
+			Name:       "GetBucketLocation",
+			HTTPMethod: "GET",
+			HTTPPath:   "/{Bucket}?location",
+		},
+		input,
+		m.GetBucketLocationOutput,
+	)
+	req.Handlers.Send.Clear()
+	req.Handlers.Send.PushBack(func(r *request.Request) {
+		r.Error = m.GetBucketLocationError
+		r.Data = m.GetBucketLocationOutput
+	})
+	return req, m.GetBucketLocationOutput
 }
 
 func (m *mockS3Client) ListBuckets(*s3.ListBucketsInput) (*s3.ListBucketsOutput, error) {
@@ -153,7 +178,7 @@ func TestListBuckets(t *testing.T) {
 		ListBucketsError: nil,
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -173,7 +198,7 @@ func TestListBucketsError(t *testing.T) {
 		ListBucketsError:  awserr.New("ListBucketsError", "Mocked error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -193,7 +218,7 @@ func TestDeleteObject(t *testing.T) {
 		DeleteObjectError: nil,
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -209,7 +234,7 @@ func TestDeleteObjectError(t *testing.T) {
 		DeleteObjectError: nil,
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -227,7 +252,7 @@ func TestDeleteList(t *testing.T) {
 		DeleteObjectsError: nil,
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -251,7 +276,7 @@ func TestDeleteListError(t *testing.T) {
 		DeleteObjectsError: awserr.New("DeleteObjectsError", "Mocked error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -276,7 +301,7 @@ func TestDeleteKeys(t *testing.T) {
 		DeleteObjectsError: nil,
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -295,7 +320,7 @@ func TestDeleteKeysError(t *testing.T) {
 		DeleteObjectsError: awserr.New("DeleteObjectsError", "Mocked error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -315,7 +340,7 @@ func TestDeleteKeysNonExistent(t *testing.T) {
 		HeadObjectError: awserr.New("NoSuchKey", "Mocked error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -345,7 +370,7 @@ func TestGetList(t *testing.T) {
 		},
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -368,7 +393,7 @@ func TestGetListError(t *testing.T) {
 		},
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -397,7 +422,7 @@ func TestGetListWithCallBack(t *testing.T) {
 		},
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -421,7 +446,7 @@ func TestGetListWithCallBackError(t *testing.T) {
 		},
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -451,7 +476,7 @@ func TestGetListWithCallBackProcessError(t *testing.T) {
 		},
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -476,7 +501,7 @@ func TestGetMetaData(t *testing.T) {
 		HeadObjectError: nil,
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -496,7 +521,7 @@ func TestGetMetaDataError(t *testing.T) {
 		HeadObjectError: awserr.New("HeadObjectError", "Mocked error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -515,7 +540,7 @@ func TestKeyExists(t *testing.T) {
 		HeadObjectError: nil,
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -533,7 +558,7 @@ func TestKeyExistsNotFound(t *testing.T) {
 		HeadObjectError: awserr.New("NotFound", "Mocked not found error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -551,7 +576,7 @@ func TestKeyExistsError(t *testing.T) {
 		HeadObjectError: awserr.New("HeadObjectError", "Mocked error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -582,7 +607,7 @@ func TestMovePrefix(t *testing.T) {
 		},
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -610,7 +635,7 @@ func TestMovePrefixError(t *testing.T) {
 		},
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -630,7 +655,7 @@ func TestCopyObject(t *testing.T) {
 		HeadObjectError:   awserr.New("NotFound", "Mocked not found error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -648,7 +673,7 @@ func TestCopyObjectError(t *testing.T) {
 		HeadObjectError: awserr.New("NotFound", "Mocked not found error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -664,7 +689,7 @@ func TestCopyObjectIdenticalKeysError(t *testing.T) {
 
 	mockSvc := &mockS3Client{}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -682,7 +707,7 @@ func TestCopyObjectDestinationExistsError(t *testing.T) {
 		HeadObjectError: nil, // Simulates that the destination key already exists
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -704,7 +729,7 @@ func TestFetchObjectContent(t *testing.T) {
 		GetObjectError: nil,
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -728,7 +753,7 @@ func TestFetchObjectContentError(t *testing.T) {
 		GetObjectError: awserr.New("GetObjectError", "Mocked error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -747,7 +772,7 @@ func TestGetDownloadPresignedURL(t *testing.T) {
 		HeadObjectError: nil,
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -766,7 +791,7 @@ func TestGetDownloadPresignedURLError(t *testing.T) {
 		HeadObjectError: awserr.New("HeadObjectError", "Mocked error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -793,7 +818,7 @@ func TestUploadS3Obj(t *testing.T) {
 		CompleteMultipartUploadOutput: &s3.CompleteMultipartUploadOutput{},
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -812,7 +837,7 @@ func TestUploadS3ObjError(t *testing.T) {
 		CreateMultipartUploadError: awserr.New("CreateMultipartUploadError", "Mocked error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -828,7 +853,7 @@ func TestGetUploadPresignedURL(t *testing.T) {
 
 	mockSvc := &mockS3Client{}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -845,7 +870,7 @@ func TestGetUploadPartPresignedURL(t *testing.T) {
 
 	mockSvc := &mockS3Client{}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -870,7 +895,7 @@ func TestGetMultiPartUploadID(t *testing.T) {
 		},
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -890,7 +915,7 @@ func TestCompleteMultipartUpload(t *testing.T) {
 		},
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -911,7 +936,7 @@ func TestAbortMultipartUpload(t *testing.T) {
 
 	mockSvc := &mockS3Client{}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -928,7 +953,7 @@ func TestAbortMultipartUploadError(t *testing.T) {
 		AbortMultipartUploadError: awserr.New("AbortMultipartUploadError", "Mocked error", nil),
 	}
 
-	s3Ctrl := blobstore.S3Controller{
+	s3Ctrl := S3Controller{
 		Sess:  &session.Session{},
 		S3Svc: mockSvc,
 	}
@@ -937,4 +962,62 @@ func TestAbortMultipartUploadError(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "AbortMultipartUploadError: Mocked error")
+}
+func TestGetBucketRegion(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		GetBucketLocationOutput: &s3.GetBucketLocationOutput{
+			LocationConstraint: aws.String("us-west-2"),
+		},
+		GetBucketLocationError: nil,
+	}
+
+	s3Ctrl := S3Controller{
+		S3Svc: mockSvc,
+	}
+
+	region, err := s3Ctrl.getBucketRegion("test-bucket")
+
+	require.NoError(t, err)
+	require.Equal(t, "us-west-2", region)
+}
+
+func TestGetBucketRegionDefault(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		GetBucketLocationOutput: &s3.GetBucketLocationOutput{
+			LocationConstraint: nil,
+		},
+		GetBucketLocationError: nil,
+	}
+
+	s3Ctrl := S3Controller{
+		S3Svc: mockSvc,
+	}
+
+	region, err := s3Ctrl.getBucketRegion("test-bucket")
+
+	require.NoError(t, err)
+	require.Equal(t, "us-east-1", region)
+}
+
+func TestGetBucketRegionError(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		GetBucketLocationOutput: &s3.GetBucketLocationOutput{},
+		GetBucketLocationError:  awserr.New("GetBucketLocationError", "Mocked error", nil),
+	}
+
+	s3Ctrl := S3Controller{
+		S3Svc: mockSvc,
+	}
+
+	region, err := s3Ctrl.getBucketRegion("test-bucket")
+
+	require.Error(t, err)
+	require.Empty(t, region)
+	require.Equal(t, "GetBucketLocationError: Mocked error", err.Error())
 }
