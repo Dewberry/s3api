@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
@@ -165,4 +166,142 @@ func TestAWSSessionManager(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotNil(t, sess)
+}
+
+func TestArrayContains(t *testing.T) {
+	arr := []string{"a", "b", "c"}
+	require.True(t, arrayContains("a", arr))
+	require.False(t, arrayContains("d", arr))
+}
+
+func TestIsIdenticalArray(t *testing.T) {
+	array1 := []string{"a", "b", "c"}
+	array2 := []string{"c", "b", "a"}
+	array3 := []string{"a", "b", "c"}
+	array4 := []string{"a", "b"}
+
+	require.True(t, isIdenticalArray(array1, array3))
+	require.True(t, isIdenticalArray(array1, array2))
+	require.False(t, isIdenticalArray(array1, array4))
+}
+
+func TestIsPermittedPrefix(t *testing.T) {
+	bucket := "test-bucket"
+	prefix := "test-prefix"
+	permissions := []string{"/test-bucket/test-prefix/", "/test-bucket/another-prefix/"}
+
+	require.True(t, isPermittedPrefix(bucket, prefix, permissions))
+	require.False(t, isPermittedPrefix(bucket, "non-permitted-prefix", permissions))
+}
+
+func TestValidateEnvJSON(t *testing.T) {
+	validJSON := `{
+		"accounts": [
+			{
+				"AWS_ACCESS_KEY_ID": "test_access_key",
+				"AWS_SECRET_ACCESS_KEY": "test_secret_key"
+			}
+		],
+		"bucket_allow_list": ["test-bucket"]
+	}`
+
+	invalidJSON := `{
+		"accounts": [
+			{
+				"AWS_ACCESS_KEY_ID": "test_access_key"
+			}
+		],
+		"bucket_allow_list": []
+	}`
+
+	// Write the valid JSON to a file
+	os.WriteFile("valid.env.json", []byte(validJSON), 0644)
+	defer os.Remove("valid.env.json")
+
+	// Write the invalid JSON to a file
+	os.WriteFile("invalid.env.json", []byte(invalidJSON), 0644)
+	defer os.Remove("invalid.env.json")
+
+	require.NoError(t, validateEnvJSON("valid.env.json"))
+	require.Error(t, validateEnvJSON("invalid.env.json"))
+}
+
+func TestNewAWSConfig(t *testing.T) {
+	validJSON := `{
+		"accounts": [
+			{
+				"AWS_ACCESS_KEY_ID": "test_access_key",
+				"AWS_SECRET_ACCESS_KEY": "test_secret_key"
+			}
+		],
+		"bucket_allow_list": ["test-bucket"]
+	}`
+
+	// Write the valid JSON to a file
+	os.WriteFile("valid.env.json", []byte(validJSON), 0644)
+	defer os.Remove("valid.env.json")
+
+	awsConfig, err := newAWSConfig("valid.env.json")
+	require.NoError(t, err)
+	require.NotNil(t, awsConfig)
+	require.Equal(t, "test_access_key", awsConfig.Accounts[0].AWS_ACCESS_KEY_ID)
+}
+
+func TestNewMinioConfig(t *testing.T) {
+	os.Setenv("MINIO_S3_ENDPOINT", "http://localhost:9000")
+	os.Setenv("MINIO_S3_DISABLE_SSL", "true")
+	os.Setenv("MINIO_S3_FORCE_PATH_STYLE", "true")
+	os.Setenv("MINIO_ACCESS_KEY_ID", "minio_access_key")
+	os.Setenv("MINIO_SECRET_ACCESS_KEY", "minio_secret_key")
+	os.Setenv("AWS_S3_BUCKET", "test-bucket")
+
+	minioConfig := newMinioConfig()
+
+	require.Equal(t, "http://localhost:9000", minioConfig.S3Endpoint)
+	require.Equal(t, "true", minioConfig.DisableSSL)
+	require.Equal(t, "true", minioConfig.ForcePathStyle)
+	require.Equal(t, "minio_access_key", minioConfig.AccessKeyID)
+	require.Equal(t, "minio_secret_key", minioConfig.SecretAccessKey)
+	require.Equal(t, "test-bucket", minioConfig.Bucket)
+}
+
+func TestGetListSize(t *testing.T) {
+	page := &s3.ListObjectsV2Output{
+		Contents: []*s3.Object{
+			{Size: aws.Int64(1024)},
+			{Size: aws.Int64(2048)},
+		},
+	}
+
+	var totalSize uint64
+	var fileCount uint64
+
+	err := GetListSize(page, &totalSize, &fileCount)
+	require.NoError(t, err)
+	require.Equal(t, uint64(3072), totalSize)
+	require.Equal(t, uint64(2), fileCount)
+}
+
+func TestGetListSizeNilPage(t *testing.T) {
+	var totalSize uint64
+	var fileCount uint64
+
+	err := GetListSize(nil, &totalSize, &fileCount)
+	require.Error(t, err)
+	require.Equal(t, "input page is nil", err.Error())
+}
+
+func TestGetListSizeNilFileSize(t *testing.T) {
+	page := &s3.ListObjectsV2Output{
+		Contents: []*s3.Object{
+			{Size: nil},
+		},
+	}
+
+	var totalSize uint64
+	var fileCount uint64
+
+	err := GetListSize(page, &totalSize, &fileCount)
+	require.Error(t, err)
+	require.Equal(t, "file size is nil", err.Error())
 }
