@@ -65,9 +65,8 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		config.DB = db
 	}
 	s3MockStr := os.Getenv("S3_MOCK")
-	var s3Mock int
 	if s3MockStr == "" {
-		s3Mock = 0
+		s3MockStr = "0"
 	}
 	s3Mock, err := strconv.Atoi(s3MockStr)
 	if err != nil {
