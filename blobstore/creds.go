@@ -2,11 +2,13 @@ package blobstore
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -55,7 +57,7 @@ func (mc MinioConfig) validateMinioConfig() error {
 	return nil
 }
 
-func (mc MinioConfig) minIOSessionManager() (*s3.S3, *session.Session, error) {
+func (mc MinioConfig) minIOSessionManager() (s3iface.S3API, *session.Session, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Endpoint:         aws.String(mc.S3Endpoint),
 		Region:           aws.String("us-east-1"),
@@ -122,7 +124,21 @@ func (mc MinioConfig) minIOSessionManager() (*s3.S3, *session.Session, error) {
 	return s3SVC, sess, nil
 }
 
-func (ac AWSCreds) aWSSessionManager() (*s3.S3, *session.Session, error) {
+func (ac AWSCreds) aWSSessionManager() (s3iface.S3API, *session.Session, error) {
+
+	if os.Getenv("USE_MOCK_AWS") == "true" {
+		mockSvc := &mockS3Client{
+			ListBucketsOutput: s3.ListBucketsOutput{
+				Buckets: []*s3.Bucket{
+					{Name: aws.String("test-bucket-1")},
+					{Name: aws.String("test-bucket-2")},
+				},
+			},
+			ListBucketsError: nil,
+		}
+		return mockSvc, &session.Session{}, nil
+	}
+
 	log.Info("Using AWS S3")
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String("us-east-1"),
