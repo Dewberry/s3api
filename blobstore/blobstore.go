@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Dewberry/s3api/configberry"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	log "github.com/sirupsen/logrus"
 )
@@ -78,25 +79,23 @@ func isPermittedPrefix(bucket, prefix string, permissions []string) bool {
 
 // checkAndAdjustPrefix checks if the prefix is an object and adjusts the prefix accordingly.
 // Returns the adjusted prefix, an error message (if any), and the HTTP status code.
-// Methods defined on `S3Ctrl` that return return a ConfigBerry `AppError`
+// Methods defined on `S3Ctrl` that return a ConfigBerry `AppError`
 func (s3Ctrl *S3Controller) checkAndAdjustPrefix(bucket, prefix string) (string, *configberry.AppError) {
-	// As of 6/12/24, unsure why ./ is included here, may be needed for an edge case, but could also cause problems
 	if prefix != "" && prefix != "./" && prefix != "/" {
-		isObject, err := s3Ctrl.KeyExists(bucket, prefix)
+		objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
 		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok && aerr.Code() == "NotFound" {
+				// Object not found, hence it's not an object, proceed to adjust prefix
+				prefix = strings.Trim(prefix, "/") + "/"
+				return prefix, nil
+			}
 			return "", configberry.HandleAWSError(err, "error checking if prefix is an object")
 		}
-		if isObject {
-			objMeta, err := s3Ctrl.GetMetaData(bucket, prefix)
-			if err != nil {
-				return "", configberry.HandleAWSError(err, "error checking for object's metadata")
-			}
-			// This is because AWS considers empty prefixes with a .keep as an object, so we ignore and log
-			if *objMeta.ContentLength == 0 {
-				log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
-			} else {
-				return "", configberry.NewAppError(configberry.TeapotError, fmt.Sprintf("`%s` is an object, not a prefix", prefix), nil)
-			}
+		// This is because AWS considers empty prefixes with a .keep as an object, so we ignore and log
+		if *objMeta.ContentLength == 0 {
+			log.Infof("detected a zero byte directory marker within prefix: %s", prefix)
+		} else {
+			return "", configberry.NewAppError(configberry.TeapotError, fmt.Sprintf("`%s` is an object, not a prefix", prefix), nil)
 		}
 		prefix = strings.Trim(prefix, "/") + "/"
 	}
