@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Dewberry/s3api/configberry"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/client/metadata"
@@ -1020,4 +1021,87 @@ func TestGetBucketRegionError(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, region)
 	require.Equal(t, "GetBucketLocationError: Mocked error", err.Error())
+}
+
+func TestCheckAndAdjustPrefix(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		HeadObjectError: awserr.New("NotFound", "Mocked error", nil),
+	}
+
+	s3Ctrl := S3Controller{
+		Sess:  &session.Session{},
+		S3Svc: mockSvc,
+	}
+
+	prefix, err := s3Ctrl.checkAndAdjustPrefix("test-bucket", "test-prefix")
+
+	require.Nil(t, err)
+	require.Equal(t, "test-prefix/", prefix)
+}
+
+func TestCheckAndAdjustPrefixIsObject(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		HeadObjectError: nil,
+		HeadObjectOutput: &s3.HeadObjectOutput{
+			ContentLength: aws.Int64(1234),
+		},
+	}
+
+	s3Ctrl := S3Controller{
+		Sess:  &session.Session{},
+		S3Svc: mockSvc,
+	}
+
+	prefix, err := s3Ctrl.checkAndAdjustPrefix("test-bucket", "test-object")
+
+	require.NotNil(t, err)
+	require.IsType(t, &configberry.AppError{}, err)
+	require.Equal(t, configberry.TeapotError, err.Type)
+	require.Contains(t, err.Message, "`test-object` is an object, not a prefix")
+	require.Empty(t, prefix)
+}
+
+func TestCheckAndAdjustPrefixIsEmptyObject(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		HeadObjectError: nil,
+		HeadObjectOutput: &s3.HeadObjectOutput{
+			ContentLength: aws.Int64(0),
+		},
+	}
+
+	s3Ctrl := S3Controller{
+		Sess:  &session.Session{},
+		S3Svc: mockSvc,
+	}
+
+	prefix, err := s3Ctrl.checkAndAdjustPrefix("test-bucket", "test-empty-object")
+
+	require.Nil(t, err)
+	require.Equal(t, "test-empty-object/", prefix)
+}
+
+func TestCheckAndAdjustPrefixError(t *testing.T) {
+	t.Setenv("INIT_AUTH", "0")
+
+	mockSvc := &mockS3Client{
+		HeadObjectError: awserr.New("HeadObjectError", "Mocked error", nil),
+	}
+
+	s3Ctrl := S3Controller{
+		Sess:  &session.Session{},
+		S3Svc: mockSvc,
+	}
+
+	prefix, err := s3Ctrl.checkAndAdjustPrefix("test-bucket", "test-prefix")
+
+	require.NotNil(t, err)
+	require.IsType(t, &configberry.AppError{}, err)
+	require.Contains(t, err.Message, "error checking if prefix is an object")
+	require.Empty(t, prefix)
 }
