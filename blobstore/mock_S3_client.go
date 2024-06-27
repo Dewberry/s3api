@@ -5,8 +5,6 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/client/metadata"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
@@ -52,26 +50,25 @@ func (m *mockS3Client) PutBucketPolicy(input *s3.PutBucketPolicyInput) (*s3.PutB
 	return &s3.PutBucketPolicyOutput{}, m.PutBucketPolicyError
 }
 
+func (m *mockS3Client) GetBucketLocation(input *s3.GetBucketLocationInput) (*s3.GetBucketLocationOutput, error) {
+	return m.GetBucketLocationOutput, m.GetBucketLocationError
+}
+
 func (m *mockS3Client) GetBucketLocationRequest(input *s3.GetBucketLocationInput) (*request.Request, *s3.GetBucketLocationOutput) {
-	req := request.New(
-		aws.Config{},
-		metadata.ClientInfo{},
-		request.Handlers{},
-		nil,
-		&request.Operation{
-			Name:       "GetBucketLocation",
-			HTTPMethod: "GET",
-			HTTPPath:   "/{Bucket}?location",
+	req := &request.Request{
+		HTTPRequest: &http.Request{
+			URL: &url.URL{
+				Scheme: "https",
+				Host:   "s3.amazonaws.com",
+				Path:   "/" + *input.Bucket + "?location",
+			},
 		},
-		input,
-		m.GetBucketLocationOutput,
-	)
-	req.Handlers.Send.Clear()
-	req.Handlers.Send.PushBack(func(r *request.Request) {
-		r.Error = m.GetBucketLocationError
-		r.Data = m.GetBucketLocationOutput
-	})
-	return req, m.GetBucketLocationOutput
+	}
+	output := m.GetBucketLocationOutput
+	if m.GetBucketLocationError != nil {
+		req.Error = m.GetBucketLocationError
+	}
+	return req, output
 }
 
 func (m *mockS3Client) ListBuckets(*s3.ListBucketsInput) (*s3.ListBucketsOutput, error) {
