@@ -53,7 +53,7 @@ func (bh *BlobHandler) getUserS3ReadListPermission(c echo.Context, bucket string
 		ue := claims.Email
 		permissions, err := bh.DB.GetUserAccessiblePrefixes(ue, bucket, []string{"read", "write"})
 		if err != nil {
-			return permissions, fullAccess, configberry.HandleSQLError(err, "error getting `prefix` that the user can read and write to")
+			return permissions, fullAccess, configberry.HandleSQLError(err, fmt.Sprintf("error getting `prefix` that the user can read and write to for `bucket`: %s", bucket))
 		}
 		return permissions, fullAccess, nil
 	}

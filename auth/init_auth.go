@@ -11,12 +11,10 @@ import (
 )
 
 func init() {
-	fmt.Println("auth package init()")
-
 	initAuth := os.Getenv("INIT_AUTH")
 	if initAuth == "0" {
 		log.Println("Skipping authentication initialization")
-		return // Skip initialization if the environment variable is explicitly set to 0
+		return
 	}
 
 	var err error

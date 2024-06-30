@@ -4,16 +4,28 @@
 package blobstore
 
 import (
+	"database/sql"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"regexp"
+	"sort"
 	"sync"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/Dewberry/s3api/auth"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/labstack/echo/v4"
+	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -300,4 +312,279 @@ func TestGetController(t *testing.T) {
 
 	// Reset the error for the next test
 	mockS3Client.GetBucketLocationError = nil
+}
+
+func TestHandleListBuckets(t *testing.T) {
+	envVars := map[string]string{
+		"INIT_AUTH": "1",
+	}
+	setupEnvVariables(envVars)
+	defer teardownEnvVariables(envVars)
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/buckets", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	// Mock S3 client
+	mockSvc := &mockS3Client{
+		ListBucketsOutput: s3.ListBucketsOutput{
+			Buckets: []*s3.Bucket{
+				{Name: aws.String("bucket1")},
+				{Name: aws.String("bucket2")},
+			},
+		},
+		ListBucketsError: nil,
+	}
+
+	mockSession := &session.Session{
+		Config: &aws.Config{
+			Region: aws.String("us-east-1"),
+		},
+	}
+
+	// Mock database
+	db, sqlMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	pgDB := &auth.PostgresDB{Handle: db}
+
+	userEmail := "test@example.com"
+	bucket1 := "bucket1"
+	bucket2 := "bucket2"
+	operations := []string{"read", "write"}
+
+	// Mock expected query
+	query := regexp.QuoteMeta(`
+        WITH unnested_permissions AS (
+            SELECT DISTINCT unnest(allowed_s3_prefixes) AS allowed_prefix
+            FROM permissions
+            WHERE user_email = $1 AND operation = ANY($3)
+        )
+        SELECT allowed_prefix
+        FROM unnested_permissions
+        WHERE allowed_prefix LIKE $2 || '/%'
+        ORDER BY allowed_prefix;
+    `)
+
+	sqlMock.ExpectQuery(query).
+		WithArgs(userEmail, "/", pq.Array(operations)).
+		WillReturnRows(sqlmock.NewRows([]string{"allowed_prefix"}))
+
+	sqlMock.ExpectQuery(query).
+		WithArgs(userEmail, "/"+bucket1, pq.Array(operations)).
+		WillReturnRows(sqlmock.NewRows([]string{"allowed_prefix"}).AddRow("/bucket1/prefix1"))
+
+	sqlMock.ExpectQuery(query).
+		WithArgs(userEmail, "/"+bucket2, pq.Array(operations)).
+		WillReturnRows(sqlmock.NewRows([]string{"allowed_prefix"}))
+
+	handler := &BlobHandler{
+		S3Controllers: []S3Controller{
+			{
+				Sess:    mockSession,
+				S3Svc:   mockSvc,
+				Buckets: []string{"bucket1", "bucket2"},
+			},
+		},
+		Mu:     sync.Mutex{},
+		DB:     pgDB,
+		Config: &Config{AuthLevel: 1, LimitedReaderRoleName: "limited_reader"},
+	}
+
+	// Set claims in the context
+	claims := &auth.Claims{
+		Email: "test@example.com",
+		RealmAccess: map[string][]string{
+			"roles": {"limited_reader"},
+		},
+	}
+	c.Set("claims", claims)
+
+	err = handler.HandleListBuckets(c)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var response []BucketInfo
+	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	expectedResponse := []BucketInfo{
+		{ID: 0, Name: "bucket1", CanRead: true},
+		{ID: 1, Name: "bucket2", CanRead: false},
+	}
+	sort.Slice(expectedResponse, func(i, j int) bool {
+		if expectedResponse[i].CanRead == expectedResponse[j].CanRead {
+			return expectedResponse[i].Name < expectedResponse[j].Name
+		}
+		return expectedResponse[i].CanRead && !expectedResponse[j].CanRead
+	})
+	require.Equal(t, expectedResponse, response)
+}
+
+func TestHandleListBucketsError(t *testing.T) {
+	envVars := map[string]string{
+		"INIT_AUTH": "1",
+	}
+	setupEnvVariables(envVars)
+	defer teardownEnvVariables(envVars)
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/buckets", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	// Mock S3 client with error
+	mockSvc := &mockS3Client{
+		ListBucketsOutput: s3.ListBucketsOutput{},
+		ListBucketsError:  awserr.New("ListBucketsError", "Mocked error", nil),
+	}
+
+	mockSession := &session.Session{
+		Config: &aws.Config{
+			Region: aws.String("us-east-1"),
+		},
+	}
+	// Mock database
+	db, sqlMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	pgDB := &auth.PostgresDB{Handle: db}
+	userEmail := "test@example.com"
+	bucket1 := "bucket1"
+	bucket2 := "bucket2"
+	operations := []string{"read", "write"}
+
+	// Mock expected query
+	query := regexp.QuoteMeta(`
+        WITH unnested_permissions AS (
+            SELECT DISTINCT unnest(allowed_s3_prefixes) AS allowed_prefix
+            FROM permissions
+            WHERE user_email = $1 AND operation = ANY($3)
+        )
+        SELECT allowed_prefix
+        FROM unnested_permissions
+        WHERE allowed_prefix LIKE $2 || '/%'
+        ORDER BY allowed_prefix;
+    `)
+
+	sqlMock.ExpectQuery(query).
+		WithArgs(userEmail, "/", pq.Array(operations)).
+		WillReturnRows(sqlmock.NewRows([]string{"allowed_prefix"}))
+	sqlMock.ExpectQuery(query).
+		WithArgs(userEmail, "/"+bucket1, pq.Array(operations)).
+		WillReturnRows(sqlmock.NewRows([]string{"allowed_prefix"}).AddRow("/bucket1/prefix1"))
+
+	sqlMock.ExpectQuery(query).
+		WithArgs(userEmail, "/"+bucket2, pq.Array(operations)).
+		WillReturnRows(sqlmock.NewRows([]string{"allowed_prefix"}))
+
+	handler := &BlobHandler{
+		S3Controllers: []S3Controller{
+			{
+				Sess:    mockSession,
+				S3Svc:   mockSvc,
+				Buckets: []string{"bucket1", "bucket2"},
+			},
+		},
+		DB:              pgDB,
+		Mu:              sync.Mutex{},
+		Config:          &Config{AuthLevel: 1, LimitedReaderRoleName: "limited_reader"},
+		AllowAllBuckets: true,
+	}
+
+	// Set claims in the context
+	claims := &auth.Claims{
+		Email: "test@example.com",
+		RealmAccess: map[string][]string{
+			"roles": {"limited_reader"},
+		},
+	}
+	c.Set("claims", claims)
+
+	if assert.NoError(t, handler.HandleListBuckets(c)) {
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		assert.Contains(t, rec.Body.String(), "error listing buckets")
+	}
+}
+
+func TestHandleListPostgressError(t *testing.T) {
+	envVars := map[string]string{
+		"INIT_AUTH": "1",
+	}
+	setupEnvVariables(envVars)
+	defer teardownEnvVariables(envVars)
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/buckets", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	// Mock S3 client with error
+	mockSvc := &mockS3Client{
+		ListBucketsOutput: s3.ListBucketsOutput{},
+		ListBucketsError:  awserr.New("ListBucketsError", "Mocked error", nil),
+	}
+
+	mockSession := &session.Session{
+		Config: &aws.Config{
+			Region: aws.String("us-east-1"),
+		},
+	}
+	// Mock database
+	db, sqlMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	pgDB := &auth.PostgresDB{Handle: db}
+	userEmail := "test@example.com"
+
+	operations := []string{"read", "write"}
+
+	// Mock expected query
+	query := regexp.QuoteMeta(`
+        WITH unnested_permissions AS (
+            SELECT DISTINCT unnest(allowed_s3_prefixes) AS allowed_prefix
+            FROM permissions
+            WHERE user_email = $1 AND operation = ANY($3)
+        )
+        SELECT allowed_prefix
+        FROM unnested_permissions
+        WHERE allowed_prefix LIKE $2 || '/%'
+        ORDER BY allowed_prefix;
+    `)
+
+	sqlMock.ExpectQuery(query).
+		WithArgs(userEmail, "/", pq.Array(operations)).
+		WillReturnError(sql.ErrConnDone)
+
+	handler := &BlobHandler{
+		S3Controllers: []S3Controller{
+			{
+				Sess:    mockSession,
+				S3Svc:   mockSvc,
+				Buckets: []string{"bucket1", "bucket2"},
+			},
+		},
+		DB:              pgDB,
+		Mu:              sync.Mutex{},
+		Config:          &Config{AuthLevel: 1, LimitedReaderRoleName: "limited_reader"},
+		AllowAllBuckets: true,
+	}
+
+	// Set claims in the context
+	claims := &auth.Claims{
+		Email: "test@example.com",
+		RealmAccess: map[string][]string{
+			"roles": {"limited_reader"},
+		},
+	}
+	c.Set("claims", claims)
+
+	if assert.NoError(t, handler.HandleListBuckets(c)) {
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		assert.Contains(t, rec.Body.String(), "error getting `prefix` that the user can read and write to")
+	}
 }
