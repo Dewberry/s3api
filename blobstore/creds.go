@@ -1,10 +1,15 @@
 package blobstore
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	log "github.com/sirupsen/logrus"
 )
 
 type AWSCreds struct {
@@ -28,93 +33,119 @@ type MinioConfig struct {
 	S3Mock          string `json:"S3_MOCK"`
 }
 
-func (creds MinioConfig) validateMinioConfig() error {
+func (mc MinioConfig) validateMinioConfig() error {
 	missingFields := []string{}
-	if creds.S3Endpoint == "" {
+	if mc.S3Endpoint == "" {
 		missingFields = append(missingFields, "S3Endpoint")
 	}
-	if creds.DisableSSL == "" {
+	if mc.DisableSSL == "" {
 		missingFields = append(missingFields, "DisableSSL")
 	}
-	if creds.ForcePathStyle == "" {
+	if mc.ForcePathStyle == "" {
 		missingFields = append(missingFields, "ForcePathStyle")
 	}
-	if creds.AccessKeyID == "" {
+	if mc.AccessKeyID == "" {
 		missingFields = append(missingFields, "AccessKeyID")
 	}
-	if creds.SecretAccessKey == "" {
+	if mc.SecretAccessKey == "" {
 		missingFields = append(missingFields, "SecretAccessKey")
 	}
 
 	if len(missingFields) > 0 {
-		return fmt.Errorf("missing fields: %s", strings.Join(missingFields, ", "))
+		return fmt.Errorf("missing fields:  %+q", missingFields)
 	}
 	return nil
 }
 
-func validateEnvJSON(filePath string) error {
-	// Read the contents of the .env.json file
-	jsonData, err := os.ReadFile(filePath)
+func (mc MinioConfig) minIOSessionManager() (s3iface.S3API, *session.Session, error) {
+	sess, err := session.NewSession(&aws.Config{
+		Endpoint:         aws.String(mc.S3Endpoint),
+		Region:           aws.String("us-east-1"),
+		Credentials:      credentials.NewStaticCredentials(mc.AccessKeyID, mc.SecretAccessKey, ""),
+		S3ForcePathStyle: aws.Bool(true),
+	})
 	if err != nil {
-		return fmt.Errorf("error reading .env.json: %s", err.Error())
+		return nil, nil, err
 	}
+	log.Info("Using minio to mock s3")
 
-	// Parse the JSON data into the AWSConfig struct
-	var awsConfig AWSConfig
-	if err := json.Unmarshal(jsonData, &awsConfig); err != nil {
-		return fmt.Errorf("error parsing .env.json: %s", err.Error())
-	}
-
-	// Check if there is at least one account defined
-	if len(awsConfig.Accounts) == 0 {
-		return fmt.Errorf("no AWS accounts defined in .env.json")
-	}
-
-	// Check if each account has the required fields
-	for i, account := range awsConfig.Accounts {
-		missingFields := []string{}
-		if account.AWS_ACCESS_KEY_ID == "" {
-			missingFields = append(missingFields, "AWS_ACCESS_KEY_ID")
+	// Check if the bucket exists
+	s3SVC := s3.New(sess)
+	_, err = s3SVC.HeadBucket(&s3.HeadBucketInput{
+		Bucket: aws.String(mc.Bucket),
+	})
+	if err != nil {
+		// Bucket does not exist, create it
+		_, err := s3SVC.CreateBucket(&s3.CreateBucketInput{
+			Bucket: aws.String(mc.Bucket),
+		})
+		if err != nil {
+			log.Errorf("error creating bucket: %s", err.Error())
+			return nil, nil, nil
 		}
-		if account.AWS_SECRET_ACCESS_KEY == "" {
-			missingFields = append(missingFields, "AWS_SECRET_ACCESS_KEY")
-		}
+		log.Info("Bucket created successfully")
+	} else {
+		log.Info("Bucket already exists")
+	}
 
-		if len(missingFields) > 0 {
-			return fmt.Errorf("missing fields (%s) for AWS account %d in envJson file", strings.Join(missingFields, ", "), i+1)
-		}
+	// Create the policy as a byte array
+	policyBytes := []byte(`{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": [
+            "*"
+        ]
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::test-bucket/*"
+      ]
+    }
+  ]}`)
+
+	// Set the policy on the bucket
+	_, err = s3SVC.PutBucketPolicy(&s3.PutBucketPolicyInput{
+		Bucket: aws.String(mc.Bucket),
+		Policy: aws.String(string(policyBytes)),
+	})
+	if err != nil {
+		log.Errorf("error setting bucket policy: %s", err.Error())
+		// Handle error appropriately
+	} else {
+		log.Info("Bucket policy set successfully")
 	}
-	if len(awsConfig.BucketAllowList) == 0 {
-		return fmt.Errorf("no buckets in the `bucket_allow_list`, please provide required buckets, or `*` for access to all buckets")
-	}
-	// If all checks pass, return nil (no error)
-	return nil
+
+	return s3SVC, sess, nil
 }
 
-func newAWSConfig(envJson string) (AWSConfig, error) {
-	var awsConfig AWSConfig
-	err := validateEnvJSON(envJson)
-	if err != nil {
-		return awsConfig, fmt.Errorf(err.Error())
-	}
-	jsonData, err := os.ReadFile(envJson)
-	if err != nil {
-		return awsConfig, err
+func (ac AWSCreds) aWSSessionManager() (s3iface.S3API, *session.Session, error) {
+
+	if os.Getenv("USE_MOCK_AWS") == "true" {
+		mockSvc := &mockS3Client{
+			ListBucketsOutput: s3.ListBucketsOutput{
+				Buckets: []*s3.Bucket{
+					{Name: aws.String("test-bucket-1")},
+					{Name: aws.String("test-bucket-2")},
+				},
+			},
+			ListBucketsError: nil,
+		}
+		return mockSvc, &session.Session{}, nil
 	}
 
-	if err := json.Unmarshal(jsonData, &awsConfig); err != nil {
-		return awsConfig, err
+	log.Info("Using AWS S3")
+	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String("us-east-1"),
+		Credentials: credentials.NewStaticCredentials(ac.AWS_ACCESS_KEY_ID, ac.AWS_SECRET_ACCESS_KEY, ""),
+	})
+	if err != nil {
+		return nil, nil, err
 	}
-	return awsConfig, nil
-}
-
-func newMinioConfig() MinioConfig {
-	var mc MinioConfig
-	mc.S3Endpoint = os.Getenv("MINIO_S3_ENDPOINT")
-	mc.DisableSSL = os.Getenv("MINIO_S3_DISABLE_SSL")
-	mc.ForcePathStyle = os.Getenv("MINIO_S3_FORCE_PATH_STYLE")
-	mc.AccessKeyID = os.Getenv("MINIO_ACCESS_KEY_ID")
-	mc.Bucket = os.Getenv("AWS_S3_BUCKET")
-	mc.SecretAccessKey = os.Getenv("MINIO_SECRET_ACCESS_KEY")
-	return mc
+	return s3.New(sess), sess, nil
 }

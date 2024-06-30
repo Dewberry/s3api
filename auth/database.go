@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strconv"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/labstack/gommon/log"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
@@ -23,6 +25,17 @@ type PostgresDB struct {
 
 // NewPostgresDB initializes the database and creates tables if they do not exist.
 func NewPostgresDB() (*PostgresDB, error) {
+	// Check if we should return a mock database, used for unit testing!
+	if useMockDB, _ := strconv.ParseBool(os.Getenv("USE_MOCK_DB")); useMockDB {
+		// Create a mock database connection
+		db, _, err := sqlmock.New()
+		if err != nil {
+			return nil, fmt.Errorf("could not create mock database: %v", err)
+		}
+		return &PostgresDB{Handle: db}, nil
+	}
+
+	// Original logic for connecting to a real database
 	connString, exist := os.LookupEnv("POSTGRES_CONN_STRING")
 	if !exist {
 		return nil, fmt.Errorf("env variable POSTGRES_CONN_STRING not set")

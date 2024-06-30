@@ -30,15 +30,15 @@ jobs:
           echo AWS_S3_BUCKET='test-bucket' >> .env
           echo S3API_SERVICE_PORT='5005' >> .env
           echo AUTH_LEVEL=0 >> .env
-
-      - name: Substitute secret variables in JSON
-        env:
-          auth_password: ${{ secrets.AUTH_PASSWORD }}
-          KEYCLOAK_SECRET: ${{ secrets.KEYCLOAK_SECRET }}
-        run: |
-          echo "Is auth_password set: $(if [ -z "$auth_password" ]; then echo "No"; else echo "Yes"; fi)"
-          echo "Is KEYCLOAK_SECRET set: $(if [ -z "$KEYCLOAK_SECRET" ]; then echo "No"; else echo "Yes"; fi)"
-          envsubst < e2e-test/e2eEnv.template.json > e2e-test/e2eEnv.json
+          echo INIT_AUTH=0 >> .env
+      # - name: Substitute secret variables in JSON
+      #   env:
+      #     auth_password: ${{ secrets.AUTH_PASSWORD }}
+      #     KEYCLOAK_SECRET: ${{ secrets.KEYCLOAK_SECRET }}
+      #   run: |
+      #     echo "Is auth_password set: $(if [ -z "$auth_password" ]; then echo "No"; else echo "Yes"; fi)"
+      #     echo "Is KEYCLOAK_SECRET set: $(if [ -z "$KEYCLOAK_SECRET" ]; then echo "No"; else echo "Yes"; fi)"
+      #     envsubst < e2e-test/e2eEnv.template.json > e2e-test/e2eEnv.json
       - name: Build the docker-compose stack
         run: docker-compose build -d
 
