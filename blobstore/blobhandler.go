@@ -335,15 +335,20 @@ func (bh *BlobHandler) HandleCheckS3UserPermission(c echo.Context) error {
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusForbidden, errMsg.Error())
 	}
-	prefix := c.QueryParam("prefix")
-	bucket := c.QueryParam("bucket")
-	operation := c.QueryParam("operation")
 	claims, ok := c.Get("claims").(*auth.Claims)
 	if !ok {
 		errMsg := fmt.Errorf("could not get claims from request context")
 		log.Error(errMsg.Error())
 		return c.JSON(http.StatusInternalServerError, errMsg.Error())
 	}
+	isAdminOrWriter := auth.Overlap(claims.RealmAccess["roles"], []string{"s3_admin", "s3_writer"})
+	if isAdminOrWriter {
+		return c.JSON(http.StatusOK, true)
+	}
+	prefix := c.QueryParam("prefix")
+	bucket := c.QueryParam("bucket")
+	operation := c.QueryParam("operation")
+
 	userEmail := claims.Email
 	if operation == "" || prefix == "" || bucket == "" {
 		errMsg := fmt.Errorf("`prefix`,  `operation` and 'bucket are required params")
