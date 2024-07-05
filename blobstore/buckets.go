@@ -93,7 +93,8 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, fmt.Errorf("error fetching user permissions: %s", err.Error()))
 	}
 
-	for _, controller := range bh.S3Controllers {
+	for i := range bh.S3Controllers {
+		controller := &bh.S3Controllers[i]
 		if bh.AllowAllBuckets {
 			result, err := controller.ListBuckets()
 			if err != nil {
