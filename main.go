@@ -100,7 +100,7 @@ func main() {
 	// e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	e.GET("/prefix/download/script", auth.Authorize(bh.HandleGenerateDownloadScript, allUsers...))
 	e.PUT("/prefix/move", auth.Authorize(bh.HandleMovePrefix, admin...))
-	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeletePrefix, admin...))
+	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeletePrefix, writers...))
 	e.GET("/prefix/size", auth.Authorize(bh.HandleGetSize, allUsers...))
 
 	// universal
