@@ -73,6 +73,13 @@ func (bh *BlobHandler) HandleDeleteObject(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, errMsg.Error())
 	}
 
+	httpCode, err := bh.CheckUserS3Permission(c, bucket, key, []string{"write"})
+	if err != nil {
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(httpCode, errMsg.Error())
+	}
+
 	// If the key is not a folder, proceed with deleting a single object
 	keyExist, err := s3Ctrl.KeyExists(bucket, key)
 	if err != nil {
@@ -103,6 +110,7 @@ func (bh *BlobHandler) HandleDeleteObject(c echo.Context) error {
 }
 
 func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
+
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
@@ -119,6 +127,14 @@ func (bh *BlobHandler) HandleDeletePrefix(c echo.Context) error {
 	if !strings.HasSuffix(prefix, "/") {
 		prefix = prefix + "/"
 	}
+
+	httpCode, err := bh.CheckUserS3Permission(c, bucket, prefix, []string{"write"})
+	if err != nil {
+		errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+		log.Error(errMsg.Error())
+		return c.JSON(httpCode, errMsg.Error())
+	}
+
 	err = s3Ctrl.RecursivelyDeleteObjects(bucket, prefix)
 	if err != nil {
 		if strings.Contains(err.Error(), "prefix not found") {
@@ -203,6 +219,13 @@ func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
 			errMsg := fmt.Errorf("object %s not found", s3Path)
 			log.Error(errMsg.Error())
 			return c.JSON(http.StatusNotFound, errMsg.Error())
+		}
+
+		httpCode, err := bh.CheckUserS3Permission(c, bucket, s3Path, []string{"write"})
+		if err != nil {
+			errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+			log.Error(errMsg.Error())
+			return c.JSON(httpCode, errMsg.Error())
 		}
 
 		keys = append(keys, *key)
