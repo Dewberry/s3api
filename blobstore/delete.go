@@ -206,7 +206,13 @@ func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
 	keys := make([]string, 0, len(deleteRequest.Keys))
 	for _, p := range deleteRequest.Keys {
 		s3Path := strings.TrimPrefix(p, "/")
-		key := aws.String(s3Path)
+
+		httpCode, err := bh.CheckUserS3Permission(c, bucket, s3Path, []string{"write"})
+		if err != nil {
+			errMsg := fmt.Errorf("error while checking for user permission: %s", err)
+			log.Error(errMsg.Error())
+			return c.JSON(httpCode, errMsg.Error())
+		}
 
 		// Check if the key exists before appending it to the keys list
 		keyExists, err := s3Ctrl.KeyExists(bucket, s3Path)
@@ -221,13 +227,7 @@ func (bh *BlobHandler) HandleDeleteObjectsByList(c echo.Context) error {
 			return c.JSON(http.StatusNotFound, errMsg.Error())
 		}
 
-		httpCode, err := bh.CheckUserS3Permission(c, bucket, s3Path, []string{"write"})
-		if err != nil {
-			errMsg := fmt.Errorf("error while checking for user permission: %s", err)
-			log.Error(errMsg.Error())
-			return c.JSON(httpCode, errMsg.Error())
-		}
-
+		key := aws.String(s3Path)
 		keys = append(keys, *key)
 	}
 
