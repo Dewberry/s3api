@@ -123,7 +123,7 @@ func validateToken(tokenString string) (*Claims, error) {
 	return claims, nil
 }
 
-func overlap(s1 []string, s2 []string) bool {
+func Overlap(s1 []string, s2 []string) bool {
 	for _, x := range s1 {
 		for _, y := range s2 {
 			if x == y {
@@ -164,7 +164,7 @@ func Authorize(handler echo.HandlerFunc, allowedRoles ...string) echo.HandlerFun
 		// Store the claims in the echo.Context
 		c.Set("claims", claims)
 
-		ok := overlap(claims.RealmAccess["roles"], allowedRoles)
+		ok := Overlap(claims.RealmAccess["roles"], allowedRoles)
 		if !ok {
 			return c.JSON(http.StatusUnauthorized, "user is not authorized")
 		}

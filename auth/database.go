@@ -15,6 +15,7 @@ type Database interface {
 	CheckUserPermission(userEmail, bucket, prefix string, operations []string) bool
 	Close() error
 	GetUserAccessiblePrefixes(userEmail, bucket string, operations []string) ([]string, error)
+	AddBucketPermissions(userEmail, bucket string, prefixes []string, operation string) error
 }
 
 type PostgresDB struct {
@@ -121,6 +122,26 @@ func (db *PostgresDB) CheckUserPermission(userEmail, bucket, prefix string, oper
 	}
 
 	return hasPermission
+}
+
+// AddBucketPermissions adds permissions for a user to access specific prefixes in a bucket for a given operation.
+func (db *PostgresDB) AddBucketPermissions(userEmail, bucket string, prefixes []string, operation string) error {
+	allowedPrefixes := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		allowedPrefixes[i] = fmt.Sprintf("/%s/%s", bucket, prefix)
+	}
+
+	query := `
+	INSERT INTO permissions (user_email, operation, allowed_s3_prefixes)
+	VALUES ($1, $2, $3);
+	`
+
+	_, err := db.Handle.Exec(query, userEmail, operation, pq.Array(allowedPrefixes))
+	if err != nil {
+		return fmt.Errorf("error adding bucket permissions: %v", err)
+	}
+
+	return nil
 }
 
 // Close closes the database connection.

@@ -104,6 +104,10 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 		}
 		for _, object := range page.Contents {
 			// Handle files
+			// Skip zero-byte objects that match a common prefix with a trailing slash
+			if *object.Size == 0 && strings.HasSuffix(*object.Key, "/") {
+				continue
+			}
 			if fullAccess || IsPermittedPrefix(bucket, *object.Key, permissions) {
 				result = append(result, aws.StringValue(object.Key))
 			}
@@ -185,6 +189,10 @@ func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
 
 		for _, object := range page.Contents {
 			// Handle files
+			// Skip zero-byte objects that match a common prefix with a trailing slash
+			if *object.Size == 0 && strings.HasSuffix(*object.Key, "/") {
+				continue
+			}
 			if fullAccess || IsPermittedPrefix(bucket, *object.Key, permissions) {
 				file := ListResult{
 					ID:         count,

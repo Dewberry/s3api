@@ -88,7 +88,7 @@ func main() {
 	e.PUT("/object/move", auth.Authorize(bh.HandleMoveObject, admin...))
 	e.GET("/object/download", auth.Authorize(bh.HandleGetPresignedDownloadURL, allUsers...))
 	e.POST("/object/upload", auth.Authorize(bh.HandleMultipartUpload, writers...)) //deprecated by presigned upload URL
-	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObject, admin...))
+	e.DELETE("/object/delete", auth.Authorize(bh.HandleDeleteObject, writers...))
 	e.GET("/object/exists", auth.Authorize(bh.HandleGetObjExist, allUsers...))
 	e.GET("/object/presigned_upload", auth.Authorize(bh.HandleGetPresignedUploadURL, writers...))
 	e.GET("/object/multipart_upload_id", auth.Authorize(bh.HandleGetMultipartUploadID, writers...))
@@ -100,11 +100,11 @@ func main() {
 	// e.GET("/prefix/download", auth.Authorize(bh.HandleGetPresignedURLMultiObj, allUsers...))
 	e.GET("/prefix/download/script", auth.Authorize(bh.HandleGenerateDownloadScript, allUsers...))
 	e.PUT("/prefix/move", auth.Authorize(bh.HandleMovePrefix, admin...))
-	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeletePrefix, admin...))
+	e.DELETE("/prefix/delete", auth.Authorize(bh.HandleDeletePrefix, writers...))
 	e.GET("/prefix/size", auth.Authorize(bh.HandleGetSize, allUsers...))
 
 	// universal
-	e.DELETE("/delete_keys", auth.Authorize(bh.HandleDeleteObjectsByList, admin...))
+	e.DELETE("/delete_keys", auth.Authorize(bh.HandleDeleteObjectsByList, writers...))
 
 	// multi-bucket
 	e.GET("/list_buckets", auth.Authorize(bh.HandleListBuckets, allUsers...))
