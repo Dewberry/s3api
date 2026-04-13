@@ -119,67 +119,111 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		allowedBucketsMap[bucket] = struct{}{}
 	}
 
-	// Load AWS credentials for multiple accounts from .env.json
-	for _, creds := range awsConfig.Accounts {
-		// Create an AWS session and S3 client for each account
-		s3SVC, sess, err := aWSSessionManager(creds)
+	if len(awsConfig.Accounts) == 0 {
+		s3SVC, sess, err := aWSSessionManager(AWSCreds{})
 		if err != nil {
-			errMsg := fmt.Errorf("failed to create AWS session: %s", err.Error())
+			errMsg := fmt.Errorf("failed to create default AWS session: %s", err.Error())
 			log.Error(errMsg.Error())
 			return nil, errMsg
 		}
 
-		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
-		// Retrieve the list of buckets for each account
-		result, err := S3Ctrl.ListBuckets()
-		if err != nil {
-			errMsg := fmt.Errorf("failed to retrieve list of buckets with access key: %s, error: %s", creds.AWS_ACCESS_KEY_ID, err.Error())
-			return nil, errMsg
-		}
-
 		var bucketNames []string
-		if config.AllowAllBuckets {
-			// Directly add all bucket names if allowAllBucket is true
-			for _, bucket := range result.Buckets {
-				bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
-			}
-		} else {
-			// Filter and add only the allowed buckets
-			for _, bucket := range result.Buckets {
-				if _, exists := allowedBucketsMap[*bucket.Name]; exists {
-					bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
-					// Remove this bucket from the allowed list map
-					delete(allowedBucketsMap, *bucket.Name)
-				}
+		for _, bucket := range awsConfig.BucketAllowList {
+			_, err := s3SVC.HeadBucket(&s3.HeadBucketInput{
+				Bucket: aws.String(bucket),
+			})
+			if err == nil {
+				bucketNames = append(bucketNames, bucket)
+				delete(allowedBucketsMap, bucket)
+			} else {
+				log.Warnf("bucket %s is not accessible with default AWS credentials: %v", bucket, err)
 			}
 		}
 
 		if len(bucketNames) > 0 {
-			config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames, S3Mock: false})
+			config.S3Controllers = append(config.S3Controllers, S3Controller{
+				Sess:    sess,
+				S3Svc:   s3SVC,
+				Buckets: bucketNames,
+				S3Mock:  false,
+			})
 		}
-	}
+	} else {
+		for _, creds := range awsConfig.Accounts {
+			// Create an AWS session and S3 client for each account
+			s3SVC, sess, err := aWSSessionManager(creds)
+			if err != nil {
+				errMsg := fmt.Errorf("failed to create AWS session: %s", err.Error())
+				log.Error(errMsg.Error())
+				return nil, errMsg
+			}
 
-	if !config.AllowAllBuckets && len(allowedBucketsMap) > 0 {
-		missingBuckets := make([]string, 0, len(allowedBucketsMap))
-		for bucket := range allowedBucketsMap {
-			missingBuckets = append(missingBuckets, bucket)
+			S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
+			// Retrieve the list of buckets for each account
+			result, err := S3Ctrl.ListBuckets()
+			if err != nil {
+				errMsg := fmt.Errorf("failed to retrieve list of buckets with access key: %s, error: %s", creds.AWS_ACCESS_KEY_ID, err.Error())
+				return nil, errMsg
+			}
+
+			var bucketNames []string
+			if config.AllowAllBuckets {
+				// Directly add all bucket names if allowAllBucket is true
+				for _, bucket := range result.Buckets {
+					bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
+				}
+			} else {
+				// Filter and add only the allowed buckets
+				for _, bucket := range result.Buckets {
+					if _, exists := allowedBucketsMap[*bucket.Name]; exists {
+						bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
+						// Remove this bucket from the allowed list map
+						delete(allowedBucketsMap, *bucket.Name)
+					}
+				}
+			}
+
+			if len(bucketNames) > 0 {
+				config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames, S3Mock: false})
+			}
 		}
-		return nil, fmt.Errorf("some buckets in the allow list were not found: %v", missingBuckets)
-	}
 
-	// Return the configured BlobHandler
-	return &config, nil
+		if !config.AllowAllBuckets && len(allowedBucketsMap) > 0 {
+			missingBuckets := make([]string, 0, len(allowedBucketsMap))
+			for bucket := range allowedBucketsMap {
+				missingBuckets = append(missingBuckets, bucket)
+			}
+			return nil, fmt.Errorf("some buckets in the allow list were not found: %v", missingBuckets)
+		}
+
+		// Return the configured BlobHandler
+		return &config, nil
+	}
 }
 
 func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
 	log.Info("Using AWS S3")
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("us-east-1"),
-		Credentials: credentials.NewStaticCredentials(creds.AWS_ACCESS_KEY_ID, creds.AWS_SECRET_ACCESS_KEY, ""),
-	})
+
+	cfg := &aws.Config{
+		Region: aws.String("us-east-1"),
+	}
+
+	// Only use static credentials if both values are provided.
+	// Otherwise let the AWS SDK fall back to the default credential chain,
+	// which includes the EC2 instance role.
+	if creds.AWS_ACCESS_KEY_ID != "" && creds.AWS_SECRET_ACCESS_KEY != "" {
+		cfg.Credentials = credentials.NewStaticCredentials(
+			creds.AWS_ACCESS_KEY_ID,
+			creds.AWS_SECRET_ACCESS_KEY,
+			"",
+		)
+	}
+
+	sess, err := session.NewSession(cfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating s3 session: %s", err.Error())
 	}
+
 	return s3.New(sess), sess, nil
 }
 

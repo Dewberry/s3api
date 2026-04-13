@@ -65,12 +65,19 @@ func validateEnvJSON(filePath string) error {
 		return fmt.Errorf("error parsing .env.json: %s", err.Error())
 	}
 
-	// Check if there is at least one account defined
-	if len(awsConfig.Accounts) == 0 {
-		return fmt.Errorf("no AWS accounts defined in .env.json")
+	// bucket_allow_list is always required
+	if len(awsConfig.BucketAllowList) == 0 {
+		return fmt.Errorf("no buckets in the `bucket_allow_list`, please provide required buckets, or `*` for access to all buckets")
 	}
 
-	// Check if each account has the required fields
+	// Two valid modes:
+	// 1. accounts provided -> validate each account
+	// 2. accounts empty -> allowed, app will use default AWS credential chain
+	if len(awsConfig.Accounts) == 0 {
+		return nil
+	}
+
+	// If accounts are provided, each must include required fields
 	for i, account := range awsConfig.Accounts {
 		missingFields := []string{}
 		if account.AWS_ACCESS_KEY_ID == "" {
@@ -81,16 +88,16 @@ func validateEnvJSON(filePath string) error {
 		}
 
 		if len(missingFields) > 0 {
-			return fmt.Errorf("missing fields (%s) for AWS account %d in envJson file", strings.Join(missingFields, ", "), i+1)
+			return fmt.Errorf(
+				"missing fields (%s) for AWS account %d in envJson file",
+				strings.Join(missingFields, ", "),
+				i+1,
+			)
 		}
 	}
-	if len(awsConfig.BucketAllowList) == 0 {
-		return fmt.Errorf("no buckets in the `bucket_allow_list`, please provide required buckets, or `*` for access to all buckets")
-	}
-	// If all checks pass, return nil (no error)
+
 	return nil
 }
-
 func newAWSConfig(envJson string) (AWSConfig, error) {
 	var awsConfig AWSConfig
 	err := validateEnvJSON(envJson)
