@@ -118,7 +118,6 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	for _, bucket := range awsConfig.BucketAllowList {
 		allowedBucketsMap[bucket] = struct{}{}
 	}
-
 	if len(awsConfig.Accounts) == 0 {
 		s3SVC, sess, err := aWSSessionManager(AWSCreds{})
 		if err != nil {
@@ -184,21 +183,25 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 			}
 
 			if len(bucketNames) > 0 {
-				config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames, S3Mock: false})
+				config.S3Controllers = append(config.S3Controllers, S3Controller{
+					Sess:    sess,
+					S3Svc:   s3SVC,
+					Buckets: bucketNames,
+					S3Mock:  false,
+				})
 			}
 		}
-
-		if !config.AllowAllBuckets && len(allowedBucketsMap) > 0 {
-			missingBuckets := make([]string, 0, len(allowedBucketsMap))
-			for bucket := range allowedBucketsMap {
-				missingBuckets = append(missingBuckets, bucket)
-			}
-			return nil, fmt.Errorf("some buckets in the allow list were not found: %v", missingBuckets)
-		}
-
-		// Return the configured BlobHandler
-		return &config, nil
 	}
+
+	if !config.AllowAllBuckets && len(allowedBucketsMap) > 0 {
+		missingBuckets := make([]string, 0, len(allowedBucketsMap))
+		for bucket := range allowedBucketsMap {
+			missingBuckets = append(missingBuckets, bucket)
+		}
+		return nil, fmt.Errorf("some buckets in the allow list were not found: %v", missingBuckets)
+	}
+
+	return &config, nil
 }
 
 func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
