@@ -55,7 +55,7 @@ func CheckAndAdjustPrefix(s3Ctrl *S3Controller, bucket, prefix string) (string, 
 
 // HandleListByPrefix handles the API endpoint for listing objects by prefix in an S3 bucket.
 func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
-	prefix := c.QueryParam("prefix")
+	prefix := strings.ReplaceAll(c.QueryParam("prefix"), "BLOBSTORE_PLUS_SIGN", "+")
 
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
@@ -128,8 +128,7 @@ func (bh *BlobHandler) HandleListByPrefix(c echo.Context) error {
 
 // HandleListByPrefixWithDetail retrieves a detailed list of objects in the specified S3 bucket with the given prefix.
 func (bh *BlobHandler) HandleListByPrefixWithDetail(c echo.Context) error {
-	prefix := c.QueryParam("prefix")
-
+	prefix := strings.ReplaceAll(c.QueryParam("prefix"), "BLOBSTORE_PLUS_SIGN", "+")
 	bucket := c.QueryParam("bucket")
 	s3Ctrl, err := bh.GetController(bucket)
 	if err != nil {
