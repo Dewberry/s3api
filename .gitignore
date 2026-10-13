@@ -25,3 +25,4 @@ main
 .data
 .env.json
 .vscode/settings.json
+.env*
