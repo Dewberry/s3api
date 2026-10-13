@@ -14,8 +14,8 @@ type AWSCreds struct {
 }
 
 type AWSConfig struct {
-	// UseIAMRole ignores any static keys and uses the AWS SDK default
-	// credential chain (EC2 instance profile / IAM role on the VM).
+	// UseIAMRole ignores any static keys (in this file or AWS_* env vars)
+	// and uses only the EC2 instance profile from instance metadata.
 	UseIAMRole      bool       `json:"use_iam_role"`
 	Accounts        []AWSCreds `json:"accounts"`
 	BucketAllowList []string   `json:"bucket_allow_list"`

@@ -12,6 +12,7 @@ import (
 	envcheck "github.com/Dewberry/s3api/env-checker"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/labstack/echo/v4"
@@ -111,7 +112,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		return nil, fmt.Errorf("env.json credentials extraction failed, please check `.env.json.example` for reference on formatting, %s", err.Error())
 	}
 	if useIAMRole {
-		log.Info("using the EC2 IAM role (AWS default credential chain) for S3 access")
+		log.Info("using the EC2 instance role (instance metadata) for S3 access; static keys and AWS_* env vars are ignored")
 	}
 
 	//does it contain "*"
@@ -135,7 +136,7 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	// Load AWS credentials for multiple accounts from .env.json
 	for _, creds := range awsConfig.Accounts {
 		// Create an AWS session and S3 client for each account
-		s3SVC, sess, err := aWSSessionManager(creds)
+		s3SVC, sess, err := aWSSessionManager(creds, useIAMRole)
 		if err != nil {
 			errMsg := fmt.Errorf("failed to create AWS session: %s", err.Error())
 			log.Error(errMsg.Error())
@@ -215,17 +216,24 @@ func (bh *BlobHandler) IsBlocked(bucket string) bool {
 
 func credsLabel(creds AWSCreds) string {
 	if creds.AWS_ACCESS_KEY_ID == "" {
-		return "the IAM role"
+		return "the EC2 instance role"
 	}
 	return "access key: " + creds.AWS_ACCESS_KEY_ID
 }
 
-func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
+func aWSSessionManager(creds AWSCreds, useIAMRole bool) (*s3.S3, *session.Session, error) {
 	log.Info("Using AWS S3")
 	cfg := &aws.Config{Region: aws.String("us-east-1")}
-	// Static keys when provided; otherwise leave Credentials nil so the SDK
-	// resolves them from the default chain (EC2 instance profile on the VM).
-	if creds.AWS_ACCESS_KEY_ID != "" {
+	if useIAMRole {
+		// Use only the EC2 instance profile. The SDK default chain would pick
+		// up AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY from the environment
+		// first (e.g. a shared .env), silently bypassing the role.
+		metaSess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
+		if err != nil {
+			return nil, nil, fmt.Errorf("error creating metadata session: %s", err.Error())
+		}
+		cfg.Credentials = ec2rolecreds.NewCredentials(metaSess)
+	} else {
 		cfg.Credentials = credentials.NewStaticCredentials(creds.AWS_ACCESS_KEY_ID, creds.AWS_SECRET_ACCESS_KEY, "")
 	}
 	sess, err := session.NewSession(cfg)
