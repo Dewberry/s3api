@@ -44,6 +44,7 @@ type BlobHandler struct {
 	S3Controllers   []S3Controller
 	Mu              sync.Mutex
 	AllowAllBuckets bool
+	BlockedBuckets  map[string]struct{}
 	DB              auth.Database
 	Config          *Config
 }
@@ -101,21 +102,33 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	}
 
 	// Using AWS S3
-	// Load AWS credentials from the provided .env.json file
+	// Load AWS settings from the provided .env.json file
 	log.Debug("looking for .env.json")
-	awsConfig, err := newAWSConfig(envJson)
+	awsConfig, useIAMRole, err := newAWSConfig(envJson)
 
 	// Check if loading AWS credentials from .env.json failed
 	if err != nil {
 		return nil, fmt.Errorf("env.json credentials extraction failed, please check `.env.json.example` for reference on formatting, %s", err.Error())
 	}
+	if useIAMRole {
+		log.Info("using the EC2 IAM role (AWS default credential chain) for S3 access")
+	}
 
 	//does it contain "*"
 	config.AllowAllBuckets = arrayContains("*", awsConfig.BucketAllowList)
 
+	// Blocked buckets win over the allow list
+	config.BlockedBuckets = make(map[string]struct{})
+	for _, bucket := range awsConfig.BucketBlockList {
+		config.BlockedBuckets[bucket] = struct{}{}
+	}
+
 	// Convert allowed buckets to a map for efficient lookup
 	allowedBucketsMap := make(map[string]struct{})
 	for _, bucket := range awsConfig.BucketAllowList {
+		if bucket == "*" || config.IsBlocked(bucket) {
+			continue
+		}
 		allowedBucketsMap[bucket] = struct{}{}
 	}
 
@@ -130,10 +143,31 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		}
 
 		S3Ctrl := S3Controller{Sess: sess, S3Svc: s3SVC}
+
+		// With the IAM role and an explicit allow list, check each bucket with
+		// HeadBucket so the role does not need s3:ListAllMyBuckets.
+		if useIAMRole && !config.AllowAllBuckets {
+			var bucketNames []string
+			for bucket := range allowedBucketsMap {
+				if _, err := s3SVC.HeadBucket(&s3.HeadBucketInput{Bucket: aws.String(bucket)}); err != nil {
+					log.Errorf("bucket '%s' is not accessible with the IAM role: %s", bucket, err.Error())
+					continue
+				}
+				bucketNames = append(bucketNames, bucket)
+			}
+			for _, bucket := range bucketNames {
+				delete(allowedBucketsMap, bucket)
+			}
+			if len(bucketNames) > 0 {
+				config.S3Controllers = append(config.S3Controllers, S3Controller{Sess: sess, S3Svc: s3SVC, Buckets: bucketNames, S3Mock: false})
+			}
+			continue
+		}
+
 		// Retrieve the list of buckets for each account
 		result, err := S3Ctrl.ListBuckets()
 		if err != nil {
-			errMsg := fmt.Errorf("failed to retrieve list of buckets with access key: %s, error: %s", creds.AWS_ACCESS_KEY_ID, err.Error())
+			errMsg := fmt.Errorf("failed to retrieve list of buckets with %s, error: %s", credsLabel(creds), err.Error())
 			return nil, errMsg
 		}
 
@@ -141,7 +175,9 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 		if config.AllowAllBuckets {
 			// Directly add all bucket names if allowAllBucket is true
 			for _, bucket := range result.Buckets {
-				bucketNames = append(bucketNames, aws.StringValue(bucket.Name))
+				if name := aws.StringValue(bucket.Name); !config.IsBlocked(name) {
+					bucketNames = append(bucketNames, name)
+				}
 			}
 		} else {
 			// Filter and add only the allowed buckets
@@ -171,12 +207,28 @@ func NewBlobHandler(envJson string, authLvl int) (*BlobHandler, error) {
 	return &config, nil
 }
 
+// IsBlocked reports whether a bucket is in bucket_block_list.
+func (bh *BlobHandler) IsBlocked(bucket string) bool {
+	_, blocked := bh.BlockedBuckets[bucket]
+	return blocked
+}
+
+func credsLabel(creds AWSCreds) string {
+	if creds.AWS_ACCESS_KEY_ID == "" {
+		return "the IAM role"
+	}
+	return "access key: " + creds.AWS_ACCESS_KEY_ID
+}
+
 func aWSSessionManager(creds AWSCreds) (*s3.S3, *session.Session, error) {
 	log.Info("Using AWS S3")
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("us-east-1"),
-		Credentials: credentials.NewStaticCredentials(creds.AWS_ACCESS_KEY_ID, creds.AWS_SECRET_ACCESS_KEY, ""),
-	})
+	cfg := &aws.Config{Region: aws.String("us-east-1")}
+	// Static keys when provided; otherwise leave Credentials nil so the SDK
+	// resolves them from the default chain (EC2 instance profile on the VM).
+	if creds.AWS_ACCESS_KEY_ID != "" {
+		cfg.Credentials = credentials.NewStaticCredentials(creds.AWS_ACCESS_KEY_ID, creds.AWS_SECRET_ACCESS_KEY, "")
+	}
+	sess, err := session.NewSession(cfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating s3 session: %s", err.Error())
 	}

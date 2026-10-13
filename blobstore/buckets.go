@@ -104,7 +104,9 @@ func (bh *BlobHandler) HandleListBuckets(c echo.Context) error {
 			}
 			var mostRecentBucketList []string
 			for _, b := range result.Buckets {
-				mostRecentBucketList = append(mostRecentBucketList, *b.Name)
+				if !bh.IsBlocked(*b.Name) {
+					mostRecentBucketList = append(mostRecentBucketList, *b.Name)
+				}
 			}
 			if !isIdenticalArray(controller.Buckets, mostRecentBucketList) {
 				controller.Buckets = mostRecentBucketList

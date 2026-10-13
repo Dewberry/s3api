@@ -14,8 +14,13 @@ type AWSCreds struct {
 }
 
 type AWSConfig struct {
+	// UseIAMRole ignores any static keys and uses the AWS SDK default
+	// credential chain (EC2 instance profile / IAM role on the VM).
+	UseIAMRole      bool       `json:"use_iam_role"`
 	Accounts        []AWSCreds `json:"accounts"`
 	BucketAllowList []string   `json:"bucket_allow_list"`
+	// BucketBlockList buckets are never exposed, even when allowed (e.g. by "*").
+	BucketBlockList []string `json:"bucket_block_list"`
 }
 
 type MinioConfig struct {
@@ -52,60 +57,58 @@ func (creds MinioConfig) validateMinioConfig() error {
 	return nil
 }
 
-func validateEnvJSON(filePath string) error {
-	// Read the contents of the .env.json file
-	jsonData, err := os.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("error reading .env.json: %s", err.Error())
-	}
-
-	// Parse the JSON data into the AWSConfig struct
-	var awsConfig AWSConfig
-	if err := json.Unmarshal(jsonData, &awsConfig); err != nil {
-		return fmt.Errorf("error parsing .env.json: %s", err.Error())
-	}
-
-	// Check if there is at least one account defined
-	if len(awsConfig.Accounts) == 0 {
-		return fmt.Errorf("no AWS accounts defined in .env.json")
-	}
-
-	// Check if each account has the required fields
-	for i, account := range awsConfig.Accounts {
-		missingFields := []string{}
-		if account.AWS_ACCESS_KEY_ID == "" {
-			missingFields = append(missingFields, "AWS_ACCESS_KEY_ID")
-		}
-		if account.AWS_SECRET_ACCESS_KEY == "" {
-			missingFields = append(missingFields, "AWS_SECRET_ACCESS_KEY")
-		}
-
-		if len(missingFields) > 0 {
-			return fmt.Errorf("missing fields (%s) for AWS account %d in envJson file", strings.Join(missingFields, ", "), i+1)
+// validateAWSConfig checks a parsed .env.json. Static keys are only required
+// when the IAM role is not in use.
+func validateAWSConfig(awsConfig AWSConfig, useIAMRole bool) error {
+	if !useIAMRole {
+		for i, account := range awsConfig.Accounts {
+			missingFields := []string{}
+			if account.AWS_ACCESS_KEY_ID == "" {
+				missingFields = append(missingFields, "AWS_ACCESS_KEY_ID")
+			}
+			if account.AWS_SECRET_ACCESS_KEY == "" {
+				missingFields = append(missingFields, "AWS_SECRET_ACCESS_KEY")
+			}
+			if len(missingFields) > 0 {
+				return fmt.Errorf("missing fields (%s) for AWS account %d in envJson file", strings.Join(missingFields, ", "), i+1)
+			}
 		}
 	}
 	if len(awsConfig.BucketAllowList) == 0 {
 		return fmt.Errorf("no buckets in the `bucket_allow_list`, please provide required buckets, or `*` for access to all buckets")
 	}
-	// If all checks pass, return nil (no error)
 	return nil
 }
 
-func newAWSConfig(envJson string) (AWSConfig, error) {
-	var awsConfig AWSConfig
-	err := validateEnvJSON(envJson)
-	if err != nil {
-		return awsConfig, fmt.Errorf(err.Error())
-	}
+// newAWSConfig reads .env.json. The IAM role is used when the file is empty,
+// defines no "accounts", or sets "use_iam_role": true. Otherwise the static
+// keys in "accounts" are used, as before.
+func newAWSConfig(envJson string) (awsConfig AWSConfig, useIAMRole bool, err error) {
 	jsonData, err := os.ReadFile(envJson)
 	if err != nil {
-		return awsConfig, err
+		return awsConfig, false, fmt.Errorf("error reading .env.json: %s", err.Error())
 	}
 
-	if err := json.Unmarshal(jsonData, &awsConfig); err != nil {
-		return awsConfig, err
+	if len(strings.TrimSpace(string(jsonData))) == 0 {
+		// Empty file: IAM role with access to all buckets.
+		awsConfig.BucketAllowList = []string{"*"}
+		useIAMRole = true
+	} else {
+		if err := json.Unmarshal(jsonData, &awsConfig); err != nil {
+			return awsConfig, false, fmt.Errorf("error parsing .env.json: %s", err.Error())
+		}
+		useIAMRole = awsConfig.UseIAMRole || len(awsConfig.Accounts) == 0
 	}
-	return awsConfig, nil
+
+	if err := validateAWSConfig(awsConfig, useIAMRole); err != nil {
+		return awsConfig, false, err
+	}
+
+	if useIAMRole {
+		// One account with no keys: the session falls back to the IAM role.
+		awsConfig.Accounts = []AWSCreds{{}}
+	}
+	return awsConfig, useIAMRole, nil
 }
 
 func newMinioConfig() MinioConfig {
