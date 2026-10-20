@@ -3,34 +3,112 @@ on:
   push:
     branches:
       - main
+  pull_request:
 
 permissions:
   id-token: write
   contents: write
 
+# Builds once per platform on a native runner (no QEMU). Pull requests only
+# build, to catch a broken Dockerfile on either platform. Pushes to main push
+# each platform by digest, then the merge job publishes one multi-arch
+# manifest with the usual tags (dev-<sha>, dev-latest).
 jobs:
-  build-push:
-    name: Build and Push Container
-    runs-on: ubuntu-latest
+  build:
+    name: Build (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            slug: linux-amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            slug: linux-arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      IMAGE: ${{ secrets.AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_API_IMAGE }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        if: github.event_name != 'pull_request'
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_NUMBER }}:role/s3api-ecr-gha
           role-session-name: updateimage
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
+        if: github.event_name != 'pull_request'
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
-      # run only if 'api' files are modified
-      - name: Build, tag, and push API docker image to Amazon ECR
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build (and on main, push by digest)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: prod
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+          cache-from: type=gha,scope=s3api-${{ matrix.slug }}
+          cache-to: type=gha,mode=max,scope=s3api-${{ matrix.slug }}
+
+      - name: Save digest
+        if: github.event_name != 'pull_request'
         run: |
-          docker build . --target prod -t ${{ secrets.AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_API_IMAGE }}:dev-${{ github.sha }}
-          docker push ${{ secrets.AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_API_IMAGE }}:dev-${{ github.sha }}
-          docker tag ${{ secrets.AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_API_IMAGE }}:dev-${{ github.sha }} ${{ secrets.AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_API_IMAGE }}:dev-latest
-          docker push ${{ secrets.AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_API_IMAGE }}:dev-latest
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+
+      - name: Upload digest
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-s3api-${{ matrix.slug }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Publish manifest
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ secrets.AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_API_IMAGE }}
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digest-s3api-*
+          merge-multiple: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_NUMBER }}:role/s3api-ecr-gha
+          role-session-name: updateimage
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create and push the manifest list
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t "$IMAGE:dev-${{ github.sha }}" \
+            -t "$IMAGE:dev-latest" \
+            $(printf "$IMAGE@sha256:%s " *)
