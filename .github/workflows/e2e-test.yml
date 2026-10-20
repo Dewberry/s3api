@@ -49,12 +49,22 @@ jobs:
       - name: Build and Run the docker-compose stack
         run: docker compose up -d
 
+      - name: Wait for s3api to be ready
+        run: |
+          for i in $(seq 1 60); do
+            if curl -s -o /dev/null http://localhost:5005/ping; then
+              echo "s3api is up after ${i}x2s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "s3api did not start within 120s"
+          exit 1
+
       - name: Run newman tests
         run: >
           docker run --network="host" -v /home/runner/work/s3api/s3api/e2e-test:/etc/newman postman/newman:5.3.1-alpine run /etc/newman/e2eCollection.json -e /etc/newman/e2eEnv.json --reporters cli --bail --color on
 
-      # Uncomment to print logs for debugging
-      # - name: Display docker-compose logs
-      #   run: |
-      #     docker-compose logs
-      #   if: always()
+      - name: Display docker compose logs
+        if: failure()
+        run: docker compose logs
