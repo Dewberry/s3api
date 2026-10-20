@@ -28,7 +28,7 @@ jobs:
             slug: linux-arm64
     runs-on: ${{ matrix.runner }}
     env:
-      IMAGE: secrets.AWSACCOUNTNUMBER.dkr.ecr.{{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_API_IMAGE }}
+      IMAGE: ${{ secrets.AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_API_IMAGE }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -56,7 +56,7 @@ jobs:
           context: .
           target: prod
           platforms: ${{ matrix.platform }}
-          outputs: type=image,name=env.IMAGE,push-by-digest=true,name-canonical=true,push={{ github.event_name != 'pull_request' }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
           cache-from: type=gha,scope=s3api-${{ matrix.slug }}
           cache-to: type=gha,mode=max,scope=s3api-${{ matrix.slug }}
 
@@ -83,7 +83,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     env:
-      IMAGE: secrets.AWSACCOUNTNUMBER.dkr.ecr.{{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_API_IMAGE }}
+      IMAGE: ${{ secrets.AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_API_IMAGE }}
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
@@ -109,6 +109,6 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create \
-            -t "IMAGE:dev-{{ github.sha }}" \
+            -t "$IMAGE:dev-${{ github.sha }}" \
             -t "$IMAGE:dev-latest" \
-            (printf"IMAGE@sha256:%s " *)
+            $(printf "$IMAGE@sha256:%s " *)
